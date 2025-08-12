@@ -106,7 +106,6 @@ class SshKeyResponse(BaseModel):
     description: Optional[str] = None
     key_type: SshKeyType
     public_key: str
-    private_key: Optional[str] = None
     fingerprint: str
     is_active: bool
     created_at: datetime

@@ -133,7 +133,6 @@ class SshKeyService:
             description=ssh_key.description,
             key_type=ssh_key.key_type,
             public_key=ssh_key.public_key,
-            private_key=None,  # Don't return private key in response for security
             fingerprint=ssh_key.fingerprint,
             is_active=ssh_key.is_active,
             created_at=ssh_key.created_at,
