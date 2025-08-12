@@ -7,32 +7,65 @@ from models.ssh_key import SshKey
 
 class SshKeyDao:
     @staticmethod
+    def get_all_ssh_keys(db : Session) -> list[SshKey]:
+        try:
+            return db.query(SshKey).all()
+        except Exception as e:
+            print(f"Error fetching SSH keys: {e}")
+            return []
+    @staticmethod
     def create(db : Session, ssh_key : SshKey) -> SshKey:
-        db.add(ssh_key)
-        db.commit()
-        db.refresh(ssh_key)
-        return ssh_key
+        try:
+            db.add(ssh_key)
+            db.commit()
+            db.refresh(ssh_key)
+            return ssh_key
+        except Exception as e:
+            db.rollback()
+            print(f"Error creating SSH key: {e}")
+            return None
     @staticmethod
     def get_by_id(db: Session, ssh_key_id: int) -> Optional[SshKey]:
-        return db.query(SshKey).filter(SshKey.id == ssh_key_id).first()
+        try:
+            return db.query(SshKey).filter(SshKey.id == ssh_key_id).first()
+        except Exception as e:
+            print(f"Error fetching SSH key by ID {ssh_key_id}: {e}")
+            return None
+    @staticmethod
+    def delete(db: Session, ssh_key: SshKey) -> bool:
+        try:
+            db.delete(ssh_key)
+            db.commit()
+            return True
+        except Exception as e:
+            db.rollback()
+            print(f"Error deleting SSH key: {e}")
+            return False
 
     @staticmethod
-    def delete(db: Session, ssh_key_id : int) -> bool:
-        ssh_key = db.query(SshKey).filter(SshKey.id == ssh_key_id).first()
-        if ssh_key:
-            try:
-                db.delete(ssh_key)
-                db.commit()
-                return True
-            except Exception as e:
-                db.rollback()
-                print(f"Error deleting SSH key: {e}")
-                return False
-        return False
+    def update(db : Session, ssh_key : SshKey) -> Optional[SshKey]:
+       try:
+           db.commit()
+           db.refresh(ssh_key)
+           return ssh_key
+       except Exception as e:
+           db.rollback()
+           print(f"Error updating SSH key: {e}")
+           return None
+
     @staticmethod
     def exists_by_name(db : Session, name : str) -> bool:
-        return db.query(SshKey).filter(SshKey.name == name).count() > 0
+        """Check if an SSH key with the given name exists."""
+        try:
+            return db.query(SshKey).filter(SshKey.name == name).count() > 0
+        except Exception as e:
+            print(f"Error checking existence of SSH key by name {name}: {e}")
+            return False
 
     @staticmethod
     def exists_by_fingerprint(db : Session, fingerprint : str) -> bool:
-        return db.query(SshKey).filter(SshKey.fingerprint == fingerprint).count() > 0
+        try:
+            db.query(SshKey).filter(SshKey.fingerprint == fingerprint).count() > 0
+        except Exception as e:
+            print(f"Error checking existence of SSH key by fingerprint {fingerprint}: {e}")
+            return False

@@ -7,7 +7,7 @@ from config.config_database import Base
 
 
 
-class SSHKeyType(str, Enum):
+class SshKeyType(str, Enum):
     RSA = "rsa"
     ED25519 = "ed25519"
     ECDSA = "ecdsa"
@@ -19,7 +19,7 @@ class SshKey(Base):
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     name = Column(String(100), nullable=False)
     description = Column(Text, nullable=True)
-    key_type = Column(SQLEnum(SSHKeyType), nullable=False)
+    key_type = Column(SQLEnum(SshKeyType), nullable=False)
     public_key = Column(Text, nullable=False)
     private_key = Column(Text, nullable=False)
     fingerprint = Column(String(255), nullable=False, index=True)
