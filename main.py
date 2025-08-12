@@ -33,13 +33,13 @@ async def startup_event():
         pass
 
 # CORS middleware
-# app.add_middleware(
-#     CORSMiddleware,
-#     allow_origins=["http://localhost:3000", "http://localhost:5173"],  # Vite dev server
-#     allow_credentials=True,
-#     allow_methods=["*"],
-#     allow_headers=["*"],
-# )
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[ "http://localhost:5173"],  
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 HOST = os.getenv("SERVER_HOST", "127.0.0.1")  
 PORT = int(os.getenv("SERVER_PORT", 8000))

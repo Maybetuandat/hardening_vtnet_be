@@ -65,7 +65,7 @@ class SshKeyDao:
     @staticmethod
     def exists_by_fingerprint(db : Session, fingerprint : str) -> bool:
         try:
-            db.query(SshKey).filter(SshKey.fingerprint == fingerprint).count() > 0
+            return db.query(SshKey).filter(SshKey.fingerprint == fingerprint).count() > 0
         except Exception as e:
             print(f"Error checking existence of SSH key by fingerprint {fingerprint}: {e}")
             return False

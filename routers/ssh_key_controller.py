@@ -14,7 +14,7 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/ssh-keys", tags=["SSH Keys"])
+router = APIRouter(prefix="/api/ssh-keys", tags=["SSH Keys"])
 
 """get all ssh keys"""
 @router.get("", response_model=list[SshKeyResponse])
