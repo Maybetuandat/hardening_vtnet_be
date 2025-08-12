@@ -11,20 +11,20 @@ app = FastAPI(title="Ansible Lab Runner API", version="1.0.0")
 
 load_dotenv()
 # CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:5173"],  # Vite dev server
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# app.add_middleware(
+#     CORSMiddleware,
+#     allow_origins=["http://localhost:3000", "http://localhost:5173"],  # Vite dev server
+#     allow_credentials=True,
+#     allow_methods=["*"],
+#     allow_headers=["*"],
+# )
 HOST = os.getenv("SERVER_HOST")  
 PORT = int(os.getenv("SERVER_PORT"))
 RELOAD = os.getenv("SERVER_RELOAD", "False").lower() == "true"
 
 
 # Include routers
-app.include_router(ssh_key_controller.router, prefix="/ssh-keys", tags=["SSH Keys"])
+app.include_router(ssh_key_controller.router, tags=["SSH Keys"])
 
 if __name__ == "__main__":
     import uvicorn

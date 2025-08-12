@@ -3,8 +3,8 @@ import hashlib
 from sqlalchemy.orm import Session
 import logging
 from dao.ssh_key_dao import SshKeyDao
-from models import ssh_key
-from schemas.ssh_key_schemas import SSHKeyCreate, SshKeyResponse
+from models.ssh_key import SshKey
+from schemas.ssh_key_schemas import SshKeyCreate, SshKeyResponse
 logging.basicConfig(
     level=logging.INFO,  # Mức log: DEBUG < INFO < WARNING < ERROR < CRITICAL
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -49,7 +49,7 @@ class SshKeyService:
             return False
         
     @staticmethod
-    def create_ssh_key(db : Session, ssh_key_data: SSHKeyCreate) -> ssh_key: 
+    def create_ssh_key(db : Session, ssh_key_data: SshKeyCreate) -> SshKey: 
 
         logger.info("In create_ssh_key service method")
         if SshKeyDao.exists_by_name(db, ssh_key_data.name):
@@ -73,7 +73,7 @@ class SshKeyService:
         return SshKeyService._to_response(ssh_key)
 
     @staticmethod
-    def _to_response(ssh_key : ssh_key.SshKey) -> SshKeyResponse:
+    def _to_response(ssh_key : SshKey) -> SshKeyResponse:
         return SshKeyResponse(
             id=ssh_key.id,
             name=ssh_key.name,
