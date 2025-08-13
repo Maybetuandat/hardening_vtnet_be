@@ -45,8 +45,7 @@ class SshKeyService:
             if SshKeyDao.exists_by_fingerprint(db, fingerprint):
                 raise ValueError("SSH key with this fingerprint already exists")
 
-            if not SshKeyService.validate_key_pair_match(ssh_key_data.public_key, ssh_key_data.private_key):
-                raise ValueError("Public and private keys do not match")
+          
             
             ssh_key = SshKey(
                 name=ssh_key_data.name,
@@ -115,8 +114,7 @@ class SshKeyService:
                 exist_ssh_key.key_type = ssh_key_data.key_type
             if ssh_key_data.public_key is not None:
                 exist_ssh_key.public_key = ssh_key_data.public_key
-            if ssh_key_data.private_key is not None:
-                exist_ssh_key.private_key = ssh_key_data.private_key
+            
             if ssh_key_data.is_active is not None:
                 exist_ssh_key.is_active = ssh_key_data.is_active
             updated_ssh_key = SshKeyDao.update(db, exist_ssh_key)
@@ -154,23 +152,5 @@ class SshKeyService:
             print(f"Error generating fingerprint: {e}")
             return ""
         
-    @staticmethod
-    def validate_key_pair_match(public_key: str, private_key: str) -> bool:
-        try:
-            # Extract key type from public key
-            public_key_type = public_key.split()[0]
-            
-            # Check if private key contains corresponding type
-            if public_key_type == "ssh-rsa" and "RSA" not in private_key:
-                return False
-            elif public_key_type == "ssh-ed25519" and "OPENSSH" not in private_key:
-                return False
-            elif public_key_type.startswith("ecdsa-") and "EC" not in private_key:
-                return False
-            elif public_key_type == "ssh-dss" and "DSA" not in private_key:
-                return False
-            
-            return True
-        except Exception:
-            return False
+  
         
