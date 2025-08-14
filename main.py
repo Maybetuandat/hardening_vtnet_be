@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import os
 import uvicorn
 
-from routers import ssh_key_controller, workload_controller
+from routers import server_controller, ssh_key_controller, workload_controller
 from config.config_database import engine, Base
 from models import ssh_key, workload  # Import models để SQLAlchemy biết về chúng
 
@@ -46,7 +46,7 @@ RELOAD = os.getenv("SERVER_RELOAD", "False").lower() == "true"
 # Include routers
 app.include_router(ssh_key_controller.router, tags=["SSH Keys"])
 app.include_router(workload_controller.router, tags=["Workloads"])
-
+app.include_router(server_controller.router, tags=["Servers"])
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host=HOST, port=PORT, reload=RELOAD)

@@ -3,7 +3,7 @@ from sqlalchemy.sql import func
 from enum import Enum
 
 from config.config_database import Base
-
+from sqlalchemy.orm import relationship
 
 
 
@@ -26,4 +26,5 @@ class SshKey(Base):
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=func.now(), nullable=False)
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
+    servers = relationship("Server", back_populates="ssh_key")
 

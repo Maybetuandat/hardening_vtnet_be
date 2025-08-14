@@ -28,7 +28,7 @@ class WorkloadCreate(BaseModel):
             raise ValueError('Workload type cannot be empty')
         if len(v.strip()) > 100:
             raise ValueError('Workload type too long (max 100 characters)')
-        valid_types = ['os', 'big_data', 'database', 'app']
+        valid_types = ['os', 'bigdata', 'database', 'app']
         if v.strip().lower() not in valid_types:
             raise ValueError(f'Invalid workload type. Must be one of: {", ".join(valid_types)}')
         return v.strip()

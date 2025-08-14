@@ -1,6 +1,10 @@
 from sqlalchemy import Boolean, Column, DateTime, Integer, String, Text, func 
 from config.config_database import Base
 
+from sqlalchemy.orm import relationship
+
+
+
 
 class Workload(Base):
     __tablename__ = "work_loads"
@@ -14,5 +18,6 @@ class Workload(Base):
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=func.now(), nullable=False)
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
+    servers = relationship("Server", back_populates="workload")
     
   
