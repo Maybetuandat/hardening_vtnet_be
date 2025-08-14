@@ -4,11 +4,9 @@ from fastapi.middleware.cors import CORSMiddleware
 import os
 import uvicorn
 
-from routers import ssh_key_controller
+from routers import ssh_key_controller, workload_controller
 from config.config_database import engine, Base
-from models import ssh_key  # Import models để SQLAlchemy biết về chúng
-
-# Import routers
+from models import ssh_key, workload  # Import models để SQLAlchemy biết về chúng
 
 app = FastAPI(title="Ansible Lab Runner API", version="1.0.0")
 
@@ -35,7 +33,7 @@ async def startup_event():
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[ "http://localhost:5173"],  
+    allow_origins=["http://localhost:5173"],  
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -47,6 +45,7 @@ RELOAD = os.getenv("SERVER_RELOAD", "False").lower() == "true"
 
 # Include routers
 app.include_router(ssh_key_controller.router, tags=["SSH Keys"])
+app.include_router(workload_controller.router, tags=["Workloads"])
 
 if __name__ == "__main__":
     import uvicorn
