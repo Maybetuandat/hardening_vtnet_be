@@ -69,7 +69,7 @@ class ServerDao:
             memory_gb=server_data.memory_gb,
             environment=server_data.environment,
             status=server_data.status,
-            compliance_score=server_data.compliance_score,
+          
             ssh_port=server_data.ssh_port,
             ssh_key_id=server_data.ssh_key_id,
             is_active=server_data.is_active

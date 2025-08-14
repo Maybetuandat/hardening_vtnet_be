@@ -30,7 +30,7 @@ class Server(Base):
     
     # Status
     status = Column(String(50), nullable=False, index=True)  # Fixed: nullable=False
-    compliance_score = Column(Float, nullable=True)
+   
     
     # SSH
     ssh_port = Column(Integer, default=22)

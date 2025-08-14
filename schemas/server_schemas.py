@@ -17,7 +17,7 @@ class ServerCreate(BaseModel):
     memory_gb: Optional[float] = None
     environment: str
     status: str
-    compliance_score: Optional[float] = None
+  
     ssh_port: Optional[int] = 22
     ssh_key_id: Optional[int] = None
     is_active: Optional[bool] = True
@@ -95,13 +95,7 @@ class ServerCreate(BaseModel):
                 raise ValueError('SSH port must be between 1 and 65535')
         return v
 
-    @field_validator('compliance_score')
-    @classmethod
-    def validate_compliance_score(cls, v):
-        if v is not None:
-            if v < 0.0 or v > 100.0:
-                raise ValueError('Compliance score must be between 0.0 and 100.0')
-        return v
+  
 
     @field_validator('cpu_cores')
     @classmethod
@@ -133,7 +127,7 @@ class ServerUpdate(BaseModel):
     memory_gb: Optional[float] = None
     environment: Optional[str] = None
     status: Optional[str] = None
-    compliance_score: Optional[float] = None
+  
     ssh_port: Optional[int] = None
     ssh_key_id: Optional[int] = None
     is_active: Optional[bool] = None
@@ -222,13 +216,7 @@ class ServerUpdate(BaseModel):
                 raise ValueError('SSH port must be between 1 and 65535')
         return v
 
-    @field_validator('compliance_score')
-    @classmethod
-    def validate_compliance_score(cls, v):
-        if v is not None:
-            if v < 0.0 or v > 100.0:
-                raise ValueError('Compliance score must be between 0.0 and 100.0')
-        return v
+   
 
     @field_validator('cpu_cores')
     @classmethod
@@ -261,7 +249,7 @@ class ServerResponse(BaseModel):
     memory_gb: Optional[float] = None
     environment: str
     status: str
-    compliance_score: Optional[float] = None
+ 
     ssh_port: int
     ssh_key_id: Optional[int] = None
     is_active: bool

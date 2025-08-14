@@ -221,7 +221,7 @@ class ServerService:
             memory_gb=server.memory_gb,
             environment=server.environment,
             status=server.status,
-            compliance_score=server.compliance_score,
+         
             ssh_port=server.ssh_port,
             ssh_key_id=server.ssh_key_id,
             is_active=server.is_active,

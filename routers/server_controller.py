@@ -160,3 +160,16 @@ async def get_servers_by_workload(workload_id: int, db: Session = Depends(get_db
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to fetch servers by workload: {str(e)}"
         )
+@router.get("/workload/{workload_id}/count")
+async def get_servers_by_workload(workload_id: int, db: Session = Depends(get_db)):
+    """Get number of  servers for a specific workload"""
+    try:
+         counts = len(ServerService.get_servers_by_workload(db, workload_id))
+         logger.info(f"Number of servers for workload {workload_id}: {counts}")
+         return {"count": counts}
+    except Exception as e:
+        logger.error(f"Error fetching servers by workload: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch servers by workload: {str(e)}"
+        )
