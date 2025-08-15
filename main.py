@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import os
 import uvicorn
 
-from routers import server_controller, ssh_key_controller, workload_controller, scan_controller
+from routers import command_controller, rule_controller, security_standard_controller, server_controller, ssh_key_controller, workload_controller, scan_controller
 from config.config_database import engine, Base
 # Import tất cả models để SQLAlchemy biết về relationships
 from models import (
@@ -74,29 +74,9 @@ RELOAD = os.getenv("SERVER_RELOAD", "False").lower() == "true"
 app.include_router(ssh_key_controller.router, tags=["SSH Keys"])
 app.include_router(workload_controller.router, tags=["Workloads"])
 app.include_router(server_controller.router, tags=["Servers"])
-app.include_router(scan_controller.router, tags=["Scan"])
-
-# Health check endpoint
-@app.get("/health")
-async def health_check():
-    """Health check endpoint"""
-    return {
-        "status": "healthy",
-        "service": "Ansible Security Scan API",
-        "version": "1.0.0"
-    }
-
-# Root endpoint
-@app.get("/")
-async def root():
-    """Root endpoint with API information"""
-    return {
-        "message": "Ansible Security Scan API",
-        "version": "1.0.0",
-        "docs": "/docs",
-        "redoc": "/redoc",
-        "health": "/health"
-    }
+app.include_router(security_standard_controller.router,tags=["Security Standards"])
+app.include_router(rule_controller.router, tags=["Rules"])
+app.include_router(command_controller.router, tags=["Commands"])
 
 if __name__ == "__main__":
     import uvicorn
