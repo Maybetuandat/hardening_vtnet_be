@@ -4,7 +4,7 @@ from datetime import datetime
 
 import re
 
-from models.ssh_key import SshKeyType
+from models.sshkey import SshKeyType
 
 
 

@@ -2,7 +2,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from config.config_database import get_db
-from models.ssh_key import SshKey
+from models.sshkey import SshKey
 
 from schemas.ssh_key_schemas import SshKeyCreate, SshKeyResponse,SshKeyUpdateRequest, SshKeyUpdateResponse
 from services.ssh_key_service import SshKeyService

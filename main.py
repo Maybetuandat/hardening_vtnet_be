@@ -6,7 +6,7 @@ import uvicorn
 
 from routers import server_controller, ssh_key_controller, workload_controller
 from config.config_database import engine, Base
-from models import ssh_key, workload  # Import models để SQLAlchemy biết về chúng
+from models import sshkey, workload  # Import models để SQLAlchemy biết về chúng
 
 app = FastAPI(title="Ansible Lab Runner API", version="1.0.0")
 

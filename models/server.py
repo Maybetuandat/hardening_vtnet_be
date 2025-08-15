@@ -44,3 +44,4 @@ class Server(Base):
     # Relationships
     workload = relationship("Workload", back_populates="servers")
     ssh_key = relationship("SshKey", back_populates="servers")
+    compliance_results = relationship("ComplianceResult", back_populates="server")

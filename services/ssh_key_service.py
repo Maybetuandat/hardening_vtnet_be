@@ -5,8 +5,8 @@ from fastapi import HTTPException
 from sqlalchemy.orm import Session
 import logging
 from dao.ssh_key_dao import SshKeyDao
-from models import ssh_key
-from models.ssh_key import SshKey
+from models import sshkey
+from models.sshkey import SshKey
 from schemas.ssh_key_schemas import SshKeyCreate, SshKeyResponse, SshKeyUpdateRequest, SshKeyUpdateResponse
 logging.basicConfig(
     level=logging.INFO,  # Mức log: DEBUG < INFO < WARNING < ERROR < CRITICAL

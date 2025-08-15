@@ -2,7 +2,7 @@
 from typing import Optional
 from sqlalchemy.orm import Session
 
-from models.ssh_key import SshKey
+from models.sshkey import SshKey
 
 
 class SshKeyDao:
