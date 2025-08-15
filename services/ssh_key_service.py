@@ -8,15 +8,15 @@ from dao.ssh_key_dao import SshKeyDao
 from models import sshkey
 from models.sshkey import SshKey
 from schemas.ssh_key_schemas import SshKeyCreate, SshKeyResponse, SshKeyUpdateRequest, SshKeyUpdateResponse
+
 logging.basicConfig(
     level=logging.INFO,  # Mức log: DEBUG < INFO < WARNING < ERROR < CRITICAL
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 
 logger = logging.getLogger(__name__)
-class SshKeyService: 
-   
 
+class SshKeyService: 
 
     @staticmethod
     def get_all_ssh_key(db : Session ) -> list[SshKey]:
@@ -39,14 +39,13 @@ class SshKeyService:
                 raise ValueError("SSH key with this name already exists")
                 
             fingerprint = SshKeyService.generate_fingerprint(ssh_key_data.public_key)
+            # FIX: Sửa lỗi typo và logic validation
             if not fingerprint:
                 raise ValueError("Failed to generate fingerprint for public key")
                 
             if SshKeyDao.exists_by_fingerprint(db, fingerprint):
                 raise ValueError("SSH key with this fingerprint already exists")
 
-          
-            
             ssh_key = SshKey(
                 name=ssh_key_data.name,
                 description=ssh_key_data.description,
@@ -114,15 +113,21 @@ class SshKeyService:
                 exist_ssh_key.key_type = ssh_key_data.key_type
             if ssh_key_data.public_key is not None:
                 exist_ssh_key.public_key = ssh_key_data.public_key
+                # Regenerate fingerprint if public key is updated
+                exist_ssh_key.fingerprint = SshKeyService.generate_fingerprint(ssh_key_data.public_key)
+            
+            if ssh_key_data.private_key is not None:
+                exist_ssh_key.private_key = ssh_key_data.private_key
             
             if ssh_key_data.is_active is not None:
                 exist_ssh_key.is_active = ssh_key_data.is_active
             updated_ssh_key = SshKeyDao.update(db, exist_ssh_key)
-            # logger.info(f"SSH key with ID {ssh_key} updated successfully")
+            logger.info(f"SSH key with ID {ssh_key_id} updated successfully")
             return SshKeyUpdateResponse.model_validate(updated_ssh_key)
         except Exception as e:
             logger.error(f"Error in update_ssh_key: {str(e)}")
-            return None
+            raise
+    
     @staticmethod
     def _to_response(ssh_key: SshKey) -> SshKeyResponse:
         return SshKeyResponse(
@@ -136,8 +141,9 @@ class SshKeyService:
             created_at=ssh_key.created_at,
             updated_at=ssh_key.updated_at
         )
+    
     @staticmethod
-    def generate_fingerprint(public_key : str) -> str:
+    def generate_fingerprint(public_key: str) -> str:
         """Generates a fingerprint for the given public key."""
         try:
             parts = public_key.strip().split()
@@ -148,9 +154,6 @@ class SshKeyService:
                 return ':'.join(fingerprint[i:i+2] for i in range(0, len(fingerprint), 2))
             else:
                 raise ValueError("Invalid public key format")
-        except  Exception as e:
-            print(f"Error generating fingerprint: {e}")
+        except Exception as e:
+            logger.error(f"Error generating fingerprint: {e}")
             return ""
-        
-  
-        

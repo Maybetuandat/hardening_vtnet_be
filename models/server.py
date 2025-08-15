@@ -14,6 +14,9 @@ class Server(Base):
     
     # Workload relationship
     workload_id = Column(Integer, ForeignKey("work_loads.id"), nullable=False, index=True)
+    ssh_key_id = Column(Integer, ForeignKey("ssh_keys.id"), nullable=True)
+    
+    
     server_role = Column(String(50), nullable=True)
     
     # Operating System
@@ -34,7 +37,7 @@ class Server(Base):
     
     # SSH
     ssh_port = Column(Integer, default=22)
-    ssh_key_id = Column(Integer, ForeignKey("ssh_keys.id"), nullable=True)
+   
     
     # Audit
     is_active = Column(Boolean, default=True)

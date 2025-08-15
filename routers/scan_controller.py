@@ -330,3 +330,32 @@ async def test_server_connection(
                 "error": str(e)
             }
         )
+
+@router.post("/debug-ssh")
+async def debug_ssh_connection(
+    request: SimpleScanRequest,
+    db: Session = Depends(get_db)
+):
+    """
+    Debug SSH connection với verbose output
+    """
+    try:
+        logger.info(f"Starting SSH debug for server ID: {request.server_id}")
+        
+        result = await ScanService.debug_ssh_key(db, request.server_id)
+        
+        return ScanResponse(
+            success=True,
+            message="SSH debug completed",
+            data=result
+        )
+        
+    except HTTPException as e:
+        logger.error(f"HTTP error during SSH debug: {e.detail}")
+        raise e
+    except Exception as e:
+        logger.error(f"Unexpected error during SSH debug: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"SSH debug failed: {str(e)}"
+        )
