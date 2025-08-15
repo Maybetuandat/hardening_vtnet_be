@@ -99,7 +99,7 @@ class ServerService:
             
             # Validate SSH key exists (if being updated)
             if server_data.ssh_key_id:
-                if not SshKeyDao.get_ssh_key_by_id(db, server_data.ssh_key_id):
+                if not SshKeyDao.get_by_id(db, server_data.ssh_key_id):
                     raise ValueError(f"SSH Key with ID {server_data.ssh_key_id} does not exist")
             
             # Check if new hostname conflicts with existing server (if hostname is being updated)
