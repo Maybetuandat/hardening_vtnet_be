@@ -13,24 +13,33 @@ class ConnectionService:
         self.max_forks = 20
 
     def test_multiple_connections(self, request: TestConnectionRequest) -> TestConnectionResponse:
+        """Test kết nối đến nhiều servers - sử dụng Ansible đa luồng"""
         start_time = time.time()
+        
+        print(f"🚀 Starting connection test for {len(request.servers)} servers")
+        print(f"🔧 Using Ansible multi-threading (no ignore flags)")
 
         try:
             # Tạo inventory cho tất cả servers
             inventory_content = self._create_multiserver_inventory(request.servers)
+            print(f"📝 Created inventory with {len(request.servers)} servers")
 
             with tempfile.NamedTemporaryFile(mode='w', suffix='.ini', delete=False) as inventory_file:
                 inventory_file.write(inventory_content)
                 inventory_path = inventory_file.name
             
             try:
-                # Chạy ansible cho tất cả servers
+                # Chạy ansible cho tất cả servers - KHÔNG dùng ignore flags
+                print(f"⚡ Running Ansible command...")
                 ansible_results = self._run_ansible_multiple_hosts(inventory_path, request.servers)
                 
-                # Parse kết quả
-                results = self._parse_multiple_results(ansible_results, request.servers)
+                # Parse kết quả - xử lý cả success và failed servers
+                print(f"🔍 Parsing results...")
+                results = self._parse_mixed_results(ansible_results, request.servers)
                 
                 successful_count = sum(1 for r in results if r.status == "success")
+                
+                print(f"✅ Completed: {successful_count}/{len(request.servers)} successful")
                 
                 return TestConnectionResponse(
                     total_servers=len(request.servers),
@@ -45,26 +54,30 @@ class ConnectionService:
                     os.unlink(inventory_path)
                     
         except Exception as e:
+            print(f"❌ Service error: {str(e)}")
             logging.error(f"Error testing multiple server connections: {str(e)}")
+            
+            # Tạo failed results cho tất cả servers
+            failed_results = []
+            for server in request.servers:
+                failed_results.append(ServerConnectionResult(
+                    ip=server.ip,
+                    ssh_user=server.ssh_user,
+                    ssh_port=server.ssh_port,
+                    status="failed",
+                    message="Service error",
+                    error_details=str(e)
+                ))
+            
             return TestConnectionResponse(
                 total_servers=len(request.servers),
                 successful_connections=0,
                 failed_connections=len(request.servers),
-                results=[
-                    ServerConnectionResult(
-                        ip=server.ip,
-                        ssh_user=server.ssh_user,
-                        ssh_port=server.ssh_port,
-                        status="failed",
-                        message="Service error",
-                        error_details=str(e)
-                    ) for server in request.servers
-                ]
+                results=failed_results
             )
 
-   
-
     def _create_multiserver_inventory(self, servers: List[ServerConnectionInfo]) -> str:
+        """Tạo Ansible inventory cho nhiều servers"""
         inventory_content = "[test_servers]\n"
         
         for server in servers:
@@ -81,6 +94,7 @@ class ConnectionService:
         return inventory_content
 
     def _run_ansible_multiple_hosts(self, inventory_path: str, servers: List[ServerConnectionInfo]) -> Dict[str, Any]:
+        """Chạy Ansible command cho nhiều hosts - KHÔNG dùng ignore flags"""
         try:
             forks = min(self.max_forks, len(servers))
             system_info_cmd = (
@@ -100,7 +114,11 @@ class ConnectionService:
                 "-a", system_info_cmd,
                 "--timeout", str(self.ansible_timeout),
                 "--forks", str(forks),
-            ]  
+                "-v"  # Verbose để có thông tin chi tiết
+            ]
+            
+            print(f"🔧 Running command: {' '.join(cmd)}")
+            
             result = subprocess.run(
                 cmd,
                 capture_output=True,
@@ -108,17 +126,22 @@ class ConnectionService:
                 timeout=(self.ansible_timeout + 10) * len(servers) // forks + 30
             )
             
-           
+            print(f"📊 Command completed with return code: {result.returncode}")
+            print(f"📤 Stdout length: {len(result.stdout)} chars")
+            print(f"📤 Stderr length: {len(result.stderr)} chars")
+            
+            # Với approach này, return code có thể != 0 nếu có servers failed
+            # Nhưng ta vẫn có thể parse được kết quả từ stdout/stderr
             
             return {
-                "success": result.returncode == 0,
+                "success": True,  # Luôn True để parse được kết quả
                 "stdout": result.stdout,
                 "stderr": result.stderr,
                 "returncode": result.returncode
             }
                 
         except subprocess.TimeoutExpired:
-         
+            print(f"⏰ Ansible execution timeout")
             return {
                 "success": False,
                 "error": f"Ansible execution timeout",
@@ -134,225 +157,249 @@ class ConnectionService:
                 "stderr": ""
             }
 
-    def _parse_multiple_results(self, ansible_results: Dict[str, Any], servers: List[ServerConnectionInfo]) -> List[ServerConnectionResult]:
-        """Parse kết quả dựa vào return code thay vì text parsing"""
+    def _parse_mixed_results(self, ansible_results: Dict[str, Any], servers: List[ServerConnectionInfo]) -> List[ServerConnectionResult]:
+        """Parse kết quả hỗn hợp (cả success và failed servers)"""
         results = []
         
-        # Kiểm tra return code trước
-        if ansible_results["returncode"] != 0:
-            # Ansible command thất bại hoàn toàn
-            print(f"❌ Ansible command failed with return code: {ansible_results['returncode']}")
-            for server in servers:
-                results.append(ServerConnectionResult(
-                    ip=server.ip,
-                    ssh_user=server.ssh_user,
-                    ssh_port=server.ssh_port,
-                    status="failed",
-                    message="Ansible command failed",
-                    error_details=ansible_results.get("error", f"Return code: {ansible_results['returncode']}")
-                ))
-            return results
-        
-        # Return code = 0, nghĩa là thành công
-        print(f"✅ Ansible command succeeded (rc=0)")
-        
-        stdout = ansible_results["stdout"]
-        stderr = ansible_results["stderr"]
-        
-        # Track servers đã có kết quả
-        server_results = {}
-        
-        # Parse từ stdout (stderr chỉ là warnings)
-        all_output = stdout.strip()
-        
-        print(f"🔍 Parsing output for {len(servers)} servers")
-        
-        if all_output:
-            # Parse theo từng server riêng biệt
-            for server in servers:
-                server_ip = server.ip
-                
-                # Tìm output của server này
-                server_lines = []
-                lines = all_output.split('\n')
-                
-                # Thu thập tất cả lines liên quan đến server này
-                collecting = False
-                for line in lines:
-                    if server_ip in line:
-                        collecting = True
-                        server_lines.append(line)
-                    elif collecting and (line.startswith(' ') or line.strip() == ''):
-                        # Dòng continuation hoặc dòng trống
-                        server_lines.append(line)
-                    elif collecting and any(other_server.ip in line for other_server in servers if other_server.ip != server_ip):
-                        # Gặp server khác = dừng collect
-                        collecting = False
-                    elif collecting:
-                        # Dòng khác nhưng vẫn đang collect
-                        server_lines.append(line)
-                
-                # Join all lines for this server
-                server_output = '\n'.join(server_lines)
-                
-                print(f"🔍 Server {server_ip} output ({len(server_output)} chars)")
-                
-                # Với return code = 0, tất cả servers trong stdout đều thành công
-                # Chỉ cần check xem server có trong output không
-                if server_ip in server_output:
-                    # Parse thông tin từ output
-                    server_result = self._parse_success_output(server_output, server)
-                    print(f"✅ {server_ip}: Parsed successfully")
-                else:
-                    # Server không có trong output = có thể failed
-                    print(f"❓ {server_ip}: Not found in output")
-                    server_result = ServerConnectionResult(
+        try:
+            # Lấy output từ cả stdout và stderr
+            stdout = ansible_results.get("stdout", "")
+            stderr = ansible_results.get("stderr", "")
+            all_output = stdout + "\n" + stderr
+            
+            print(f"🔍 Parsing mixed results for {len(servers)} servers")
+            print(f"📄 Total output length: {len(all_output)} chars")
+            print(f"📊 Return code: {ansible_results.get('returncode', 'Unknown')}")
+            
+            # Debug: In ra output để check
+            if all_output.strip():
+                print(f"📄 Output preview (first 1000 chars):")
+                print("="*50)
+                print(all_output[:1000])
+                print("="*50)
+            
+            # Parse từng server
+            for i, server in enumerate(servers):
+                try:
+                    print(f"🔍 Processing server {i+1}/{len(servers)}: {server.ip}")
+                    server_result = self._parse_server_from_mixed_output(all_output, server)
+                    results.append(server_result)
+                    print(f"📊 {server.ip}: {server_result.status} - {server_result.message}")
+                except Exception as e:
+                    print(f"❌ Error parsing server {server.ip}: {str(e)}")
+                    results.append(ServerConnectionResult(
                         ip=server.ip,
                         ssh_user=server.ssh_user,
                         ssh_port=server.ssh_port,
                         status="failed",
-                        message="Server not found in output",
-                        error_details="No output received for this server"
-                    )
-                
-                server_results[server_ip] = server_result
-        
-        # Convert dict to list, đảm bảo tất cả servers đều có kết quả
-        for server in servers:
-            if server.ip in server_results:
-                results.append(server_results[server.ip])
-            else:
-                # Server không có kết quả = failed
+                        message="Parse error",
+                        error_details=str(e)
+                    ))
+            
+        except Exception as e:
+            print(f"❌ Error in parse_mixed_results: {str(e)}")
+            # Tạo failed results cho tất cả servers
+            for server in servers:
                 results.append(ServerConnectionResult(
                     ip=server.ip,
                     ssh_user=server.ssh_user,
                     ssh_port=server.ssh_port,
                     status="failed",
-                    message="No result for server",
-                    error_details="Server did not appear in ansible output"
+                    message="Parse error",
+                    error_details=str(e)
                 ))
         
         return results
 
-    def _parse_success_output(self, server_output: str, server: ServerConnectionInfo) -> ServerConnectionResult:
-        """Parse output từ shell command - nhẹ và dễ parse hơn"""
+    def _parse_server_from_mixed_output(self, all_output: str, server: ServerConnectionInfo) -> ServerConnectionResult:
+        """Parse kết quả cho một server từ mixed output"""
         try:
-            print(f"🔍 Parsing shell command output for {server.ip}")
-            print(f"📄 Output: {server_output}")
+            server_ip = server.ip
+            print(f"🔍 Looking for server {server_ip} in output...")
             
-            hostname = "Unknown"
-            os_version = "Unknown"
+            # Tìm tất cả dòng liên quan đến server này
+            lines = all_output.split('\n')
+            server_lines = []
             
-            # Parse output từ shell command
-            lines = server_output.split('\n')
+            for line in lines:
+                if server_ip in line:
+                    server_lines.append(line.strip())
             
+            server_text = '\n'.join(server_lines)
+            print(f"🔍 Found {len(server_lines)} lines for {server_ip}")
+            
+            if server_lines:
+                print(f"📄 Server lines preview:")
+                for line in server_lines[:3]:  # In 3 dòng đầu
+                    print(f"   {line}")
+                if len(server_lines) > 3:
+                    print(f"   ... and {len(server_lines) - 3} more lines")
+            
+            # Phân tích trạng thái server
+            status_analysis = self._analyze_server_status(server_text, all_output, server_ip)
+            
+            if status_analysis["status"] == "success":
+                print(f"✅ {server_ip}: Success detected")
+                return self._create_success_result(server, status_analysis["details"])
+            else:
+                print(f"❌ {server_ip}: {status_analysis['reason']}")
+                return self._create_failed_result(
+                    server, 
+                    status_analysis["reason"], 
+                    status_analysis["message"],
+                    status_analysis["details"]
+                )
+                
+        except Exception as e:
+            print(f"❌ Exception parsing server {server.ip}: {str(e)}")
+            return self._create_failed_result(server, "Parse Error", "Lỗi phân tích kết quả", str(e))
+
+    def _analyze_server_status(self, server_text: str, all_output: str, server_ip: str) -> Dict[str, Any]:
+        """Phân tích trạng thái của server từ output"""
+        
+        # Case 1: Server unreachable/failed to connect
+        unreachable_patterns = [
+            "UNREACHABLE",
+            "unreachable", 
+            "Connection timed out",
+            "No route to host",
+            "Connection refused",
+            "Host is unreachable",
+            "SSH Error",
+            "Permission denied",
+            "Authentication failure"
+        ]
+        
+        for pattern in unreachable_patterns:
+            if pattern in server_text:
+                return {
+                    "status": "failed",
+                    "reason": "Unreachable",
+                    "message": f"Không thể kết nối: {pattern}",
+                    "details": server_text[:300]
+                }
+        
+        # Case 2: Server command failed
+        if "FAILED" in server_text or "failed" in server_text:
+            return {
+                "status": "failed",
+                "reason": "Command Failed",
+                "message": "Kết nối được nhưng command thất bại",
+                "details": server_text[:300]
+            }
+        
+        # Case 3: Server success patterns
+        success_patterns = [
+            f"{server_ip} | CHANGED",
+            f"{server_ip} | SUCCESS"
+        ]
+        
+        for pattern in success_patterns:
+            if pattern in all_output:
+                return {
+                    "status": "success",
+                    "reason": "Success",
+                    "message": "Kết nối thành công",
+                    "details": self._extract_server_success_details(all_output, server_ip)
+                }
+        
+        # Case 4: Có output nhưng không rõ ràng
+        if server_text.strip():
+            # Nếu có HOSTNAME: trong output gần server IP này
+            lines = all_output.split('\n')
             for i, line in enumerate(lines):
-                line = line.strip()
-                
-                # Tìm hostname
-                if line == "HOSTNAME:" and i + 1 < len(lines):
-                    hostname = lines[i + 1].strip()
-                    print(f"🏷️ Found hostname: {hostname}")
-                
-                # Tìm OS info
-                elif line == "OS_INFO:":
-                    # Đọc các dòng tiếp theo để tìm OS info
-                    for j in range(i + 1, min(i + 5, len(lines))):
-                        os_line = lines[j].strip()
-                        if not os_line or os_line.startswith("UPTIME:"):
-                            break
-                            
-                        # Parse /etc/os-release format
-                        if "PRETTY_NAME=" in os_line:
-                            os_version = os_line.split("PRETTY_NAME=")[1].strip('"\'')
-                            break
-                        elif "NAME=" in os_line and "VERSION_ID=" in server_output:
-                            # Tìm NAME và VERSION_ID
-                            name = ""
-                            version = ""
-                            for k in range(i + 1, min(i + 5, len(lines))):
-                                check_line = lines[k].strip()
-                                if "NAME=" in check_line and not "PRETTY_NAME=" in check_line:
-                                    name = check_line.split("NAME=")[1].strip('"\'')
-                                elif "VERSION_ID=" in check_line:
-                                    version = check_line.split("VERSION_ID=")[1].strip('"\'')
-                            
-                            if name and version:
-                                os_version = f"{name} {version}"
-                                break
-                            elif name:
-                                os_version = name
-                                break
-                        
-                        # Fallback: RedHat release format
-                        elif "release" in os_line.lower():
-                            os_version = os_line
-                            break
-                        
-                        # Fallback: uname output
-                        elif any(keyword in os_line for keyword in ["Linux", "Ubuntu", "CentOS", "RedHat", "RHEL"]):
-                            os_version = os_line
-                            break
-                    
-                    print(f"💾 Found OS: {os_version}")
+                if server_ip in line:
+                    # Check vài dòng sau có HOSTNAME: không
+                    for j in range(i+1, min(i+10, len(lines))):
+                        if "HOSTNAME:" in lines[j]:
+                            return {
+                                "status": "success",
+                                "reason": "Success",
+                                "message": "Kết nối thành công",
+                                "details": self._extract_server_success_details(all_output, server_ip)
+                            }
                     break
             
-            print(f"🎯 Final result - hostname: {hostname}, os: {os_version}")
-            
-            return ServerConnectionResult(
-                ip=server.ip,
-                ssh_user=server.ssh_user,
-                ssh_port=server.ssh_port,
-                status="success",
-                message="Kết nối thành công",
-                hostname=hostname,
-                os_version=os_version
-            )
-                        
-        except Exception as e:
-            print(f"❌ Error parsing shell output for {server.ip}: {e}")
+            # Fallback: có output nhưng không success
+            return {
+                "status": "failed",
+                "reason": "Unclear Status",
+                "message": "Có phản hồi nhưng không rõ trạng thái",
+                "details": server_text[:300]
+            }
         
-        # Fallback
-        print(f"⚠️ Using fallback for {server.ip}")
+        # Case 5: Không có output nào
+        return {
+            "status": "failed",
+            "reason": "No Response",
+            "message": "Không có phản hồi từ server",
+            "details": "No output found for this server"
+        }
+
+    def _extract_server_success_details(self, all_output: str, server_ip: str) -> Dict[str, str]:
+        """Extract thông tin chi tiết từ successful server"""
+        details = {"hostname": "Unknown", "os_version": "Unknown"}
+        
+        try:
+            lines = all_output.split('\n')
+            
+            # Tìm vị trí của server IP
+            server_line_index = -1
+            for i, line in enumerate(lines):
+                if server_ip in line and ("CHANGED" in line or "SUCCESS" in line):
+                    server_line_index = i
+                    break
+            
+            if server_line_index >= 0:
+                # Tìm HOSTNAME: và OS_INFO: trong vài dòng tiếp theo
+                for i in range(server_line_index + 1, min(server_line_index + 20, len(lines))):
+                    line = lines[i].strip()
+                    
+                    if line == "HOSTNAME:" and i + 1 < len(lines):
+                        details["hostname"] = lines[i + 1].strip()
+                    
+                    elif line == "OS_INFO:":
+                        for j in range(i + 1, min(i + 5, len(lines))):
+                            os_line = lines[j].strip()
+                            if not os_line or os_line.startswith("UPTIME:"):
+                                break
+                            
+                            if "PRETTY_NAME=" in os_line:
+                                details["os_version"] = os_line.split("PRETTY_NAME=")[1].strip('"\'')
+                                break
+                            elif "release" in os_line.lower():
+                                details["os_version"] = os_line
+                                break
+                        break
+        
+        except Exception as e:
+            print(f"⚠️ Error extracting details for {server_ip}: {e}")
+        
+        return details
+
+    def _create_success_result(self, server: ServerConnectionInfo, details: Dict[str, str]) -> ServerConnectionResult:
+        """Tạo success result cho server"""
         return ServerConnectionResult(
             ip=server.ip,
             ssh_user=server.ssh_user,
             ssh_port=server.ssh_port,
             status="success",
             message="Kết nối thành công",
-            hostname="Unknown",
-            os_version="Unknown"
+            hostname=details.get("hostname", "Unknown"),
+            os_version=details.get("os_version", "Unknown")
         )
 
-    def _parse_failed_output(self, server_output: str, server: ServerConnectionInfo) -> ServerConnectionResult:
-        """Parse output thất bại cho server"""
-        error_msg = "Connection failed"
-        
-        if "UNREACHABLE" in server_output:
-            error_msg = "Server unreachable"
-        elif "FAILED" in server_output:
-            error_msg = "Command execution failed"
-        
-        # Extract chi tiết lỗi
-        error_detail = server_output.strip()
-        
-        # Tìm phần error message cụ thể
-        if "=>" in server_output:
-            parts = server_output.split("=>", 1)
-            if len(parts) > 1:
-                error_detail = parts[1].strip()
-        elif ":" in server_output:
-            parts = server_output.split(":", 1)
-            if len(parts) > 1 and "UNREACHABLE" in parts[0]:
-                error_detail = parts[1].strip()
-        
-        print(f"❌ Parsed error for {server.ip}: {error_msg}")
+    def _create_failed_result(self, server: ServerConnectionInfo, reason: str, message: str, error_details: str) -> ServerConnectionResult:
+        """Tạo failed result cho server"""
+        clean_error = str(error_details).strip()
+        if len(clean_error) > 300:
+            clean_error = clean_error[:300] + "..."
         
         return ServerConnectionResult(
             ip=server.ip,
             ssh_user=server.ssh_user,
             ssh_port=server.ssh_port,
             status="failed",
-            message=error_msg,
-            error_details=error_detail[:500]  # Limit error detail length
+            message=message,
+            error_details=clean_error
         )
