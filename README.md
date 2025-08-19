@@ -10,7 +10,7 @@ backend : this repo
 frontend : https://github.com/Maybetuandat/hardening_vtnet_fe
 Công việc hoàn thành hết ngày 14/08/2025:
 
-- xây dựng xong giao diện và mô hình hóa Workload, server, sshkey
+- xây dựng xong giao diện và mô hình hóa Workload, server
   Công việc còn lại:
 - thực hiện thêm server bằng file , cho sẵn template , khi thêm server thì nhớ có nút test connection
 - bắt sự kiện cho nút scan, nút export report

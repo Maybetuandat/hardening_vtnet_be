@@ -8,7 +8,7 @@ class ComplianceResult(Base):
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     server_id = Column(Integer, ForeignKey("servers.id"), nullable=False)
-    security_standard_id = Column(Integer, ForeignKey("security_standards.id"), nullable=False)
+    
     status = Column(String(20), nullable=False, default="pending") 
     total_rules = Column(Integer, default=0)
     passed_rules = Column(Integer, default=0)
@@ -20,5 +20,5 @@ class ComplianceResult(Base):
     
     # Relationships
     server = relationship("Server", back_populates="compliance_results")
-    security_standard = relationship("SecurityStandard")
+    
     rule_results = relationship("RuleResult", back_populates="compliance_result")

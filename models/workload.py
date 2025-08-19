@@ -19,5 +19,7 @@ class Workload(Base):
     created_at = Column(DateTime, default=func.now(), nullable=False)
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
     servers = relationship("Server", back_populates="workload")
+
+    rules = relationship("Rule", back_populates="workload")
     
   

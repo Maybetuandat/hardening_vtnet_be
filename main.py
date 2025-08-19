@@ -5,18 +5,17 @@ from fastapi.middleware.cors import CORSMiddleware
 import os
 import uvicorn
 
-from routers import command_controller, rule_controller, security_standard_controller, server_controller, ssh_key_controller, workload_controller, scan_controller
+from routers import command_controller, rule_controller,  server_controller, workload_controller, scan_controller
 from config.config_database import engine, Base
 # Import tất cả models để SQLAlchemy biết về relationships
 from models import (
-    sshkey, 
+
     workload, 
     server, 
     rule, 
     command, 
     compliance_result, 
-    rule_result, 
-    security_standard
+    rule_result
 )
 
 app = FastAPI(
@@ -71,10 +70,9 @@ PORT = int(os.getenv("SERVER_PORT", 8000))
 RELOAD = os.getenv("SERVER_RELOAD", "False").lower() == "true"
 
 # Include routers
-app.include_router(ssh_key_controller.router, tags=["SSH Keys"])
+
 app.include_router(workload_controller.router, tags=["Workloads"])
 app.include_router(server_controller.router, tags=["Servers"])
-app.include_router(security_standard_controller.router,tags=["Security Standards"])
 app.include_router(rule_controller.router, tags=["Rules"])
 app.include_router(command_controller.router, tags=["Commands"])
 

@@ -14,31 +14,22 @@ class Server(Base):
     
     # Workload relationship
     workload_id = Column(Integer, ForeignKey("work_loads.id"), nullable=False, index=True)
-    ssh_key_id = Column(Integer, ForeignKey("ssh_keys.id"), nullable=True)
-    
-    
-    server_role = Column(String(50), nullable=True)
-    
-    # Operating System
-    os_type = Column(String(50), nullable=False, index=True)
-    os_name = Column(String(100), nullable=True)
+ 
+  
     os_version = Column(String(50), nullable=True)
     
     # Hardware
     cpu_cores = Column(Integer, nullable=True)
     memory_gb = Column(Float, nullable=True)
     
-    # Environment
-    environment = Column(String(50), nullable=False, index=True)   # "production", "staging", "development"
-    
+   
     # Status
     status = Column(String(50), nullable=False, index=True)  # Fixed: nullable=False
-   
-    
     # SSH
     ssh_port = Column(Integer, default=22)
-   
-    
+    ssh_user = Column(String(50), nullable=True)
+    ssh_password = Column(String(255), nullable=True)
+
     # Audit
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=func.now(), nullable=False)
@@ -46,5 +37,5 @@ class Server(Base):
     
     # Relationships
     workload = relationship("Workload", back_populates="servers")
-    ssh_key = relationship("SshKey", back_populates="servers")
+   
     compliance_results = relationship("ComplianceResult", back_populates="server")
