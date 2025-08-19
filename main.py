@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import os
 import uvicorn
 
-from routers import command_controller, rule_controller,  server_controller, workload_controller, scan_controller
+
 from config.config_database import engine, Base
 # Import tất cả models để SQLAlchemy biết về relationships
 from models import (
@@ -17,6 +17,7 @@ from models import (
     compliance_result, 
     rule_result
 )
+from routers import server_controller
 
 app = FastAPI(
     title="Ansible Security Scan API", 
@@ -71,10 +72,7 @@ RELOAD = os.getenv("SERVER_RELOAD", "False").lower() == "true"
 
 # Include routers
 
-app.include_router(workload_controller.router, tags=["Workloads"])
 app.include_router(server_controller.router, tags=["Servers"])
-app.include_router(rule_controller.router, tags=["Rules"])
-app.include_router(command_controller.router, tags=["Commands"])
 
 if __name__ == "__main__":
     import uvicorn
