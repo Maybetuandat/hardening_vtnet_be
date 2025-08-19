@@ -2,6 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import Optional, List
 from config.config_database import get_db
+from schemas.connection import TestConnectionRequest, TestConnectionResponse
+from services.connection_service import ConnectionService
 from services.server_service import ServerService
 from schemas.server import (
     ServerCreate,
@@ -17,6 +19,8 @@ router = APIRouter(prefix="/servers", tags=["Servers"])
 def get_server_service(db: Session = Depends(get_db)) -> ServerService:
     return ServerService(db)
 
+def get_connection_service() -> ConnectionService:
+    return ConnectionService()
 
 @router.get("/", response_model=ServerListResponse)
 def get_servers(
@@ -119,3 +123,21 @@ def delete_server(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.post("/test-connection", response_model=TestConnectionResponse)
+def test_connections(
+    request: TestConnectionRequest,
+    connection_service: ConnectionService = Depends(get_connection_service)):
+
+    try:
+        if not request.servers:
+            raise HTTPException(status_code=400, detail="Danh sách server không được rỗng")
+        result = connection_service.test_multiple_connections(request)
+        return result
+        if len(request.servers) > 50:  # Giới hạn số lượng server test cùng lúc
+            raise HTTPException(status_code=400, detail="Số lượng server tối đa là 50")
+
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
