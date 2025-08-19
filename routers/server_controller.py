@@ -13,7 +13,7 @@ from schemas.server import (
     ServerSearchParams
 )
 
-router = APIRouter(prefix="/servers", tags=["Servers"])
+router = APIRouter(prefix="/api/servers", tags=["Servers"])
 
 
 def get_server_service(db: Session = Depends(get_db)) -> ServerService:

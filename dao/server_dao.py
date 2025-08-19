@@ -33,13 +33,7 @@ class ServerDAO:
     
         query = self.db.query(Server)
         if keyword and keyword.strip():
-            keyword_filter = or_(
-                Server.hostname.ilike(f"%{keyword.strip()}%"),
-                Server.ip_address.ilike(f"%{keyword.strip()}%"),
-                Server.os_version.ilike(f"%{keyword.strip()}%"),
-                Server.ssh_user.ilike(f"%{keyword.strip()}%")
-            )
-            query = query.filter(keyword_filter)
+            query = query.filter(Server.ip_address.ilike(f"%{keyword.strip()}%"))
         
         # Filter theo status
         if status and status.strip():
