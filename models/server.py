@@ -10,7 +10,7 @@ class Server(Base):
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
    
     hostname = Column(String(255), nullable=False, unique=True, index=True)
-    ip_address = Column(String(45), nullable=False, index=True)
+    ip_address = Column(String(45), nullable=False, unique=True, index=True) 
     
     # # Workload relationship
     # workload_id = Column(Integer, ForeignKey("work_loads.id"), nullable=False, index=True)
@@ -20,7 +20,7 @@ class Server(Base):
     
    
     # Status
-    status = Column(Boolean, index=True)  
+    status = Column(String(50), index=True)  # Sửa từ Boolean sang String
     # SSH
     ssh_port = Column(Integer, default=22)
     ssh_user = Column(String(50), nullable=True)

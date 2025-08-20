@@ -27,7 +27,6 @@ class ServerConnectionResult(BaseModel):
     message: str
     hostname: Optional[str] = None
     os_version: Optional[str] = None
-    response_time: Optional[float] = None  # in milliseconds
     error_details: Optional[str] = None
 
 class TestConnectionResponse(BaseModel):

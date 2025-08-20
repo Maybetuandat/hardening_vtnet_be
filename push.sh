@@ -1,3 +1,3 @@
 git add .
-git commit -m "update test api test ssh connection  "
+git commit -m "update api for validate hostname and ip address "
 git push origin main 

@@ -17,124 +17,210 @@ class ServerService:
         self.dao = ServerDAO(db)
 
     def get_all_servers(self, page: int = 1, page_size: int = 10) -> ServerListResponse:
-        """Lấy danh sách tất cả server với phân trang - deprecated, sử dụng search_servers thay thế"""
-        search_params = ServerSearchParams(page=page, size=page_size)
-        return self.search_servers(search_params)
+        if page < 1:
+            page = 1
+        if page_size < 1:
+            page_size = 10
+        if page_size > 100: 
+            page_size = 100
+            
+        skip = (page - 1) * page_size
+        servers, total = self.dao.get_all(skip=skip, limit=page_size)
+        total_pages = math.ceil(total / page_size) if total > 0 else 0
+        
+        server_responses = []
+        for server in servers:
+            server_responses.append(self._convert_to_response(server))
+        
+        return ServerListResponse(
+            servers=server_responses,
+            total_servers=total,
+            page=page,
+            page_size=page_size,
+            total_pages=total_pages
+        )
 
     def get_server_by_id(self, server_id: int) -> Optional[ServerResponse]:
-        """Lấy server theo ID"""
+        if server_id <= 0:
+            return None
+            
         server = self.dao.get_by_id(server_id)
         if server:
-            return ServerResponse(
-                id=server.id,
-                hostname=server.hostname,
-                ip_address=server.ip_address,
-                os_version=server.os_version,
-                status=server.status,
-                ssh_port=server.ssh_port,
-                ssh_user=server.ssh_user,
-                created_at=server.created_at,
-                updated_at=server.updated_at
-            )
+            return self._convert_to_response(server)
         return None
 
     def search_servers(self, search_params: ServerSearchParams) -> ServerListResponse:
-        """Tìm kiếm server với các bộ lọc"""
-        skip = (search_params.page - 1) * search_params.size
+        page = max(1, search_params.page)
+        page_size = max(1, min(100, search_params.size))  
+        
+        skip = (page - 1) * page_size
         
         servers, total = self.dao.search_servers(
             keyword=search_params.keyword,
             workload_id=search_params.workload_id,
             status=search_params.status,
             skip=skip,
-            limit=search_params.size
+            limit=page_size
         )
         
-        total_pages = math.ceil(total / search_params.size) if total > 0 else 0
+        total_pages = math.ceil(total / page_size) if total > 0 else 0
         
         server_responses = []
         for server in servers:
-            server_responses.append(ServerResponse(
-                id=server.id,
-                hostname=server.hostname,
-                ip_address=server.ip_address,
-                os_version=server.os_version,
-                status=server.status,
-                ssh_port=server.ssh_port,
-                ssh_user=server.ssh_user,
-                created_at=server.created_at,
-                updated_at=server.updated_at
-            ))
+            server_responses.append(self._convert_to_response(server))
         
         return ServerListResponse(
             servers=server_responses,
             total_servers=total,
-            page=search_params.page,
-            page_size=search_params.size,
+            page=page,
+            page_size=page_size,
             total_pages=total_pages
         )
+
     def create_server(self, server_data: ServerCreate) -> ServerResponse:
-        """Tạo server mới"""
         try:
-            server = self.dao.create(server_data)
-            return ServerResponse(
-                id=server.id,
-                hostname=server.hostname,
-                ip_address=server.ip_address,
-                os_version=server.os_version,
-                status=server.status,
-                ssh_port=server.ssh_port,
-                ssh_user=server.ssh_user,
-                created_at=server.created_at,
-                updated_at=server.updated_at
-            )
+            
+            self._validate_server_data(server_data)
+            
+            
+            if self.dao.check_hostname_exists(server_data.hostname):
+                raise ValueError("Hostname đã tồn tại")
+            
+            
+            if self.dao.check_ip_exists(server_data.ip_address):
+                raise ValueError("IP address đã tồn tại")
+            
+            
+            server_dict = server_data.dict()
+            server_model = Server(**server_dict)
+            
+            
+            created_server = self.dao.create(server_model)
+            
+            return self._convert_to_response(created_server)
+            
         except ValueError as e:
             raise ValueError(str(e))
         except Exception as e:
             raise Exception(f"Lỗi khi tạo server: {str(e)}")
 
     def update_server(self, server_id: int, server_data: ServerUpdate) -> Optional[ServerResponse]:
-        """Cập nhật server"""
         try:
-            server = self.dao.update(server_id, server_data)
-            if server:
-                return ServerResponse(
-                    id=server.id,
-                    hostname=server.hostname,
-                    ip_address=server.ip_address,
-                    os_version=server.os_version,
-                    status=server.status,
-                    ssh_port=server.ssh_port,
-                    ssh_user=server.ssh_user,
-                    created_at=server.created_at,
-                    updated_at=server.updated_at
-                )
-            return None
+            if server_id <= 0:
+                return None
+                
+            
+            existing_server = self.dao.get_by_id(server_id)
+            if not existing_server:
+                return None
+                
+            
+            if server_data.hostname or server_data.ip_address:
+                self._validate_update_data(server_data)
+            
+            # kiem tra xem hostname co ton tai chua ? 
+            if server_data.hostname and server_data.hostname != existing_server.hostname:
+                if self.dao.check_hostname_exists(server_data.hostname, exclude_id=server_id):
+                    raise ValueError("Hostname đã tồn tại")
+            
+            # kiem tra xem ip co ton tai chua 
+            if server_data.ip_address and server_data.ip_address != existing_server.ip_address:
+                if self.dao.check_ip_exists(server_data.ip_address, exclude_id=server_id):
+                    raise ValueError("IP address đã tồn tại")
+            
+            
+            update_data = server_data.dict(exclude_unset=True)
+            for field, value in update_data.items():
+                if hasattr(existing_server, field) and value is not None:
+                    setattr(existing_server, field, value)
+            
+            
+            updated_server = self.dao.update(existing_server)
+            
+            return self._convert_to_response(updated_server)
+            
         except ValueError as e:
             raise ValueError(str(e))
         except Exception as e:
             raise Exception(f"Lỗi khi cập nhật server: {str(e)}")
 
     def delete_server(self, server_id: int) -> bool:
-        """Xóa server (hard delete vì không có is_active)"""
         try:
+            if server_id <= 0:
+                return False
+                
+            
+            existing_server = self.dao.get_by_id(server_id)
+            if not existing_server:
+                return False
+            
             return self.dao.delete(server_id)
+            
         except Exception as e:
             raise Exception(f"Lỗi khi xóa server: {str(e)}")
-    def test_server_connection(self, server_id: int) -> dict:
-        """Test kết nối đến server (placeholder for future implementation)"""
-        server = self.dao.get_by_id(server_id)
-        if not server:
-            raise ValueError("Server không tồn tại")
-        
-        # TODO: Implement actual connection test using SSH
-        # For now, return a mock response
-        return {
-            "server_id": server_id,
-            "hostname": server.hostname,
-            "ip_address": server.ip_address,
-            "ssh_port": server.ssh_port,
-            "status": "success",
-            "message": "Kết nối thành công",
-            "response_time": 100
-        }
+
+    def check_server_exists(self, server_id: int) -> bool:
+        if server_id <= 0:
+            return False
+        return self.dao.get_by_id(server_id) is not None
+
+    def check_hostname_exists(self, hostname: str, exclude_id: Optional[int] = None) -> bool:
+        if not hostname or not hostname.strip():
+            return False
+        return self.dao.check_hostname_exists(hostname.strip(), exclude_id)
+
+    def check_ip_exists(self, ip_address: str, exclude_id: Optional[int] = None) -> bool:
+        if not ip_address or not ip_address.strip():
+            return False
+        return self.dao.check_ip_exists(ip_address.strip(), exclude_id)
+
+   
+
+    def _convert_to_response(self, server: Server) -> ServerResponse:
+        """Chuyển đổi Server entity sang ServerResponse"""
+        return ServerResponse(
+            id=server.id,
+            hostname=server.hostname,
+            ip_address=server.ip_address,
+            os_version=server.os_version,
+            status=server.status,
+            ssh_port=server.ssh_port,
+            ssh_user=server.ssh_user,
+            ssh_password=getattr(server, 'ssh_password', None),
+            created_at=server.created_at,
+            updated_at=server.updated_at
+        )
+
+    def _validate_server_data(self, server_data: ServerCreate) -> None:
+        """Validate dữ liệu server khi tạo mới"""
+        if not server_data.hostname or not server_data.hostname.strip():
+            raise ValueError("Hostname không được để trống")
+            
+        if not server_data.ip_address or not server_data.ip_address.strip():
+            raise ValueError("IP address không được để trống")
+            
+        if not server_data.ssh_user or not server_data.ssh_user.strip():
+            raise ValueError("SSH user không được để trống")
+            
+        if not server_data.ssh_password or not server_data.ssh_password.strip():
+            raise ValueError("SSH password không được để trống")
+            
+        # Validate SSH port
+        if server_data.ssh_port <= 0 or server_data.ssh_port > 65535:
+            raise ValueError("SSH port phải trong khoảng 1-65535")
+
+    def _validate_update_data(self, server_data: ServerUpdate) -> None:
+        """Validate dữ liệu server khi cập nhật"""
+        if server_data.hostname is not None and not server_data.hostname.strip():
+            raise ValueError("Hostname không được để trống")
+            
+        if server_data.ip_address is not None and not server_data.ip_address.strip():
+            raise ValueError("IP address không được để trống")
+            
+        if server_data.ssh_user is not None and not server_data.ssh_user.strip():
+            raise ValueError("SSH user không được để trống")
+            
+        # Validate SSH port nếu có
+        if server_data.ssh_port is not None:
+            if server_data.ssh_port <= 0 or server_data.ssh_port > 65535:
+                raise ValueError("SSH port phải trong khoảng 1-65535")

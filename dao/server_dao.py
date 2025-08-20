@@ -30,77 +30,90 @@ class ServerDAO:
         skip: int = 0,
         limit: int = 10
     ) -> Tuple[List[Server], int]:
-    
         query = self.db.query(Server)
+        
         if keyword and keyword.strip():
-            query = query.filter(Server.ip_address.ilike(f"%{keyword.strip()}%"))
+            query = query.filter(
+                or_(
+                    Server.ip_address.ilike(f"%{keyword.strip()}%"),
+                    Server.hostname.ilike(f"%{keyword.strip()}%")
+                )
+            )
         
         # Filter theo status
         if status and status.strip():
             query = query.filter(Server.status == status.strip())
         
         total = query.count()
-        
-    
         servers = query.offset(skip).limit(limit).all()
         
         return servers, total
 
-    def create(self, server_data: ServerCreate) -> Server:
-     
-        # Kiểm tra hostname đã tồn tại
-        existing_hostname = self.get_by_hostname(server_data.hostname)
-        if existing_hostname:
-            raise ValueError("Hostname đã tồn tại")
-        
-        # Kiểm tra IP đã tồn tại
-        existing_ip = self.get_by_ip_address(server_data.ip_address)
-        if existing_ip:
-            raise ValueError("IP address đã tồn tại")
-        
-        # Tạo server mới - chỉ sử dụng các field có trong schema
-        server_dict = server_data.dict()
-        db_server = Server(**server_dict)
-        
-        self.db.add(db_server)
-        self.db.commit()
-        self.db.refresh(db_server)
-        return db_server
-
-    def update(self, server_id: int, server_data: ServerUpdate) -> Optional[Server]:
-        """Cập nhật server với validation"""
-        server = self.get_by_id(server_id)
-        if not server:
-            return None
-        
-        # Kiểm tra hostname nếu có thay đổi
-        if server_data.hostname and server_data.hostname != server.hostname:
-            existing_hostname = self.get_by_hostname(server_data.hostname)
-            if existing_hostname:
+    def create(self, server: Server) -> Server:
+        try:    
+            self.db.add(server)
+            self.db.commit()
+            self.db.refresh(server)
+            return server
+            
+        except IntegrityError as e:
+            self.db.rollback()
+            if "hostname" in str(e.orig):
                 raise ValueError("Hostname đã tồn tại")
-        
-        # Kiểm tra IP nếu có thay đổi
-        if server_data.ip_address and server_data.ip_address != server.ip_address:
-            existing_ip = self.get_by_ip_address(server_data.ip_address)
-            if existing_ip:
+            elif "ip_address" in str(e.orig):
                 raise ValueError("IP address đã tồn tại")
-        
-        # Cập nhật các trường
-        update_data = server_data.dict(exclude_unset=True)
-        for field, value in update_data.items():
-            if hasattr(server, field):
-                setattr(server, field, value)
-        
-        self.db.commit()
-        self.db.refresh(server)
-        return server
+            else:
+                raise ValueError("Dữ liệu không hợp lệ")
+        except Exception as e:
+            self.db.rollback()
+            raise e
+
+    def update(self, server: Server) -> Server:
+        try:
+            self.db.commit()
+            self.db.refresh(server)
+            return server
+            
+        except IntegrityError as e:
+            self.db.rollback()
+            if "hostname" in str(e.orig):
+                raise ValueError("Hostname đã tồn tại")
+            elif "ip_address" in str(e.orig):
+                raise ValueError("IP address đã tồn tại")
+            else:
+                raise ValueError("Dữ liệu không hợp lệ")
+        except Exception as e:
+            self.db.rollback()
+            raise e
 
     def delete(self, server_id: int) -> bool:
-        server = self.get_by_id(server_id)
-        if not server:
-            return False
-        self.db.delete(server)
-        self.db.commit()
-        return True
+        try:
+            server = self.get_by_id(server_id)
+            if not server:
+                return False
+            
+            self.db.delete(server)
+            self.db.commit()
+            return True
+            
+        except Exception as e:
+            self.db.rollback()
+            raise e
 
-  
+    # check host name da co loai tru id 
+    def check_hostname_exists(self, hostname: str, exclude_id: Optional[int] = None) -> bool:
+        query = self.db.query(Server).filter(Server.hostname == hostname)
+        
+        if exclude_id:
+            query = query.filter(Server.id != exclude_id)
+            
+        return query.first() is not None
+
+    # check ip address da co loai tru id 
+    def check_ip_exists(self, ip_address: str, exclude_id: Optional[int] = None) -> bool:
+        query = self.db.query(Server).filter(Server.ip_address == ip_address)
+        
+        if exclude_id:
+            query = query.filter(Server.id != exclude_id)
+            
+        return query.first() is not None

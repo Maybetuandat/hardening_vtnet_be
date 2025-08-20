@@ -18,14 +18,17 @@ class ServerBase(BaseModel):
             return v
         except ValueError:
             raise ValueError('Địa chỉ IP không hợp lệ')
+
 class ServerCreate(ServerBase):
     pass
+
 class ServerUpdate(BaseModel):
-    ip_address: str = Field(None, description="Địa chỉ IP của server")
-    os_version: str = Field(None, max_length=50, description="Phiên bản hệ điều hành")
-    ssh_port: int = Field(None, description="Cổng SSH của server")
-    ssh_user: str = Field(None, max_length=100, description="Tên người dùng SSH")
-    ssh_password: str = Field(None, description="Mật khẩu SSH của server")
+    hostname: Optional[str] = Field(None, max_length=255, description="Tên máy chủ") 
+    ip_address: Optional[str] = Field(None, description="Địa chỉ IP của server")
+    os_version: Optional[str] = Field(None, max_length=50, description="Phiên bản hệ điều hành")
+    ssh_port: Optional[int] = Field(None, description="Cổng SSH của server")
+    ssh_user: Optional[str] = Field(None, max_length=100, description="Tên người dùng SSH")
+    ssh_password: Optional[str] = Field(None, description="Mật khẩu SSH của server")
 
     @validator('ip_address')
     def validate_ip_address(cls, v):
@@ -37,6 +40,7 @@ class ServerUpdate(BaseModel):
             except ValueError:
                 raise ValueError('Địa chỉ IP không hợp lệ')
         return v
+
 class ServerResponse(BaseModel):
     id: int
     hostname: str
@@ -44,21 +48,23 @@ class ServerResponse(BaseModel):
     os_version: Optional[str]
     ssh_port: int
     ssh_user: Optional[str]
+    ssh_password: Optional[str] = None  
     status: Optional[str]
     created_at: datetime
     updated_at: datetime
 
     class Config:
         from_attributes = True
+
 class ServerListResponse(BaseModel):
     servers: list[ServerResponse]
     total_servers: int
     page: int
     page_size: int
     total_pages: int
+    
     class Config:
         from_attributes = True
-
 
 class ServerSearchParams(BaseModel):
     keyword: Optional[str] = None
