@@ -20,7 +20,7 @@ class Server(Base):
     
    
     # Status
-    status = Column(String(50), index=True)  # Sửa từ Boolean sang String
+    status = Column(Boolean, index=True) 
     # SSH
     ssh_port = Column(Integer, default=22)
     ssh_user = Column(String(50), nullable=True)

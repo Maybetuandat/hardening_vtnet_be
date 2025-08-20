@@ -26,7 +26,7 @@ class ServerDAO:
         self,
         keyword: Optional[str] = None,
         workload_id: Optional[int] = None,
-        status: Optional[str] = None,
+        status: Optional[bool] = None,
         skip: int = 0,
         limit: int = 10
     ) -> Tuple[List[Server], int]:
@@ -41,8 +41,8 @@ class ServerDAO:
             )
         
         # Filter theo status
-        if status and status.strip():
-            query = query.filter(Server.status == status.strip())
+        if status is not None:
+            query = query.filter(Server.status == status)
         
         total = query.count()
         servers = query.offset(skip).limit(limit).all()

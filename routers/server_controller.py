@@ -28,7 +28,7 @@ def get_connection_service() -> ConnectionService:
 def get_servers(
     keyword: Optional[str] = Query(None, description="Từ khóa tìm kiếm (để trống để lấy tất cả)"),
     workload_id: Optional[int] = Query(None, description="ID workload"),
-    status: Optional[str] = Query(None, description="Trạng thái server"),
+    status: Optional[bool] = Query(None, description="Trạng thái server"),
     page: int = Query(1, ge=1, description="Số trang"),
     page_size: int = Query(10, ge=1, le=100, description="Số lượng item mỗi trang"),
     server_service: ServerService = Depends(get_server_service)

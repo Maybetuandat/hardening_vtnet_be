@@ -201,7 +201,6 @@ class ServerService:
         
         return created_servers
     def _convert_to_response(self, server: Server) -> ServerResponse:
-        """Chuyển đổi Server entity sang ServerResponse"""
         return ServerResponse(
             id=server.id,
             hostname=server.hostname,
@@ -216,7 +215,6 @@ class ServerService:
         )
 
     def _validate_server_data(self, server_data: ServerCreate) -> None:
-        """Validate dữ liệu server khi tạo mới"""
         if not server_data.hostname or not server_data.hostname.strip():
             raise ValueError("Hostname không được để trống")
             
@@ -234,7 +232,6 @@ class ServerService:
             raise ValueError("SSH port phải trong khoảng 1-65535")
 
     def _validate_update_data(self, server_data: ServerUpdate) -> None:
-        """Validate dữ liệu server khi cập nhật"""
         if server_data.hostname is not None and not server_data.hostname.strip():
             raise ValueError("Hostname không được để trống")
             

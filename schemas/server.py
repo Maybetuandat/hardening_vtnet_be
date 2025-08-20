@@ -9,6 +9,7 @@ class ServerBase(BaseModel):
     ssh_port: int = Field(..., description="Cổng SSH của server")
     ssh_user: str = Field(..., max_length=100, description="Tên người dùng SSH")
     ssh_password: str = Field(..., description="Mật khẩu SSH của server")
+    status: Optional[bool] = Field(None, description="Trạng thái của server")
 
     @validator('ip_address')
     def validate_ip_address(cls, v):
@@ -49,9 +50,10 @@ class ServerResponse(BaseModel):
     ssh_port: int
     ssh_user: Optional[str]
     ssh_password: Optional[str] = None  
-    status: Optional[str]
+    
     created_at: datetime
     updated_at: datetime
+    status: Optional[bool] = None
 
     class Config:
         from_attributes = True
@@ -69,6 +71,6 @@ class ServerListResponse(BaseModel):
 class ServerSearchParams(BaseModel):
     keyword: Optional[str] = None
     workload_id: Optional[int] = None
-    status: Optional[str] = None
+    status: Optional[bool] = None
     page: int = Field(1, ge=1)
     size: int = Field(10, ge=1, le=100)
