@@ -78,6 +78,19 @@ def create_server(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.post("/batch", response_model=List[ServerResponse])
+def create_servers_batch(
+    servers: List[ServerCreate],
+    server_service: ServerService = Depends(get_server_service)
+):
+    try:
+        if not servers:
+            raise HTTPException(status_code=400, detail="Danh sách server không được rỗng")
+        return server_service.create_servers_batch(servers)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 @router.put("/{server_id}", response_model=ServerResponse)
 def update_server(
     server_id: int,

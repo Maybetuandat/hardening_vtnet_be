@@ -1,4 +1,5 @@
 from typing import List, Optional
+from venv import create
 from sqlalchemy.orm import Session
 from dao.server_dao import ServerDAO
 from models.server import Server
@@ -176,6 +177,29 @@ class ServerService:
 
    
 
+    def create_servers_batch(self, servers: List[ServerCreate]) -> List[ServerResponse]:
+        created_servers = []
+        for server_data in servers:
+            try:
+                self._validate_server_data(server_data)
+                
+                if self.dao.check_hostname_exists(server_data.hostname):
+                    raise ValueError(f"Hostname '{server_data.hostname}' đã tồn tại")
+                
+                if self.dao.check_ip_exists(server_data.ip_address):
+                    raise ValueError(f"IP address '{server_data.ip_address}' đã tồn tại")
+                
+                server_dict = server_data.dict()
+                server_model = Server(**server_dict)
+                
+                created_server = self.dao.create(server_model)
+                created_servers.append(self._convert_to_response(created_server))
+            except ValueError as e:
+                raise ValueError(str(e))
+            except Exception as e:
+                raise Exception(f"Lỗi khi tạo server: {str(e)}")
+        
+        return created_servers
     def _convert_to_response(self, server: Server) -> ServerResponse:
         """Chuyển đổi Server entity sang ServerResponse"""
         return ServerResponse(
