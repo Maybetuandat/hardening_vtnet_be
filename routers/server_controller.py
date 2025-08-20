@@ -131,12 +131,20 @@ def test_connections(
     try:
         if not request.servers:
             raise HTTPException(status_code=400, detail="Danh sách server không được rỗng")
-        result = connection_service.test_multiple_connections(request)
-        return result
         if len(request.servers) > 50:  # Giới hạn số lượng server test cùng lúc
             raise HTTPException(status_code=400, detail="Số lượng server tối đa là 50")
-
-
+        result = connection_service.test_multiple_connections(request)
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
+@router.post("/test-connection/{server_id}", response_model=TestConnectionResponse)
+def test_connection_by_id(server_id: int, connection_service: ConnectionService = Depends(get_connection_service)):
+    try:
+        result = connection_service.test_connection_by_id(server_id)
+        return result
     except HTTPException:
         raise
     except Exception as e:

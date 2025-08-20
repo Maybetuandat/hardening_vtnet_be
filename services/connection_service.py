@@ -7,10 +7,14 @@ from typing import Any, Dict, List
 from schemas.connection import ServerConnectionInfo, ServerConnectionResult, TestConnectionRequest, TestConnectionResponse
 import time
 
+from services.server_service import ServerService
+
 class ConnectionService:
     def __init__(self):
         self.ansible_timeout = 30
         self.max_forks = 20
+        self.server_service = ServerService()
+
 
     def test_multiple_connections(self, request: TestConnectionRequest) -> TestConnectionResponse:
         
@@ -369,3 +373,15 @@ class ConnectionService:
             message=message,
             error_details=clean_error
         )
+    def test_connection_by_id(self, server_id : int) -> TestConnectionResponse:
+        server = self.server_service.get_server_by_id(server_id)
+        if not server:
+            raise ValueError("Server không tồn tại")
+        
+        request = TestConnectionRequest(servers=[ServerConnectionInfo(
+            ip=server.ip,
+            ssh_user=server.ssh_user,
+            ssh_password=server.ssh_password,
+            ssh_port=server.ssh_port
+        )])
+        return self.test_multiple_connections(request)
