@@ -20,30 +20,6 @@ class ServerService:
         self.dao = ServerDAO(db)
         self.workload_service =WorkloadService(db)
 
-    def get_all_servers(self, page: int = 1, page_size: int = 10) -> ServerListResponse:
-        if page < 1:
-            page = 1
-        if page_size < 1:
-            page_size = 10
-        if page_size > 100: 
-            page_size = 100
-            
-        skip = (page - 1) * page_size
-        servers, total = self.dao.get_all(skip=skip, limit=page_size)
-        total_pages = math.ceil(total / page_size) if total > 0 else 0
-        
-        server_responses = []
-        for server in servers:
-            server_responses.append(self._convert_to_response(server))
-        
-        return ServerListResponse(
-            servers=server_responses,
-            total_servers=total,
-            page=page,
-            page_size=page_size,
-            total_pages=total_pages
-        )
-
     def get_server_by_id(self, server_id: int) -> Optional[ServerResponse]:
         if server_id <= 0:
             return None
@@ -71,7 +47,8 @@ class ServerService:
         
         server_responses = []
         for server in servers:
-            server_responses.append(self._convert_to_response(server))
+            workload_name = self.workload_service.get_workload_name_byid(server.workload_id)
+            server_responses.append(self._convert_to_response(server, workload_name=workload_name))
         
         return ServerListResponse(
             servers=server_responses,
@@ -209,13 +186,15 @@ class ServerService:
                 raise Exception(f"Lỗi khi tạo server: {str(e)}")
         
         return created_servers
-    def _convert_to_response(self, server: Server) -> ServerResponse:
+
+    def _convert_to_response(self, server: Server, workload_name: Optional[str] = None) -> ServerResponse:
         return ServerResponse(
             id=server.id,
             hostname=server.hostname,
             ip_address=server.ip_address,
             os_version=server.os_version,
             status=server.status,
+            workload_name=workload_name,
             ssh_port=server.ssh_port,
             ssh_user=server.ssh_user,
               workload_id=server.workload_id,

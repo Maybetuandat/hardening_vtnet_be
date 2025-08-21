@@ -1,3 +1,3 @@
 git add .
-git commit -m "update api for  create workload with rule and command "
+git commit -m "update api for  full server create and list information"
 git push origin main 

@@ -54,7 +54,7 @@ class ServerResponse(BaseModel):
     ssh_user: Optional[str]
     ssh_password: Optional[str] = None  
     workload_id: int  
-    
+    workload_name: Optional[str] = None  
     created_at: datetime
     updated_at: datetime
     status: Optional[bool] = None

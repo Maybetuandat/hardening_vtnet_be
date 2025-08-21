@@ -47,7 +47,16 @@ class WorkloadService:
             page_size=page_size,
             total_pages=total_pages
         )
-    
+
+    def get_workload_name_byid(self, workload_id: int) -> Optional[str]:
+        if workload_id <= 0:
+            return None
+        workload = self.dao.get_by_id(workload_id)
+        print(f"Workload ID: {workload_id}, Name: {workload.name if workload else 'Not found'}")
+        if workload:
+            return workload.name
+        return None
+
     def get_workload_by_id(self, workload_id: int) -> Optional[WorkLoadResponse]:
         if workload_id <= 0:
             return None

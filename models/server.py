@@ -20,7 +20,7 @@ class Server(Base):
     
    
     # Status
-    status = Column(Boolean, index=True) 
+    status = Column(Boolean, index=True, default=True, nullable=False) 
     # SSH
     ssh_port = Column(Integer, default=22)
     ssh_user = Column(String(50), nullable=True)
