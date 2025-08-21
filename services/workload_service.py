@@ -258,3 +258,26 @@ class WorkloadService:
     def _validate_workload_update_data(self, workload_data: WorkLoadUpdate) -> None:
         if workload_data.name is not None and (not workload_data.name or not workload_data.name.strip()):
             raise ValueError("Tên workload không được để trống")
+      
+    def get_all_workload_names(self) -> List[str]:
+        """
+        Lấy danh sách tất cả workload names để export
+        """
+        try:
+            workload_names = self.dao.get_all_names()
+            return workload_names
+        except Exception as e:
+            raise Exception(f"Lỗi khi lấy danh sách workload names: {str(e)}")
+            
+    def get_workload_id_by_name(self, name: str) -> Optional[int]:
+        """
+        Lấy workload ID từ name để sử dụng khi upload server
+        """
+        try:
+            if not name or not name.strip():
+                return None
+                
+            workload = self.dao.get_by_name(name.strip())
+            return workload.id if workload else None
+        except Exception as e:
+            raise Exception(f"Lỗi khi lấy workload ID từ name: {str(e)}")

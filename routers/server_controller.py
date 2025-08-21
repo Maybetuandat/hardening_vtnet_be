@@ -10,7 +10,8 @@ from schemas.server import (
     ServerUpdate,
     ServerResponse,
     ServerListResponse,
-    ServerSearchParams
+    ServerSearchParams,
+    ServerUploadItem
 )
 
 router = APIRouter(prefix="/api/servers", tags=["Servers"])
@@ -80,34 +81,22 @@ def create_server(
 
 @router.post("/batch", response_model=List[ServerResponse])
 def create_servers_batch(
-    servers: List[ServerCreate],
+    servers: List[ServerUploadItem],  # Đổi từ ServerCreate thành ServerUploadItem
     server_service: ServerService = Depends(get_server_service)
 ):
+    """
+    Tạo nhiều servers từ danh sách ServerUploadItem (có workload_name)
+    Sẽ convert workload_name thành workload_id trong service layer
+    """
     try:
         if not servers:
             raise HTTPException(status_code=400, detail="Danh sách server không được rỗng")
-        print(servers)
-        return server_service.create_servers_batch(servers)
+        
+        print(f"Received {len(servers)} servers to create")
+        return server_service.create_servers_from_upload_items(servers)
+        
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-@router.put("/{server_id}", response_model=ServerResponse)
-def update_server(
-    server_id: int,
-    server_data: ServerUpdate,
-    server_service: ServerService = Depends(get_server_service)
-):
-    
-    try:
-        server = server_service.update_server(server_id, server_data)
-        if not server:
-            raise HTTPException(status_code=404, detail="Server không tìm thấy")
-        return server
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except HTTPException:
-        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
