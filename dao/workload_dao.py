@@ -7,7 +7,7 @@ class WorkLoadDAO:
     
     def __init__(self, db : Session):
         self.db = db 
-    def get_all(self, skip: int = 0, limit: int = 10) -> Tuple[List[WorkLoad], int]:
+    def get_workloads_with_pagination(self, skip: int = 0, limit: int = 10) -> Tuple[List[WorkLoad], int]:
         return self.search_workloads(skip=skip, limit=limit)
     def get_by_id(self, workload_id : int) -> Optional[WorkLoad]:
         return self.db.query(WorkLoad).filter(WorkLoad.id == workload_id).first()

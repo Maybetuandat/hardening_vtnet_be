@@ -21,5 +21,5 @@ class Rule(Base):
     
     # Relationships
     workload = relationship("Workload", back_populates="rules")
-    rule_results = relationship("RuleResult", back_populates="rule")
+    # rule_results = relationship("RuleResult", back_populates="rule")
     commands = relationship("Command", back_populates="rule")
