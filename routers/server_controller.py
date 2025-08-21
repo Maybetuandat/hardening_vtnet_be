@@ -86,6 +86,7 @@ def create_servers_batch(
     try:
         if not servers:
             raise HTTPException(status_code=400, detail="Danh sách server không được rỗng")
+        print(servers)
         return server_service.create_servers_batch(servers)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

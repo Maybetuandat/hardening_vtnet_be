@@ -97,7 +97,7 @@ async def create_workload(
             detail=f"Lỗi khi tạo workload: {str(e)}"
         )
 
-@router.post("/with-rules-commands")
+@router.post("/create-with-rules-commands")
 async def create_workload_with_rules_and_commands(
     request: WorkloadWithRulesAndCommandsRequest,
     db: Session = Depends(get_db)
