@@ -13,7 +13,7 @@ class Server(Base):
     ip_address = Column(String(45), nullable=False, unique=True, index=True) 
     
     # # Workload relationship
-    # workload_id = Column(Integer, ForeignKey("work_loads.id"), nullable=False, index=True)
+    workload_id = Column(Integer, ForeignKey("work_loads.id"), nullable=False, index=True)
  
   
     os_version = Column(String(50), nullable=True)
@@ -31,6 +31,6 @@ class Server(Base):
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
     
     # # Relationships
-    # workload = relationship("Workload", back_populates="servers")
+    workload = relationship("Workload", back_populates="servers")
    
     # compliance_results = relationship("ComplianceResult", back_populates="server")
