@@ -219,25 +219,3 @@ async def delete_workload(
             detail=f"Lỗi khi xóa workload: {str(e)}"
         )
 
-@router.get("/export/names")
-async def export_workload_names(
-    db: Session = Depends(get_db)
-):
-    """
-    Export danh sách tên workloads để sử dụng trong template Excel
-    Returns: List các workload names
-    """
-    try:
-        workload_service = WorkloadService(db)
-        workload_names = workload_service.get_all_workload_names()
-        
-        return {
-            "success": True,
-            "data": workload_names,
-            "message": f"Lấy thành công {len(workload_names)} workload names"
-        }
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Lỗi khi lấy danh sách workload names: {str(e)}"
-        )
