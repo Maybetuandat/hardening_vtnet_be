@@ -78,33 +78,3 @@ class ServerSearchParams(BaseModel):
     page: int = Field(1, ge=1)
     size: int = Field(10, ge=1, le=100)
 
-
-class ServerUploadItem(BaseModel):
-    """Schema cho từng server trong file Excel upload"""
-    ip_address: str = Field(..., description="Địa chỉ IP của server")
-    ssh_user: str = Field(..., description="SSH username")
-    ssh_port: int = Field(22, description="SSH port")
-    ssh_password: str = Field(..., description="SSH password")
-    workload_name: str = Field(..., description="Tên workload")
-    hostname: Optional[str] = Field(None, description="Hostname (auto-detect nếu để trống)")
-    os_version: Optional[str] = Field(None, description="OS version (auto-detect nếu để trống)")
-    
-    @validator('ip_address')
-    def validate_ip(cls, v):
-        # Validate IP format
-        ip_pattern = r'^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$'
-        if not re.match(ip_pattern, v):
-            raise ValueError('IP address không hợp lệ')
-        return v
-    
-    @validator('ssh_port')
-    def validate_ssh_port(cls, v):
-        if v < 1 or v > 65535:
-            raise ValueError('SSH port phải trong khoảng 1-65535')
-        return v
-    
-    @validator('workload_name')
-    def validate_workload_name(cls, v):
-        if not v or not v.strip():
-            raise ValueError('Workload name không được để trống')
-        return v.strip()

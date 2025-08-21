@@ -8,8 +8,7 @@ from schemas.server import (
     ServerUpdate, 
     ServerResponse, 
     ServerListResponse, 
-    ServerSearchParams,
-    ServerUploadItem
+    ServerSearchParams
 )
 import math
 
@@ -180,58 +179,6 @@ class ServerService:
         return self.dao.check_ip_exists(ip_address.strip(), exclude_id)
 
    
-
-    def create_servers_from_upload_items(self, upload_items: List[ServerUploadItem]) -> List[ServerResponse]:
-        """
-        Tạo nhiều servers từ ServerUploadItem list
-        Convert workload_name thành workload_id và tạo ServerCreate objects
-        """
-        created_servers = []
-        errors = []
-        
-        for index, upload_item in enumerate(upload_items):
-            try:
-                # 1. Lấy workload_id từ workload_name
-                workload_id = self.workload_service.get_workload_id_by_name(upload_item.workload_name)
-                
-                if not workload_id:
-                    errors.append(f"Server {index + 1}: Workload '{upload_item.workload_name}' không tồn tại")
-                    continue
-                
-                if self.dao.check_ip_exists(upload_item.ip_address):
-                    errors.append(f"Server {index + 1}: IP address '{upload_item.ip_address}' đã tồn tại")
-                    continue
-                
-                # 3. Tạo ServerCreate object
-                server_create = ServerCreate(
-                    ip_address=upload_item.ip_address,
-                    hostname=upload_item.hostname or f"server-{upload_item.ip_address.replace('.', '-')}",
-                    os_version=upload_item.os_version or "Unknown",
-                    ssh_port=upload_item.ssh_port,
-                    ssh_user=upload_item.ssh_user,
-                    ssh_password=upload_item.ssh_password,
-                    status=True,  # Mặc định active
-                    workload_id=workload_id  # Set workload_id đã resolve
-                )
-                
-                # 4. Tạo server
-                created_server = self.create_server(server_create)
-                created_servers.append(created_server)
-                
-            except Exception as e:
-                errors.append(f"Server {index + 1}: {str(e)}")
-                continue
-        
-        # Nếu có lỗi, raise exception với thông tin chi tiết
-        if errors:
-            error_message = "Một số server không thể tạo:\n" + "\n".join(errors)
-            if not created_servers:  # Nếu không có server nào được tạo thành công
-                raise ValueError(error_message)
-            else:  # Nếu có một số thành công, một số thất bại
-                # Log errors nhưng vẫn trả về kết quả thành công
-                print(f"Warning: {error_message}")
-        
-        return created_servers
 
 
 

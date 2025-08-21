@@ -10,8 +10,7 @@ from schemas.server import (
     ServerUpdate,
     ServerResponse,
     ServerListResponse,
-    ServerSearchParams,
-    ServerUploadItem
+    ServerSearchParams
 )
 
 router = APIRouter(prefix="/api/servers", tags=["Servers"])
@@ -81,7 +80,7 @@ def create_server(
 
 @router.post("/batch", response_model=List[ServerResponse])
 def create_servers_batch(
-    servers: List[ServerUploadItem],  # Đổi từ ServerCreate thành ServerUploadItem
+    servers: List[ServerCreate],  # Đổi từ ServerCreate thành ServerUploadItem
     server_service: ServerService = Depends(get_server_service)
 ):
     """
@@ -93,7 +92,7 @@ def create_servers_batch(
             raise HTTPException(status_code=400, detail="Danh sách server không được rỗng")
         
         print(f"Received {len(servers)} servers to create")
-        return server_service.create_servers_from_upload_items(servers)
+        return server_service.create_servers_batch(servers)
         
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
