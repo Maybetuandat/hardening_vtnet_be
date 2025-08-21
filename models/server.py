@@ -31,6 +31,6 @@ class Server(Base):
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
     
     # # Relationships
-    workload = relationship("Workload", back_populates="servers")
+    workload = relationship("WorkLoad", back_populates="servers")
    
     # compliance_results = relationship("ComplianceResult", back_populates="server")
