@@ -68,3 +68,11 @@ class RuleSearchParams(BaseModel):
             if v not in allowed_severities:
                 raise ValueError(f'Severity phải là một trong: {", ".join(allowed_severities)}')
         return v
+    
+class WorkloadRuleCreate(BaseModel):
+    """Rule create không cần workload_id vì sẽ được gán tự động"""
+    name: str = Field(..., max_length=100, description="Tên của rule")
+    description: Optional[str] = Field(None, description="Mô tả về rule")
+    severity: str = Field(..., description="Mức độ nghiêm trọng: low, medium, high, critical")
+    parameters: Optional[dict] = Field(None, description="Tham số của rule dưới dạng JSON")
+    is_active: bool = Field(True, description="Trạng thái hoạt động của rule")

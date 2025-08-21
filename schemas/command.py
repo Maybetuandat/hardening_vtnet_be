@@ -95,3 +95,10 @@ class CommandSearchParams(BaseModel):
         if v is not None and v.strip():
             return v.strip().lower()
         return v
+
+class WorkloadCommandCreate(BaseModel):
+    """Command create với rule_index để tham chiếu đến rule trong danh sách"""
+    rule_index: int = Field(..., description="Chỉ số rule trong danh sách (0-based)")
+    os_version: str = Field(..., max_length=20, description="Phiên bản hệ điều hành")
+    command_text: str = Field(..., description="Nội dung command hoặc Ansible command")
+    is_active: bool = Field(True, description="Trạng thái hoạt động của command")

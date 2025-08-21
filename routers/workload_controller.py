@@ -2,21 +2,22 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
 from config.config_database import get_db
-from schemas.workload_request import WorkloadWithRulesAndCommandsRequest
+
 from services.workload_service import WorkloadService
 from schemas.workload import (
     WorkLoadCreate, 
     WorkLoadUpdate, 
     WorkLoadResponse, 
     WorkLoadListResponse, 
-    WorkLoadSearchParams
+    WorkLoadSearchParams,
+    WorkloadWithRulesAndCommandsRequest
 )
 from schemas.rule import RuleCreate
 from schemas.command import CommandCreate
 from pydantic import BaseModel, Field
 from typing import Optional
 
-router = APIRouter(prefix="/workloads", tags=["Workloads"])
+router = APIRouter(prefix="/api/workloads", tags=["Workloads"])
 
 
 

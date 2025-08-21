@@ -155,17 +155,13 @@ class WorkloadService:
             for command_data in commands_data:
                 # Xử lý rule_id cho command
                 if hasattr(command_data, 'rule_index') and command_data.rule_index is not None:
-                    # Nếu có rule_index, sử dụng rule tương ứng trong danh sách vừa tạo
+                    # neu co rule index, thi gan id vao command 
                     if 0 <= command_data.rule_index < len(created_rules):
                         command_data.rule_id = created_rules[command_data.rule_index].id
                     else:
                         raise ValueError(f"Rule index {command_data.rule_index} không hợp lệ. Chỉ có {len(created_rules)} rules.")
                 else:
-                    # Nếu không có rule_index, gán rule đầu tiên
-                    if created_rules:
-                        command_data.rule_id = created_rules[0].id
-                    else:
-                        raise ValueError("Không có rule nào để gán cho command")
+                    raise ValueError("Không có rule nào để gán cho command")
                 
                 # Tạo command model - loại bỏ rule_index trước khi tạo
                 command_dict = command_data.dict()

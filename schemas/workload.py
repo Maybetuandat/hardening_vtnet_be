@@ -2,8 +2,8 @@ from datetime import datetime
 from typing import List, Optional
 from pydantic import BaseModel, Field
 
-from schemas.command import CommandCreate
-from schemas.rule import RuleCreate
+from schemas.command import CommandCreate, WorkloadCommandCreate
+from schemas.rule import RuleCreate, WorkloadRuleCreate
 
 
 class WorkLoadBase(BaseModel):
@@ -36,3 +36,10 @@ class WorkLoadSearchParams(BaseModel):
     page: int = 1
     page_size: int = 10
 
+
+
+
+class WorkloadWithRulesAndCommandsRequest(BaseModel):
+    workload: WorkLoadCreate
+    rules: List[WorkloadRuleCreate]
+    commands: List[WorkloadCommandCreate]
