@@ -20,6 +20,6 @@ class Rule(Base):
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
     
     # Relationships
-    workload = relationship("Workload", back_populates="rules")
+    workload = relationship("WorkLoad", back_populates="rules")
     # rule_results = relationship("RuleResult", back_populates="rule")
     commands = relationship("Command", back_populates="rule")

@@ -7,7 +7,6 @@ import uvicorn
 
 
 from config.config_database import engine, Base
-# Import tất cả models để SQLAlchemy biết về relationships
 from models import (
 
     workload, 
@@ -17,7 +16,7 @@ from models import (
     compliance_result, 
     rule_result
 )
-from routers import server_controller
+from routers import server_controller, workload_controller
 
 app = FastAPI(
     title="Ansible Security Scan API", 
@@ -27,7 +26,7 @@ app = FastAPI(
 
 load_dotenv()
 
-# Tạo tất cả bảng khi start app
+
 @app.on_event("startup")
 async def startup_event():
     try:
@@ -73,7 +72,7 @@ RELOAD = os.getenv("SERVER_RELOAD", "False").lower() == "true"
 # Include routers
 
 app.include_router(server_controller.router, tags=["Servers"])
-
+app.include_router(workload_controller.router, tags=["Workloads"])
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host=HOST, port=PORT, reload=RELOAD)

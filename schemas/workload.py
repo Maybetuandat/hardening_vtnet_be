@@ -2,6 +2,9 @@ from datetime import datetime
 from typing import List, Optional
 from pydantic import BaseModel, Field
 
+from schemas.command import CommandCreate
+from schemas.rule import RuleCreate
+
 
 class WorkLoadBase(BaseModel):
     name : str = Field(..., max_length=100, description="Tên của workload")
@@ -32,5 +35,4 @@ class WorkLoadSearchParams(BaseModel):
     workload_id: Optional[int] = None
     page: int = 1
     page_size: int = 10
-class WorkLoadDetailResponse(BaseModel):
-    workload: WorkLoadResponse
+

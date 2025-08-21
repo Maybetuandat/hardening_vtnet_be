@@ -1,3 +1,4 @@
+# schemas/command.py - Enhanced version
 from datetime import datetime
 from typing import List, Optional
 from pydantic import BaseModel, Field, validator
@@ -20,8 +21,27 @@ class CommandBase(BaseModel):
             raise ValueError('Command text không được để trống')
         return v.strip()
 
-class CommandCreate(CommandBase):
-    pass
+class CommandCreate(BaseModel):
+    """
+    Enhanced CommandCreate để hỗ trợ tạo commands với workload
+    """
+    rule_id: Optional[int] = Field(None, description="ID của rule (có thể để trống khi tạo cùng workload)")
+    rule_index: Optional[int] = Field(None, description="Chỉ số rule trong danh sách (0-based)")
+    os_version: str = Field(..., max_length=20, description="Phiên bản hệ điều hành")
+    command_text: str = Field(..., description="Nội dung command hoặc Ansible command")
+    is_active: bool = Field(True, description="Trạng thái hoạt động của command")
+
+    @validator('os_version')
+    def validate_os_version(cls, v):
+        if not v or not v.strip():
+            raise ValueError('OS version không được để trống')
+        return v.strip().lower()
+
+    @validator('command_text')
+    def validate_command_text(cls, v):
+        if not v or not v.strip():
+            raise ValueError('Command text không được để trống')
+        return v.strip()
 
 class CommandUpdate(BaseModel):
     rule_id: Optional[int] = Field(None, description="ID của rule")
