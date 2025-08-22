@@ -57,17 +57,10 @@ class RuleListResponse(BaseModel):
 class RuleSearchParams(BaseModel):
     keyword: Optional[str] = None
     workload_id: Optional[int] = None
-    severity: Optional[str] = None
     page: int = Field(1, ge=1)
     page_size: int = Field(10, ge=1, le=100)
 
-    @validator('severity')
-    def validate_severity(cls, v):
-        if v is not None:
-            allowed_severities = ["low", "medium", "high", "critical"]
-            if v not in allowed_severities:
-                raise ValueError(f'Severity phải là một trong: {", ".join(allowed_severities)}')
-        return v
+    
     
 class WorkloadRuleCreate(BaseModel):
     """Rule create không cần workload_id vì sẽ được gán tự động"""

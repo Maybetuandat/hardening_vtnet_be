@@ -9,29 +9,7 @@ class RuleService:
     def __init__(self, db: Session):
         self.rule_dao = RuleDAO(db)
     
-    def get_rules_with_pagination(self, page: int = 1, page_size: int = 10) -> RuleListResponse:
-        if page < 1:
-            page = 1
-        if page_size < 1:
-            page_size = 10
-        if page_size > 100:
-            page_size = 100
-            
-        skip = (page - 1) * page_size
-        rules, total = self.rule_dao.get_rules_with_pagination(skip=skip, limit=page_size)
-        total_pages = math.ceil(total / page_size) if total > 0 else 0
-        
-        rule_responses = []
-        for rule in rules:
-            rule_responses.append(self._convert_to_response(rule))
-        
-        return RuleListResponse(
-            rules=rule_responses,
-            total_rules=total,
-            page=page,
-            page_size=page_size,
-            total_pages=total_pages
-        )
+   
     
     def get_rule_by_id(self, rule_id: int) -> Optional[RuleResponse]:
         if rule_id <= 0:
@@ -46,13 +24,19 @@ class RuleService:
         page_size = max(1, min(100, search_params.page_size))
             
         skip = (page - 1) * page_size
-        rules, total = self.rule_dao.search_rules(
-            keyword=search_params.keyword,
-            workload_id=search_params.workload_id,
-            severity=search_params.severity,
-            skip=skip,
-            limit=page_size
-        )
+        if search_params.workload_id is not None:
+            rules, total = self.rule_dao.get_rules_with_workload_id(
+                workload_id=search_params.workload_id,
+                skip=skip,
+                limit=page_size
+            )
+        else:
+            rules, total = self.rule_dao.search_rules(
+                keyword=search_params.keyword,
+                workload_id=search_params.workload_id,
+                skip=skip,
+                limit=page_size
+            )
         total_pages = math.ceil(total / page_size) if total > 0 else 0
         
         rule_responses = []

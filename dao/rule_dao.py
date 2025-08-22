@@ -5,8 +5,7 @@ from models.rule import Rule
 class RuleDAO:
     def  __init__(self, db: Session):
         self.db = db
-    def get_rules_with_pagination(self, skip: int =0, limit: int = 10) -> Tuple[List[Rule], int]:
-        return self.search_rules(skip = skip, limit = limit)
+  
     def get_by_id(self, rule_id : int) -> Optional[Rule]:
         return self.db.query(Rule).filter(Rule.id == rule_id).first()
     def search_rules(
@@ -51,3 +50,13 @@ class RuleDAO:
         except Exception as e :
             self.db.rollback()
             raise e
+    def get_rules_with_workload_id(
+            self, 
+            workload_id: int, 
+            skip: int = 0, 
+            limit: int = 10
+    ) -> Tuple[List[Rule], int]:
+        query = self.db.query(Rule).filter(Rule.workload_id == workload_id)
+        total = query.count()
+        rules = query.offset(skip).limit(limit).all()
+        return rules, total

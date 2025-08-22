@@ -16,7 +16,7 @@ from models import (
     compliance_result, 
     rule_result
 )
-from routers import server_controller, workload_controller
+from routers import command_controller, rule_controller, server_controller, workload_controller
 
 app = FastAPI(
     title="Ansible Security Scan API", 
@@ -73,6 +73,9 @@ RELOAD = os.getenv("SERVER_RELOAD", "False").lower() == "true"
 
 app.include_router(server_controller.router, tags=["Servers"])
 app.include_router(workload_controller.router, tags=["Workloads"])
+app.include_router(rule_controller.router, tags=["Rules"])
+app.include_router(command_controller.router, tags=["Commands"])
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host=HOST, port=PORT, reload=RELOAD)
