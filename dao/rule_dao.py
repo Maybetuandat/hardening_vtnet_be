@@ -26,7 +26,7 @@ class RuleDAO:
         try:
             self.db.add(rule)
             self.db.commit()
-            self.db.refresh()
+            self.db.refresh(rule)
             return rule
         except InterruptedError as e: 
             self.db.rollback()

@@ -37,7 +37,7 @@ class CommandService:
         try:
             self._validate_command_create_data(command_data)
             
-            command_dict = command_data.dict()
+            command_dict = command_data.dict(exclude_none=True)
             command_model = Command(**command_dict)
             
             created_command = self.command_dao.create(command_model)

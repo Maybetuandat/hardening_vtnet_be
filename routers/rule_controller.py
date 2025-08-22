@@ -56,3 +56,13 @@ async def update_rule(rule_id: int, rule: RuleCreate, rule_service: RuleService 
         return updated_rule
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+@router.delete("/{rule_id}", response_model=dict)
+async def delete_rule(rule_id: int, rule_service: RuleService = Depends(get_rule_service)) -> dict:
+    try:
+        rule_service.delete_rule(rule_id)
+        return {
+            "success": True,
+            "message": "Rule deleted successfully"
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
