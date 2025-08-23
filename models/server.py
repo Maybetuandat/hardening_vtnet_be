@@ -33,4 +33,4 @@ class Server(Base):
     # # Relationships
     workload = relationship("WorkLoad", back_populates="servers")
    
-    # compliance_results = relationship("ComplianceResult", back_populates="server")
+    compliance_results = relationship("ComplianceResult", back_populates="server", cascade="all, delete-orphan")

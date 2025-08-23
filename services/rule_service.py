@@ -25,15 +25,17 @@ class RuleService:
             
         skip = (page - 1) * page_size
         if search_params.workload_id is not None:
+            print("Fetching rules for workload ID:", search_params.workload_id)
             rules, total = self.rule_dao.get_rules_with_workload_id(
                 workload_id=search_params.workload_id,
                 skip=skip,
                 limit=page_size
             )
         else:
+            print("Fetching rules with keyword:", search_params.keyword)
             rules, total = self.rule_dao.search_rules(
                 keyword=search_params.keyword,
-                workload_id=search_params.workload_id,
+                
                 skip=skip,
                 limit=page_size
             )

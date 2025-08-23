@@ -16,8 +16,9 @@ class Rule(Base):
     parameters = Column(JSON, nullable=True)  # Store all parameters as simple JSON
     
     is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=func.now(), nullable=False)
+    created_at = Column(DateTime, default=func.now(), nullable=False) 
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
     
     workload = relationship("WorkLoad", back_populates="rules")
     commands = relationship("Command", back_populates="rule", cascade="all, delete-orphan")
+    rule_results = relationship("RuleResult", back_populates="rule", cascade="all, delete-orphan")
