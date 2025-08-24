@@ -109,7 +109,7 @@ def start_compliance_scan(
     Bắt đầu quét compliance cho servers theo batch
     
     - server_ids: Danh sách server IDs cụ thể (None = scan all servers)
-    - workload_id: Filter theo workload (optional)  
+    
     - batch_size: Số servers mỗi batch (default: 100, max: 500)
     """
     try:

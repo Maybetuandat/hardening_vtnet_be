@@ -1,3 +1,3 @@
 git add .
-git commit -m "test scan lan 1 "
+git commit -m "update api for scan server "
 git push origin main 

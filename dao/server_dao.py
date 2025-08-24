@@ -11,6 +11,13 @@ class ServerDAO:
     def __init__(self, db: Session):
         self.db = db
 
+    def  count_servers(self) -> int:
+        return self.db.query(Server).count()
+    def get_active_servers(self, skip : int, limit: int) -> List[Server]:
+        return self.db.query(Server).filter(Server.status == True).offset(skip).limit(limit).all()
+
+
+
     def get_all(self, skip: int = 0, limit: int = 10) -> Tuple[List[Server], int]:
         return self.search_servers(skip=skip, limit=limit)
 

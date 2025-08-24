@@ -20,6 +20,9 @@ class ServerService:
         self.dao = ServerDAO(db)
         self.workload_service =WorkloadService(db)
 
+    def get_active_servers(self, skip : int, limit : int) -> List[Server]:
+        return self.dao.get_active_servers(skip=skip, limit=limit)
+
     def get_server_by_id(self, server_id: int) -> Optional[ServerResponse]:
         if server_id <= 0:
             return None
@@ -28,6 +31,8 @@ class ServerService:
         if server:
             return self._convert_to_response(server)
         return None
+    def count_servers(self) -> int:
+        return self.dao.count_servers()
 
     def search_servers(self, search_params: ServerSearchParams) -> ServerListResponse:
         page = max(1, search_params.page)

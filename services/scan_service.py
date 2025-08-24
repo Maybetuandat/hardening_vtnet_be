@@ -43,16 +43,44 @@ class ScanService:
             if server_ids:
                 return self.scan_specific_servers(scan_request)
             else: 
-                logging.warning("No server IDs provided for scanning")
-                return ComplianceScanResponse(
-                    message="Không có server IDs được cung cấp để quét",
-                    total_servers=0,
-                    started_scans=[]
-                )
+                return self.scan_all_servers(scan_request)
         except Exception as e:
             logging.error(f"Error starting compliance scan: {str(e)}")
             raise e
-        
+
+    def scan_all_servers(self, scan_request: ComplianceScanRequest) -> ComplianceScanResponse:
+
+        total_servers = self.server_serivice.count_servers()
+        started_scans = []
+
+        skip = 0
+        limit = scan_request.batch_size
+
+        while skip < total_servers:
+            servers = self.server_serivice.get_active_servers(skip=skip, limit=limit)
+            if not servers:
+                break
+            
+            batch_compliance = []
+            for server in servers:
+                try:
+                    compliance_result = self.compliance_result_service.create_pending_result(server.id)
+                    batch_compliance.append(compliance_result)
+                    started_scans.append(compliance_result.id)
+                except Exception as e:
+                    logging.error(f"Error creating pending result for server {server.id}: {str(e)}")
+                    continue
+            
+            if servers and batch_compliance: 
+                self._process_compliance_scan_batches(servers, batch_compliance)
+            
+            skip += limit
+
+        return ComplianceScanResponse(
+            message=f"Đã bắt đầu quét {len(started_scans)} servers thành công",
+            total_servers=len(started_scans),
+            started_scans=started_scans
+        )        
     def scan_specific_servers(self, scan_request: ComplianceScanRequest) -> ComplianceScanResponse:
         total_servers = len(scan_request.server_ids)
         started_scans = []
@@ -305,7 +333,7 @@ class ScanService:
         for key in parsed_output:
             actual_values.append(parsed_output[key])
         print("DEBUG - Actual Values:", actual_values)
-        
+
 
        
 

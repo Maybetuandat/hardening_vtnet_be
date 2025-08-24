@@ -86,16 +86,7 @@ class ComplianceScanRequest(BaseModel):
     server_ids: Optional[List[int]] = Field(None, description="Danh sách server IDs cụ thể cần scan (None = scan all servers)")
     batch_size: int = Field(100, ge=1, le=500, description="Số server mỗi batch")
 
-    @validator('server_ids')
-    def validate_server_ids(cls, v):
-        if v is not None:
-            if len(v) == 0:
-                raise ValueError("Danh sách server_ids không được rỗng")
-            if len(v) > 10000:
-                raise ValueError("Số lượng server tối đa là 10,000")
-            # Remove duplicates và sort
-            return sorted(list(set(v)))
-        return v
+ 
 
 
 class ComplianceScanResponse(BaseModel):
