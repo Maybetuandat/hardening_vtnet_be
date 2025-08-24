@@ -19,6 +19,11 @@ class RuleService:
             return self._convert_to_response(rule)
         return None
     
+    def get_active_rule_by_workload(self, workload_id: int) -> List[RuleResponse]:
+        if workload_id <= 0:
+            return []
+        rules = self.rule_dao.get_active_rules_by_workload_id(workload_id)
+        return [self._convert_to_response(rule) for rule in rules]
     def search_rules(self, search_params: RuleSearchParams) -> RuleListResponse:
         page = max(1, search_params.page)
         page_size = max(1, min(100, search_params.page_size))

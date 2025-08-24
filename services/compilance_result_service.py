@@ -4,7 +4,9 @@ import math
 from typing import Any, Dict, List, Optional
 from sqlalchemy.orm import Session
 
-from dao.compliance_dao import ComplianceDAO, RuleResultDAO
+
+from dao.compliance_dao import ComplianceDAO
+from dao.rule_result_dao import RuleResultDAO
 from dao.server_dao import ServerDAO
 from models.compliance_result import ComplianceResult
 from models.rule_result import RuleResult
@@ -17,7 +19,7 @@ from services.workload_service import WorkloadService
 
 
 class ComplianceResultService:
-    """Service chuyên xử lý CRUD operations cho ComplianceResult"""
+    
     
     def __init__(self, db: Session):
         self.db = db
@@ -26,7 +28,7 @@ class ComplianceResultService:
         self.server_dao = ServerDAO(db)
         self.workload_service = WorkloadService(db)
 
-    # ===== READ OPERATIONS =====
+    
 
     def get_compliance_results(self, search_params: ComplianceSearchParams) -> ComplianceResultListResponse:
         """Lấy danh sách compliance results với filter và pagination"""
@@ -184,7 +186,7 @@ class ComplianceResultService:
 
     # ===== UPDATE OPERATIONS =====
 
-    def update_status(self, compliance_id: int, status: str) -> bool:
+    def update_status(self, compliance_id: int, status: str, detail_error: Optional[str] = None) -> bool:
         """Update status của compliance result"""
         try:
             compliance_result = self.dao.get_by_id(compliance_id)
@@ -192,6 +194,7 @@ class ComplianceResultService:
                 return False
                 
             compliance_result.status = status
+            compliance_result.detail_error = detail_error
             self.dao.update(compliance_result)
             return True
         except Exception as e:

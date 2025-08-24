@@ -8,6 +8,19 @@ class RuleDAO:
   
     def get_by_id(self, rule_id : int) -> Optional[Rule]:
         return self.db.query(Rule).filter(Rule.id == rule_id).first()
+    def get_active_rules_by_workload_id(self, workload_id: int) -> List[Rule]:
+        return self.db.query(Rule).filter(Rule.workload_id == workload_id, Rule.is_active == True).all()
+    
+    def create_bulk(self, rules: List[Rule]) -> List[Rule]:
+        try:
+            self.db.bulk_save_objects(rules)
+            self.db.commit()
+            for rule in rules:
+                self.db.refresh(rule)
+            return rules
+        except InterruptedError as e: 
+            self.db.rollback()
+            raise e
     def search_rules(
             self, 
             keyword: Optional[str] = None,

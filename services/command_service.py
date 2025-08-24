@@ -1,5 +1,6 @@
 from sqlalchemy.orm import Session
 from typing import Optional, List
+from dao import command_dao
 from dao.command_dao import CommandDAO
 from models.command import Command
 from schemas.command import CommandCreate, CommandUpdate, CommandResponse
@@ -12,6 +13,7 @@ class CommandService:
     def get_all_commands(self) -> List[CommandResponse]:
         commands = self.command_dao.get_all()
         return [self._convert_to_response(command) for command in commands]
+    
     
     def get_command_by_id(self, command_id: int) -> Optional[CommandResponse]:
         if command_id <= 0:
@@ -33,6 +35,14 @@ class CommandService:
         commands = self.command_dao.get_by_rule_id(rule_id)
         return [self._convert_to_response(command) for command in commands]
     
+    def get_command_for_rule_excecution(self, rule_id: int, os_version: str) -> Command:
+        if rule_id <= 0 or not os_version or not os_version.strip():
+            return None
+        command = self.command_dao.get_by_rule_id_and_os_version(rule_id, os_version.strip().lower())
+        if command:
+            return command
+        
+        return None
     def create_command(self, command_data: CommandCreate) -> CommandResponse:
         try:
             self._validate_command_create_data(command_data)

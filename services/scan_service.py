@@ -1,421 +1,331 @@
-# services/compliance_scan_service.py
+from ast import parse
+import json
+import time 
 import logging
 import os
-import subprocess
 import tempfile
-import time
+import yaml 
+import ansible_runner 
 from typing import Any, Dict, List, Optional
-from sqlalchemy.orm import Session
 
-from dao.server_dao import ServerDAO
-from models.compliance_result import ComplianceResult
+from sqlalchemy.orm import Session
+from models.rule import Rule
 from models.rule_result import RuleResult
 from models.server import Server
-from models.rule import Rule
-from models.command import Command
+
 from schemas.compliance import ComplianceScanRequest, ComplianceScanResponse
+from services.command_service import CommandService
+from services.compilance_result_service import ComplianceResultService
+from services.rule_service import RuleService
+from services.server_service import ServerService
 from services.workload_service import WorkloadService
-from services.compliance_result_service import ComplianceResultService
 
-
-class ComplianceScanService:
-    """Service chuyên xử lý logic scan servers"""
-    
+class ScanService: 
     def __init__(self, db: Session):
         self.db = db
-        self.server_dao = ServerDAO(db)
-        self.workload_service = WorkloadService(db)
+        self.server_serivice = ServerService(db)
         self.compliance_result_service = ComplianceResultService(db)
-        
-        # Ansible configuration
-        self.ansible_timeout = 30
+        self.workload_service = WorkloadService(db)
+        self.rule_service = RuleService(db)
+        self.command_service = CommandService(db)
+        # Timeout này sẽ được ansible-runner quản lý
+        self.ansible_timeout = 30 
 
-    def start_compliance_scan(self, scan_request: ComplianceScanRequest) -> ComplianceScanResponse:
+    def start_compliance_scan(self, scan_request : ComplianceScanRequest) -> ComplianceScanResponse:
         """
-        Entry point cho compliance scan
-        2 modes: Specific server IDs hoặc Scan all servers với pagination
+        co hai loai chinh: 
+        1. quet toan bo server trong he thong
+        2. quet nhung server co id trong danh sach truyen vao
         """
         try:
-            if scan_request.server_ids:
-                # MODE 1: Scan specific server list
-                return self._scan_specific_servers(scan_request)
-            else:
-                # MODE 2: Scan all servers với pagination  
-                return self._scan_all_servers_pagination(scan_request)
+            server_ids = scan_request.server_ids if scan_request.server_ids else []
+            logging.info(f"Starting compliance scan for {len(server_ids)} servers")
+            if server_ids:
+                return self.scan_specific_servers(scan_request)
+            else: 
+                logging.warning("No server IDs provided for scanning")
+                return ComplianceScanResponse(
+                    message="Không có server IDs được cung cấp để quét",
+                    total_servers=0,
+                    started_scans=[]
+                )
         except Exception as e:
             logging.error(f"Error starting compliance scan: {str(e)}")
-            raise Exception(f"Lỗi khi bắt đầu quét compliance: {str(e)}")
-
-    def _scan_specific_servers(self, scan_request: ComplianceScanRequest) -> ComplianceScanResponse:
-        """MODE 1: Scan danh sách servers cụ thể"""
-        servers = []
-        for server_id in scan_request.server_ids:
-            server = self.server_dao.get_by_id(server_id)
-            if server and server.status:  # Chỉ scan servers active
-                servers.append(server)
+            raise e
         
-        if not servers:
-            raise ValueError("Không có server active nào để scan")
+    def scan_specific_servers(self, scan_request: ComplianceScanRequest) -> ComplianceScanResponse:
+        total_servers = len(scan_request.server_ids)
+        started_scans = []
 
-        # Tạo ComplianceResult cho từng server
-        compliance_result_ids = []
-        for server in servers:
-            compliance_result = self.compliance_result_service.create_pending_result(server.id)
-            compliance_result_ids.append(compliance_result.id)
-
-        # Scan theo batch
-        self._process_compliance_scan_batches(servers, scan_request.batch_size)
+        index = 0
+        while index < total_servers:
+            batch_ids = scan_request.server_ids[index: index + scan_request.batch_size]
+            servers = []
+            batch_compliance = []
+            
+            for server_id in batch_ids:
+                server = self.server_serivice.get_server_by_id(server_id)
+                if server and server.status:
+                    servers.append(server)
+                    try:
+                        compliance_result = self.compliance_result_service.create_pending_result(server.id)
+                        batch_compliance.append(compliance_result)
+                        started_scans.append(compliance_result.id)
+                    except Exception as e:
+                        logging.error(f"Error creating pending result for server {server.id}: {str(e)}")
+                        continue
+            
+            if servers and batch_compliance: 
+                self._process_compliance_scan_batches(servers, batch_compliance)
+            
+            index += scan_request.batch_size
 
         return ComplianceScanResponse(
-            message=f"Đã bắt đầu quét {len(servers)} servers cụ thể",
-            total_servers=len(servers),
-            started_scans=compliance_result_ids
+            message=f"Đã bắt đầu quét {len(started_scans)} servers thành công",
+            total_servers=len(started_scans),
+            started_scans=started_scans
         )
 
-    def _scan_all_servers_pagination(self, scan_request: ComplianceScanRequest) -> ComplianceScanResponse:
-        """MODE 2: Scan ALL servers bằng database pagination"""
-        # Đếm tổng số servers active
-        total_servers = self.server_dao.count_active_servers()
-        
-        if total_servers == 0:
-            raise ValueError("Không có server active nào để scan")
+    def _process_compliance_scan_batches(self, servers: List[Server], compliance_results: List[Any]):
+        for server, compliance_result in zip(servers, compliance_results):
+             self.scan_single_server(server, compliance_result)
 
-        logging.info(f"Starting pagination scan for {total_servers} servers")
-
-        # Scan theo pagination
-        all_compliance_ids = self._process_pagination_scan(total_servers, scan_request.batch_size)
-
-        return ComplianceScanResponse(
-            message=f"Đã bắt đầu quét {total_servers} servers bằng pagination",
-            total_servers=total_servers,
-            started_scans=all_compliance_ids
-        )
-
-    def _process_pagination_scan(self, total_servers: int, batch_size: int) -> List[int]:
-        """Xử lý scan all servers bằng database pagination"""
-        all_compliance_ids = []
-        current_skip = 0
-        batch_number = 1
-        
-        while current_skip < total_servers:
-            try:
-                logging.info(f"Processing pagination batch {batch_number}: skip={current_skip}, limit={batch_size}")
-                
-                # Lấy batch servers từ database
-                batch_servers = self.server_dao.get_servers_batch_for_scan(
-                    skip=current_skip,
-                    limit=batch_size,
-                    status=True,
-                    order_by="id"
-                )
-                
-                if not batch_servers:
-                    logging.info(f"No more servers at skip={current_skip}, stopping pagination")
-                    break
-                
-                # Tạo ComplianceResult cho từng server trong batch
-                batch_compliance_ids = []
-                for server in batch_servers:
-                    compliance_result = self.compliance_result_service.create_pending_result(server.id)
-                    batch_compliance_ids.append(compliance_result.id)
-                
-                all_compliance_ids.extend(batch_compliance_ids)
-                
-                # Scan batch servers
-                self._process_compliance_scan_batches(batch_servers, len(batch_servers))
-                
-                # Move to next batch
-                current_skip += batch_size
-                batch_number += 1
-                time.sleep(0.2)
-                
-            except Exception as e:
-                logging.error(f"Error processing pagination batch {batch_number}: {str(e)}")
-                current_skip += batch_size
-                batch_number += 1
-                continue
-        
-        return all_compliance_ids
-
-    def _process_compliance_scan_batches(self, servers: List[Server], batch_size: int):
-        """Xử lý quét compliance theo từng batch servers"""
-        total_servers = len(servers)
-        
-        for i in range(0, total_servers, batch_size):
-            batch_servers = servers[i:i + batch_size]
-            
-            logging.info(f"Processing batch {i//batch_size + 1}: servers {i+1}-{min(i+batch_size, total_servers)}")
-            
-            try:
-                # Scan từng server trong batch
-                for server in batch_servers:
-                    self._scan_single_server(server)
-                    
-                time.sleep(0.2)
-                    
-            except Exception as e:
-                logging.error(f"Error processing batch {i//batch_size + 1}: {str(e)}")
-                continue
-
-    def _scan_single_server(self, server: Server):
-        """
-        Scan một server với PERSISTENT SSH CONNECTION
-        1 server = 1 SSH session cho toàn bộ quá trình
-        """
-        ssh_connection = None
+    def scan_single_server(self, server: Server, compliance_result: Any):
         try:
-            # 1. Lấy pending compliance result
-            compliance_result = self.compliance_result_service.get_pending_result_by_server(server.id)
-            if not compliance_result:
-                logging.warning(f"No pending compliance result found for server {server.hostname}")
-                return
-
-            # 2. Update status = running
             self.compliance_result_service.update_status(compliance_result.id, "running")
+            workload = self.workload_service.get_workload_by_id(server.workload_id)
 
-            # 3. Lấy workload và rules
-            workload = self.workload_service.dao.get_by_id(server.workload_id)
             if not workload:
                 logging.warning(f"Server {server.hostname} không có workload")
-                self.compliance_result_service.update_status(compliance_result.id, "failed")
+                self.compliance_result_service.update_status(compliance_result.id, "failed", detail_error="Không có workload")
                 return
 
-            rules = self._get_active_rules_by_workload(workload.id)
+            rules = self.rule_service.get_active_rule_by_workload(workload.id)
             if not rules:
-                self.compliance_result_service.complete_result(compliance_result.id, [], 0)
+                logging.warning(f"Workload {workload.name} không có rule nào được kích hoạt")
+                self.compliance_result_service.update_status(compliance_result.id, "failed", detail_error="Không có rule nào được kích hoạt")
                 return
 
-            # 4. Tạo persistent SSH connection
-            ssh_connection = self._create_persistent_ssh_connection(server)
-            if not ssh_connection:
-                raise Exception("Cannot establish SSH connection")
-
-            # 5. Thực thi tất cả rules với persistent connection
-            rule_results = self._execute_all_rules_with_persistent_connection(
-                server, rules, ssh_connection, compliance_result.id
-            )
-
-            # 6. Complete compliance result
-            self.compliance_result_service.complete_result(compliance_result.id, rule_results, len(rules))
             
+            rule_results, error_message = self._execute_rules_with_ansible_runner(server, rules, compliance_result.id)
+            
+            if error_message:
+                self.compliance_result_service.update_status(compliance_result.id, "failed", detail_error=error_message)
+                return
+
+            self.compliance_result_service.complete_result(compliance_result.id, rule_results, len(rules))
             logging.info(f"Server {server.hostname} scan completed successfully")
 
         except Exception as e:
-            logging.error(f"Error scanning server {server.hostname}: {str(e)}")
-            try:
-                if compliance_result:
-                    self.compliance_result_service.update_status(compliance_result.id, "failed")
-            except:
-                pass
-        
-        finally:
-            # Đóng SSH connection
-            if ssh_connection:
-                self._close_ssh_connection(ssh_connection)
+            logging.error(f"Error scanning server {server.id}: {str(e)}")
+            self.compliance_result_service.update_status(compliance_result.id, "failed", detail_error=str(e))
 
-    def _get_active_rules_by_workload(self, workload_id: int) -> List[Rule]:
-        """Lấy danh sách rules active của workload"""
-        return self.db.query(Rule).filter(
-            Rule.workload_id == workload_id,
-            Rule.is_active == True
-        ).all()
 
-    def _create_persistent_ssh_connection(self, server: Server) -> Optional[Dict[str, Any]]:
-        """Tạo persistent SSH connection với ControlPersist"""
-        try:
-            control_path = f"/tmp/ansible-ssh-{server.ip_address}-{int(time.time())}"
-            
-            inventory_content = f"""[target_server]
-{server.ip_address} ansible_host={server.ip_address} ansible_user={server.ssh_user} ansible_password={server.ssh_password} ansible_port={server.ssh_port} ansible_ssh_common_args='-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=10 -o ControlMaster=auto -o ControlPersist=300 -o ControlPath={control_path}' ansible_connection=ssh
-"""
-            
-            with tempfile.NamedTemporaryFile(mode='w', suffix='.ini', delete=False) as inventory_file:
-                inventory_file.write(inventory_content)
-                inventory_path = inventory_file.name
-            
-            try:
-                # Test connection
-                cmd = ["ansible", "target_server", "-i", inventory_path, "-m", "ping", "--timeout", "10"]
-                result = subprocess.run(cmd, capture_output=True, text=True, timeout=15)
-                
-                if result.returncode == 0:
-                    logging.info(f"Established persistent SSH connection to {server.hostname}")
-                    return {
-                        "inventory_path": inventory_path,
-                        "control_path": control_path,
-                        "server": server,
-                        "established_at": time.time()
-                    }
-                else:
-                    logging.error(f"Failed SSH connection to {server.hostname}: {result.stderr}")
-                    if os.path.exists(inventory_path):
-                        os.unlink(inventory_path)
-                    return None
-                    
-            except Exception as e:
-                logging.error(f"Error testing SSH connection to {server.hostname}: {str(e)}")
-                if os.path.exists(inventory_path):
-                    os.unlink(inventory_path)
-                return None
-                
-        except Exception as e:
-            logging.error(f"Error creating SSH connection to {server.hostname}: {str(e)}")
-            return None
-
-    def _execute_all_rules_with_persistent_connection(
-        self, server: Server, rules: List[Rule], ssh_connection: Dict[str, Any], compliance_result_id: int
-    ) -> List[RuleResult]:
-        """Thực thi tất cả rules với persistent connection"""
+    def _execute_rules_with_ansible_runner(
+    self, server: Server, rules: List[Rule], compliance_result_id: int
+) -> (List[RuleResult], Optional[str]):
+  
         all_rule_results = []
-        inventory_path = ssh_connection["inventory_path"]
+      
+        rules_to_run = {} 
+
+        playbook_tasks = []
+        for rule in rules:
+            start_time = time.time()
+            command = self.command_service.get_command_for_rule_excecution(rule.id, server.os_version)
+
+            if not command:
+                all_rule_results.append(RuleResult(
+                    compliance_result_id=compliance_result_id, rule_id=rule.id, rule_name=rule.name,
+                    status="skipped", message=f"Không có command cho OS {server.os_version}", execution_time=0
+                ))
+                continue
+            
+            # Tạo một tên task duy nhất và có thể đoán được
+            task_name = f"Execute rule ID {rule.id}: {rule.name}"
+            rules_to_run[task_name] = {'rule': rule, 'start_time': start_time}
+            
+            playbook_tasks.append({
+                'name': task_name, # Dùng tên task đã tạo
+                'shell': command.command_text,
+                'register': f"result_{rule.id}", # Vẫn giữ register để debug nếu cần, nhưng không dùng để ánh xạ
+                'ignore_errors': True
+            })
+
+        if not playbook_tasks:
+            return all_rule_results, None
+
+        with tempfile.TemporaryDirectory() as private_data_dir:
+            # ... (code tạo inventory và playbook giữ nguyên) ...
+            inventory = { 'all': { 'hosts': { server.ip_address: {
+                'ansible_user': server.ssh_user, 'ansible_password': server.ssh_password,
+                'ansible_port': server.ssh_port,
+                'ansible_ssh_common_args': '-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
+            }}}}
+            inventory_path = os.path.join(private_data_dir, 'inventory.yml')
+            with open(inventory_path, 'w') as f: yaml.dump(inventory, f)
+
+            playbook = [{'hosts': 'all', 'gather_facts': False, 'tasks': playbook_tasks}]
+            playbook_path = os.path.join(private_data_dir, 'scan_playbook.yml')
+            with open(playbook_path, 'w') as f: yaml.dump(playbook, f)
+
+            logging.info(f"Running single ansible-runner process for {len(playbook_tasks)} rules on {server.hostname}")
+            runner = ansible_runner.run(
+                private_data_dir=private_data_dir, playbook=playbook_path, inventory=inventory_path,
+                quiet=True, cmdline=f'--timeout {self.ansible_timeout}'
+            )
+            
+            all_events = list(runner.events)
+            logging.debug("Ansible Runner Events JSON: %s", json.dumps(all_events, indent=2))
+            
+            if runner.status in ('failed', 'unreachable') or (runner.rc != 0 and not all_events):
+                error_output = runner.stdout.read()
+                full_error = f"Ansible run failed for {server.hostname}. Status: {runner.status}, RC: {runner.rc}. Output: {error_output}"
+                logging.error(full_error)
+                return [], f"Ansible connection failed: {error_output[:500] or 'Check logs for details'}"
         
-        for i, rule in enumerate(rules):
-            try:
-                start_time = time.time()
-                
-                # Lấy commands cho rule và OS version
-                commands = self._get_commands_for_rule(rule.id, server.os_version)
+            # Duyệt qua list sự kiện
+            for event in all_events:
+                if event['event'] in ('runner_on_ok', 'runner_on_failed'):
+                    
+                    # ---- SỬA LỖI LOGIC ÁNH XẠ Ở ĐÂY ----
+                    task_name_from_event = event['event_data'].get('task')
+                    if not task_name_from_event:
+                        continue # Bỏ qua các event không có tên task
 
-                if not commands:
-                    # Skipped rule
-                    rule_result = RuleResult(
-                        compliance_result_id=compliance_result_id,
-                        rule_id=rule.id,
-                        rule_name=rule.name,
-                        status="skipped",
-                        message=f"Không có command cho OS {server.os_version}",
-                        details="",
-                        execution_time=0
-                    )
-                    all_rule_results.append(rule_result)
-                    continue
+                    rule_info = rules_to_run.get(task_name_from_event)
+                    if not rule_info:
+                        # Log một cảnh báo nếu không tìm thấy, để dễ debug
+                        logging.warning(f"Could not map event task '{task_name_from_event}' back to a rule.")
+                        continue
+                        
+                    task_result = event['event_data']['res']
+                    rule_obj = rule_info['rule']
+                    execution_time = int(time.time() - rule_info['start_time'])
 
-                # Combine commands
-                combined_command = " && ".join([cmd.command_text for cmd in commands])
-                
-                # Execute với persistent connection
-                execution_result = self._execute_command_with_persistent_connection(
-                    inventory_path, combined_command
-                )
-                
-                execution_time = int(time.time() - start_time)
-                
-                # Tạo RuleResult
-                if execution_result["success"]:
+                    output = task_result.get('stdout', '')
+                    error = task_result.get('stderr', '')
+                    
+                    # Logic đánh giá không đổi
+                    is_passed = self._evaluate_rule_result(rule_obj, output)
+                    
                     status = "passed"
                     message = "Rule execution successful"
-                    details = execution_result["stdout"][:500]
-                else:
-                    status = "failed"
-                    message = "Rule execution failed"
-                    details = execution_result["error"][:500]
-                
-                rule_result = RuleResult(
-                    compliance_result_id=compliance_result_id,
-                    rule_id=rule.id,
-                    rule_name=rule.name,
-                    status=status,
-                    message=message,
-                    details=details,
-                    execution_time=execution_time
-                )
-                
-                all_rule_results.append(rule_result)
-                logging.debug(f"Rule {rule.name} on {server.hostname}: {status} ({execution_time}s)")
-                
-                # Small delay between rules
-                if i < len(rules) - 1:
-                    time.sleep(0.1)
-                
-            except Exception as e:
-                logging.error(f"Error executing rule {rule.name} on {server.hostname}: {str(e)}")
-                
-                # Error result
-                rule_result = RuleResult(
-                    compliance_result_id=compliance_result_id,
-                    rule_id=rule.id,
-                    rule_name=rule.name,
-                    status="error",
-                    message="Rule execution error",
-                    details=str(e)[:500],
-                    execution_time=0
-                )
-                all_rule_results.append(rule_result)
+                    
+                    if task_result.get('rc', 1) != 0 or not is_passed:
+                        status = "failed"
+                        message = "Rule execution failed or parameters mismatch"
+                    
+                    details = output[:500] if status == "passed" else (error or output)[:500]
+
+                    all_rule_results.append(RuleResult(
+                        compliance_result_id=compliance_result_id,
+                        rule_id=rule_obj.id,
+                        rule_name=rule_obj.name,
+                        status=status,
+                        message=message,
+                        details=details,
+                        execution_time=execution_time
+                    ))
+
+        return all_rule_results, None
         
-        return all_rule_results
-
-    def _get_commands_for_rule(self, rule_id: int, os_version: str) -> List[Command]:
-        """Lấy commands cho rule và OS version"""
-        return self.db.query(Command).filter(
-            Command.rule_id == rule_id,
-            Command.os_version == os_version,
-            Command.is_active == True
-        ).all()
-
-    def _execute_command_with_persistent_connection(self, inventory_path: str, command: str) -> Dict[str, Any]:
-        """Execute command với persistent SSH connection"""
+    def _evaluate_rule_result(self, rule: Rule, command_output: str) -> bool:
+        """
+        Đánh giá rule với parameters. Trả về True nếu passed, False nếu failed.
+        """
+        print("DEBUG - Command Output:", command_output)
+        if not rule.parameters or not isinstance(rule.parameters, dict):
+            # Nếu không có tham số, chỉ cần command thành công (đã kiểm tra rc ở hàm gọi)
+            return True
+        
         try:
-            cmd = [
-                "ansible", "target_server", "-i", inventory_path, "-m", "shell", "-a", command,
-                "--timeout", str(self.ansible_timeout)
-            ]
-            
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=self.ansible_timeout + 5)
-            
-            return {
-                "success": result.returncode == 0,
-                "stdout": result.stdout,
-                "stderr": result.stderr,
-                "returncode": result.returncode,
-                "error": result.stderr if result.returncode != 0 else ""
-            }
-            
-        except subprocess.TimeoutExpired:
-            return {"success": False, "error": "Command timeout", "stdout": "", "stderr": ""}
+            parsed_output = self._parse_output_values(command_output)
+            return self._compare_with_parameters(rule.parameters, parsed_output)
         except Exception as e:
-            return {"success": False, "error": f"Command error: {str(e)}", "stdout": "", "stderr": ""}
-
-    def _close_ssh_connection(self, ssh_connection: Dict[str, Any]):
-        """Đóng persistent SSH connection và cleanup"""
-        try:
-            inventory_path = ssh_connection.get("inventory_path")
-            control_path = ssh_connection.get("control_path")
-            server = ssh_connection.get("server")
-            
-            # Đóng ControlMaster
-            if control_path and os.path.exists(control_path):
-                try:
-                    subprocess.run([
-                        "ssh", "-o", f"ControlPath={control_path}",
-                        "-O", "exit", f"{server.ssh_user}@{server.ip_address}"
-                    ], capture_output=True, timeout=5)
-                except:
-                    pass
-                
-                # Remove control path
-                try:
-                    if os.path.exists(control_path):
-                        os.unlink(control_path)
-                except:
-                    pass
-            
-            # Cleanup inventory file
-            if inventory_path and os.path.exists(inventory_path):
-                try:
-                    os.unlink(inventory_path)
-                except:
-                    pass
-            
-            duration = time.time() - ssh_connection.get("established_at", time.time())
-            logging.info(f"Closed SSH connection to {server.hostname} (duration: {duration:.1f}s)")
-            
-        except Exception as e:
-            logging.error(f"Error closing SSH connection: {str(e)}")
-
-    def cancel_scan_by_server(self, server_id: int) -> bool:
-        """Cancel scan đang chạy cho server"""
-        try:
-            return self.compliance_result_service.cancel_running_scan_by_server(server_id)
-        except Exception as e:
-            logging.error(f"Error cancelling scan for server {server_id}: {str(e)}")
+            logging.error(f"Error evaluating rule {rule.name}: {str(e)}")
             return False
+
+    def _parse_output_values(self, output: str) -> Dict[str, Any]:
+    
+       
+        parsed_data = {}
+        clean_output = output.strip()
+        if not clean_output:
+            return parsed_data
+
+        try:
+            # 1. Thử phân tích dưới dạng Key-Value
+            lines = [line.strip() for line in clean_output.splitlines() if line.strip()]
+            if lines and '=' in clean_output:
+                delimiter = '=' if all('=' in line for line in lines) else None
+                if delimiter:
+                    temp_dict = {
+                        parts[0].strip(): parts[1].strip()
+                        for line in lines
+                        if len(parts := line.split(delimiter, 1)) == 2
+                    }
+                    if temp_dict:
+                        parsed_data.update(temp_dict)
+                        return parsed_data
+            
+            # 2. Thử phân tích dưới dạng các giá trị phân tách bằng dấu cách
+            values = clean_output.split()
+            if len(values) > 1:
+                parsed_data["all_values"] = " ".join(values)
+                for i, val in enumerate(values):
+                    parsed_data[f"value_{i}"] = val
+                return parsed_data
+            
+            # 3. Coi là một giá trị duy nhất
+            parsed_data["single_value"] = clean_output
+            return parsed_data
+        except Exception as e:
+            logging.warning(f"Could not parse command output. Error: {e}. Output: '{clean_output[:100]}'")
+            parsed_data["parse_error"] = str(e)
+            return parsed_data
+
+    def _compare_with_parameters(self, parameters: Dict, parsed_output: Dict[str, Any]) -> bool:
+        print("DEBUG - Rule Parameters:", parameters)
+        print("DEBUG - Parsed Output for Comparison:", parsed_output)
+
+       
+        params_to_check = {k: v for k, v in parameters.items() if k not in ["docs", "note", "description"]}
+        
+      
+        if not params_to_check:
+            return True
+            
+        print("DEBUG - Parameters to Check:", params_to_check)
+        
+        expected_values = list(params_to_check.values())
+
+        print("DEBUG - Expected Values:", expected_values)
+        actual_values = []
+        for key in parsed_output:
+            actual_values.append(parsed_output[key])
+        print("DEBUG - Actual Values:", actual_values)
+        
+
+       
+
+        # Kiểm tra số lượng phần tử
+        if len(actual_values) < len(expected_values):
+            logging.debug(
+                f"Value count mismatch: Not enough values in output. "
+                f"Expected at least {len(expected_values)}, Got {len(actual_values)}"
+            )
+            return False
+            
+        # So sánh từng phần tử theo thứ tự
+        # Chỉ so sánh số lượng phần tử có trong expected_values
+        for i in range(len(expected_values)):
+            if str(actual_values[i]).strip() != str(expected_values[i]).strip():
+                logging.debug(
+                    f"Value mismatch at index {i}: "
+                    f"Expected '{expected_values[i]}', Got '{actual_values[i]}'"
+                )
+                return False
+                
+        logging.debug("All values matched in order. PASSED.")
+        return True

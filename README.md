@@ -21,3 +21,5 @@ Công việc hoàn thành hết ngày 14/08/2025:
   |--------|---------|----------------|-------------|-------------|-------------------|-------------|
   | 1 | file-max | Giới hạn tối đa... | medium | System | {"default_value": "9223372036854775807", "recommended_value": "5000000", "note": "Check lại con số này", "docs": "file-max-docs"} | true |
   | 2 | net.ipv4.tcp_rmem | Tham số quy định... | high | Network | {"min": 4096, "default": 87380, "max": 87380, "unit": "byte", "range": "4096-6291456", "recommended": "4096 87380 56623104"} | true |
+
+- con mot loai tham so nua la tra ve ucredit=-1, dcredit=-1, ...

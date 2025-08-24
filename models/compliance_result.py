@@ -18,6 +18,7 @@ class ComplianceResult(Base):
     created_at = Column(DateTime, default=func.now(), nullable=False)
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
     
+    detail_error = Column(Text, nullable=True)
     # # Relationships
     server = relationship("Server", back_populates="compliance_results")
     

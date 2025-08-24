@@ -9,9 +9,11 @@ class RuleResult(Base):
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     compliance_result_id = Column(Integer, ForeignKey("compliance_results.id"), nullable=False)
     rule_id = Column(Integer, ForeignKey("rules.id"), nullable=False)
-    status = Column(String(20), nullable=False)  # passed, failed, skipped, error
+    rule_name = Column(String(100), nullable=True)
+    status = Column(String(20), nullable=False)  
     message = Column(Text, nullable=True)
-    details = Column(Text, nullable=True)  # JSON string for additional details
+    details = Column(Text, nullable=True)  
+    execution_time = Column(Integer, nullable=True, default=0)  
     created_at = Column(DateTime, default=func.now(), nullable=False)
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
     
