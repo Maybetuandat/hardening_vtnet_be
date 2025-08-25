@@ -151,13 +151,14 @@ class ScanService:
 
     def _execute_rules_with_ansible_runner(
     self, server: Server, rules: List[Rule], compliance_result_id: int
-) -> (List[RuleResult], Optional[str]):
+) -> (List[RuleResult], Optional[str]): # type: ignore
   
         all_rule_results = []
       
-        rules_to_run = {} 
+        rules_to_run = {}   # dict luu tru rule de map nguoc lai voi name 
 
         playbook_tasks = []
+        # duyet qua toan bo rule de tao file playbook ansible -> thuc hien mot lan khong can phai ssh connection nhieu lan 
         for rule in rules:
             start_time = time.time()
             command = self.command_service.get_command_for_rule_excecution(rule.id, server.os_version)
@@ -169,14 +170,13 @@ class ScanService:
                 ))
                 continue
             
-            # Tạo một tên task duy nhất và có thể đoán được
+            
             task_name = f"Execute rule ID {rule.id}: {rule.name}"
             rules_to_run[task_name] = {'rule': rule, 'start_time': start_time}
             
             playbook_tasks.append({
                 'name': task_name, # Dùng tên task đã tạo
                 'shell': command.command_text,
-                'register': f"result_{rule.id}", # Vẫn giữ register để debug nếu cần, nhưng không dùng để ánh xạ
                 'ignore_errors': True
             })
 
@@ -184,7 +184,6 @@ class ScanService:
             return all_rule_results, None
 
         with tempfile.TemporaryDirectory() as private_data_dir:
-            # ... (code tạo inventory và playbook giữ nguyên) ...
             inventory = { 'all': { 'hosts': { server.ip_address: {
                 'ansible_user': server.ssh_user, 'ansible_password': server.ssh_password,
                 'ansible_port': server.ssh_port,
@@ -204,7 +203,7 @@ class ScanService:
             )
             
             all_events = list(runner.events)
-            logging.debug("Ansible Runner Events JSON: %s", json.dumps(all_events, indent=2))
+            # logging.debug("Ansible Runner Events JSON: %s", json.dumps(all_events, indent=2))
             
             if runner.status in ('failed', 'unreachable') or (runner.rc != 0 and not all_events):
                 error_output = runner.stdout.read()
@@ -212,18 +211,17 @@ class ScanService:
                 logging.error(full_error)
                 return [], f"Ansible connection failed: {error_output[:500] or 'Check logs for details'}"
         
-            # Duyệt qua list sự kiện
+            
             for event in all_events:
                 if event['event'] in ('runner_on_ok', 'runner_on_failed'):
                     
-                    # ---- SỬA LỖI LOGIC ÁNH XẠ Ở ĐÂY ----
+                    
                     task_name_from_event = event['event_data'].get('task')
                     if not task_name_from_event:
-                        continue # Bỏ qua các event không có tên task
+                        continue 
 
                     rule_info = rules_to_run.get(task_name_from_event)
                     if not rule_info:
-                        # Log một cảnh báo nếu không tìm thấy, để dễ debug
                         logging.warning(f"Could not map event task '{task_name_from_event}' back to a rule.")
                         continue
                         
@@ -234,7 +232,7 @@ class ScanService:
                     output = task_result.get('stdout', '')
                     error = task_result.get('stderr', '')
                     
-                    # Logic đánh giá không đổi
+                    
                     is_passed = self._evaluate_rule_result(rule_obj, output)
                     
                     status = "passed"
@@ -259,12 +257,9 @@ class ScanService:
         return all_rule_results, None
         
     def _evaluate_rule_result(self, rule: Rule, command_output: str) -> bool:
-        """
-        Đánh giá rule với parameters. Trả về True nếu passed, False nếu failed.
-        """
         print("DEBUG - Command Output:", command_output)
+        # neu khong co tham so mac dinh la thanh cong 
         if not rule.parameters or not isinstance(rule.parameters, dict):
-            # Nếu không có tham số, chỉ cần command thành công (đã kiểm tra rc ở hàm gọi)
             return True
         
         try:

@@ -4,6 +4,7 @@ from sqlalchemy import and_, or_, func
 from typing import Optional, List, Tuple
 from models.compliance_result import ComplianceResult
 from models.rule_result import RuleResult
+from models.server import Server
 from schemas.compliance import ComplianceResultCreate, ComplianceResultUpdate
 
 
@@ -60,22 +61,21 @@ class ComplianceDAO:
     def search_compliance_results(
         self,
         server_id: Optional[int] = None,
-        workload_id: Optional[int] = None,
+        keyword: Optional[str] = None,
         status: Optional[str] = None,
         skip: int = 0,
         limit: int = 10
     ) -> Tuple[List[ComplianceResult], int]:
         query = self.db.query(ComplianceResult)
-        
-        # Filter by server_id
-        if server_id is not None:
+
+        if server_id:
             query = query.filter(ComplianceResult.server_id == server_id)
-        
-        # Filter by workload_id - join với Server table
-        if workload_id is not None:
-            from models.server import Server
-            query = query.join(Server).filter(Server.workload_id == workload_id)
-        
+
+        if keyword and keyword.strip():
+            query = query.join(ComplianceResult.server).filter(
+                func.lower(Server.ip_address).like(f"%{keyword.strip().lower()}%")
+            )
+
         # Filter by status
         if status and status.strip():
             query = query.filter(ComplianceResult.status == status.strip())

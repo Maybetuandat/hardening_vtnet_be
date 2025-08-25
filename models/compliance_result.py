@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, Column, DateTime, Integer, String, Text, func, ForeignKey
+from sqlalchemy import Boolean, Column, DateTime, Integer, Numeric, String, Text, func, ForeignKey
 from config.config_database import Base
 from sqlalchemy.orm import relationship
 
@@ -13,7 +13,9 @@ class ComplianceResult(Base):
     total_rules = Column(Integer, default=0)
     passed_rules = Column(Integer, default=0)
     failed_rules = Column(Integer, default=0)
-    score = Column(Integer, default=0)  # Percentage score
+    
+    score = Column(Numeric(5, 2), default=0.00) 
+
     scan_date = Column(DateTime, default=func.now(), nullable=False)
     created_at = Column(DateTime, default=func.now(), nullable=False)
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)

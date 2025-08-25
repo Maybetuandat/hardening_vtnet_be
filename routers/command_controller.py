@@ -16,6 +16,7 @@ async def get_commands_with_rule_id(rule_id: int, command_service: CommandServic
     return command_service.get_commands_by_rule_id(rule_id)
 
 
+
 @router.post("/", response_model=CommandResponse)
 async def create_command(command_data: CommandCreate, command_service: CommandService = Depends(get_command_service)) -> CommandResponse:
     return command_service.create_command(command_data)

@@ -1,7 +1,9 @@
-# schemas/compliance.py
 from datetime import datetime
+from http import server
 from typing import List, Optional
 from pydantic import BaseModel, Field, validator
+
+from schemas.rule_result import RuleResultResponse
 
 
 class ComplianceResultBase(BaseModel):
@@ -35,38 +37,8 @@ class ComplianceResultResponse(ComplianceResultBase):
         from_attributes = True
 
 
-class RuleResultBase(BaseModel):
-    rule_id: int = Field(..., description="ID của rule")
-    rule_name: Optional[str] = Field(None, description="Tên rule")
-    status: str = Field(..., description="Trạng thái rule: passed, failed, skipped, error")
-    message: Optional[str] = Field(None, description="Thông báo kết quả")
-    details: Optional[str] = Field(None, description="Chi tiết kết quả (JSON string)")
-    execution_time: Optional[int] = Field(None, description="Thời gian thực thi (seconds)")
-
-
-class RuleResultCreate(RuleResultBase):
-    compliance_result_id: int = Field(..., description="ID của compliance result")
-
-
-class RuleResultUpdate(BaseModel):
-    status: Optional[str] = Field(None, description="Trạng thái rule")
-    message: Optional[str] = Field(None, description="Thông báo kết quả")
-    details: Optional[str] = Field(None, description="Chi tiết kết quả")
-    execution_time: Optional[int] = Field(None, description="Thời gian thực thi")
-
-
-class RuleResultResponse(RuleResultBase):
-    id: int
-    compliance_result_id: int
-    created_at: datetime
-    updated_at: datetime
-
-    class Config:
-        from_attributes = True
-
-
 class ComplianceResultDetailResponse(ComplianceResultResponse):
-    rule_results: List[RuleResultResponse] = Field([], description="Danh sách kết quả từng rule")
+    
     server_hostname: Optional[str] = Field(None, description="Hostname của server")
     workload_name: Optional[str] = Field(None, description="Tên workload")
 
@@ -96,8 +68,8 @@ class ComplianceScanResponse(BaseModel):
 
 
 class ComplianceSearchParams(BaseModel):
-    server_id: Optional[int] = Field(None, description="Filter theo server ID")
-    workload_id: Optional[int] = Field(None, description="Filter theo workload ID")
+    server_id: Optional[int] = Field(None, description="ID của server")
+    keyword: Optional[str] = Field(None, description="Từ khóa tìm kiếm theo ip server")
     status: Optional[str] = Field(None, description="Filter theo trạng thái")
     page: int = Field(1, ge=1)
     page_size: int = Field(10, ge=1, le=100)
