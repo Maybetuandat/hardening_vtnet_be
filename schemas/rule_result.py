@@ -1,7 +1,7 @@
-
 from datetime import datetime
 from typing import List, Optional
 from pydantic import BaseModel, Field, validator
+
 class RuleResultBase(BaseModel):
     rule_id: int = Field(..., description="ID của rule")
     rule_name: Optional[str] = Field(None, description="Tên rule")
@@ -9,11 +9,12 @@ class RuleResultBase(BaseModel):
     message: Optional[str] = Field(None, description="Thông báo kết quả")
     details: Optional[str] = Field(None, description="Chi tiết kết quả (JSON string)")
     execution_time: Optional[int] = Field(None, description="Thời gian thực thi (seconds)")
-
+    severity: Optional[str] = Field(None, description="Mức độ nghiêm trọng: high, medium, low, info")
+    output: Optional[str] = Field(None, description="Output của rule")
+    error_message: Optional[str] = Field(None, description="Thông báo lỗi nếu có")
 
 class RuleResultCreate(RuleResultBase):
     compliance_result_id: int = Field(..., description="ID của compliance result")
-
 
 class RuleResultUpdate(BaseModel):
     status: Optional[str] = Field(None, description="Trạng thái rule")
@@ -21,22 +22,21 @@ class RuleResultUpdate(BaseModel):
     details: Optional[str] = Field(None, description="Chi tiết kết quả")
     execution_time: Optional[int] = Field(None, description="Thời gian thực thi")
 
-
 class RuleResultResponse(RuleResultBase):
     id: int
     compliance_result_id: int
     created_at: datetime
     updated_at: datetime
-    
 
     class Config:
         from_attributes = True
 
 class RuleResultListResponse(BaseModel):
-    total_rule_result: int = Field(..., description="Tổng số rule results")
-    items: List[RuleResultResponse] = Field(..., description="Danh sách rule results")
+    results: List[RuleResultResponse] = Field(..., description="Danh sách rule results")
+    total: int = Field(..., description="Tổng số rule results")
     page: int = Field(..., description="Trang hiện tại")
-    size: int = Field(..., description="Số mục trên mỗi trang")
+    page_size: int = Field(..., description="Số mục trên mỗi trang")
     total_pages: int = Field(..., description="Tổng số trang")
+
     class Config:
         from_attributes = True

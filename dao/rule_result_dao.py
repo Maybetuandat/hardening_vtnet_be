@@ -17,19 +17,18 @@ class RuleResultDAO:
             limit: int = 10, 
             keyword: Optional[str] = None, 
             status: Optional[str] = None) -> List[RuleResult]:
+        
+        query = self.db.query(RuleResult).filter(RuleResult.compliance_result_id == compliance_id)
+        
         if keyword:
-            query = query.filter(RuleResult.name.ilike(f"%{keyword}%"))
+            query = query.filter(RuleResult.rule_name.ilike(f"%{keyword}%"))
         if status:
             query = query.filter(RuleResult.status == status)
-        if compliance_id:
-            query = self.db.query(RuleResult).filter(RuleResult.compliance_result_id == compliance_id)
 
         return query.offset(skip).limit(limit).all()
 
     def get_by_id(self, rule_result_id: int) -> Optional[RuleResult]:
         return self.db.query(RuleResult).filter(RuleResult.id == rule_result_id).first()
-   
-
 
     def count_passed_rules(self, compliance_id: int) -> int:
         return self.db.query(func.count(RuleResult.id)).filter(
@@ -38,10 +37,22 @@ class RuleResultDAO:
                 RuleResult.status == 'passed'
             )
         ).scalar()
+    
     def count_by_compliance_id(self, compliance_id: int) -> int:
         return self.db.query(func.count(RuleResult.id)).filter(
             RuleResult.compliance_result_id == compliance_id
         ).scalar()
+    
+    def count_filtered(self, compliance_id: int, keyword: Optional[str] = None, status: Optional[str] = None) -> int:
+        query = self.db.query(func.count(RuleResult.id)).filter(RuleResult.compliance_result_id == compliance_id)
+        
+        if keyword:
+            query = query.filter(RuleResult.rule_name.ilike(f"%{keyword}%"))
+        if status:
+            query = query.filter(RuleResult.status == status)
+            
+        return query.scalar()
+    
     def create(self, rule_result: RuleResult) -> RuleResult:
         try:
             self.db.add(rule_result)

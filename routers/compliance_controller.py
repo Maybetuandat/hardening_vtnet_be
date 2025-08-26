@@ -120,7 +120,7 @@ def delete_compliance_result(
     Xóa kết quả compliance
     """
     try:
-        success = compliance_service.dao.delete(compliance_id)
+        success = compliance_service.delete_compliance_result(compliance_id)
         if not success:
             raise HTTPException(status_code=404, detail="Compliance result không tìm thấy")
         
