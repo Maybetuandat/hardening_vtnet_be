@@ -35,7 +35,7 @@ def get_compliance_results(
     """
     try:
         search_params = ComplianceSearchParams(
-            
+            server_id=server_id,
             keyword=keyword,
             status=status,
             page=page,

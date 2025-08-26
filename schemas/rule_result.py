@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, Field, validator
 
 class RuleResultBase(BaseModel):
@@ -7,11 +7,9 @@ class RuleResultBase(BaseModel):
     rule_name: Optional[str] = Field(None, description="Tên rule")
     status: str = Field(..., description="Trạng thái rule: passed, failed, skipped, error")
     message: Optional[str] = Field(None, description="Thông báo kết quả")
-    details: Optional[str] = Field(None, description="Chi tiết kết quả (JSON string)")
+    details: Optional[str] = Field(None, description="Chi tiết kết quả")
     execution_time: Optional[int] = Field(None, description="Thời gian thực thi (seconds)")
-    severity: Optional[str] = Field(None, description="Mức độ nghiêm trọng: high, medium, low, info")
-    output: Optional[str] = Field(None, description="Output của rule")
-    error_message: Optional[str] = Field(None, description="Thông báo lỗi nếu có")
+    output: Optional[Dict[str, Any]] = Field(None, description="Parsed output từ rule execution")
 
 class RuleResultCreate(RuleResultBase):
     compliance_result_id: int = Field(..., description="ID của compliance result")
@@ -21,6 +19,7 @@ class RuleResultUpdate(BaseModel):
     message: Optional[str] = Field(None, description="Thông báo kết quả")
     details: Optional[str] = Field(None, description="Chi tiết kết quả")
     execution_time: Optional[int] = Field(None, description="Thời gian thực thi")
+    output: Optional[Dict[str, Any]] = Field(None, description="Parsed output từ rule execution")
 
 class RuleResultResponse(RuleResultBase):
     id: int

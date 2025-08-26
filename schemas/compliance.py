@@ -1,4 +1,5 @@
 from datetime import datetime
+from decimal import Decimal
 from http import server
 from typing import List, Optional
 from pydantic import BaseModel, Field, validator
@@ -12,8 +13,15 @@ class ComplianceResultBase(BaseModel):
     total_rules: int = Field(0, description="Tổng số rules của workload")
     passed_rules: int = Field(0, description="Số rules passed")
     failed_rules: int = Field(0, description="Số rules failed")
-    score: int = Field(0, ge=0, le=100, description="Điểm compliance (0-100)")
+    score: float = Field(0, ge=0, le=100, description="Điểm compliance (0-100)")
     server_ip: Optional[str] = Field(None, description="IP của server được scan")
+
+    @validator('score', pre=True)
+    def convert_decimal_to_float(cls, v):
+        
+        if isinstance(v, Decimal):
+            return float(v)
+        return v
 
 
 class ComplianceResultCreate(ComplianceResultBase):
@@ -25,12 +33,18 @@ class ComplianceResultUpdate(BaseModel):
     total_rules: Optional[int] = Field(None, description="Tổng số rules")
     passed_rules: Optional[int] = Field(None, description="Số rules passed")
     failed_rules: Optional[int] = Field(None, description="Số rules failed")
-    score: Optional[int] = Field(None, ge=0, le=100, description="Điểm compliance")
+    score: Optional[float] = Field(None, ge=0, le=100, description="Điểm compliance")
 
+    @validator('score', pre=True)
+    def convert_decimal_to_float(cls, v):
+        
+        if v is not None and isinstance(v, Decimal):
+            return float(v)
+        return v
 
 class ComplianceResultResponse(ComplianceResultBase):
     id: int
-    
+    server_ip: Optional[str] = Field(None, description="IP của server được scan")
     scan_date: datetime
     created_at: datetime
     updated_at: datetime

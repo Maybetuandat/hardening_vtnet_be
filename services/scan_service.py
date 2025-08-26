@@ -231,10 +231,9 @@ class ScanService:
 
                     output = task_result.get('stdout', '')
                     error = task_result.get('stderr', '')
-                    
-                    
-                    is_passed = self._evaluate_rule_result(rule_obj, output)
-                    
+
+
+                    is_passed, parsed_output_dict = self._evaluate_rule_result(rule_obj, output)
                     status = "passed"
                     message = "Rule execution successful"
                     
@@ -251,23 +250,28 @@ class ScanService:
                         status=status,
                         message=message,
                         details=details,
-                        execution_time=execution_time
+                        execution_time=execution_time,
+                        output=parsed_output_dict
+
                     ))
 
         return all_rule_results, None
         
-    def _evaluate_rule_result(self, rule: Rule, command_output: str) -> bool:
-        print("DEBUG - Command Output:", command_output)
-        # neu khong co tham so mac dinh la thanh cong 
+    def _evaluate_rule_result(self, rule: Rule, command_output: str) -> tuple[bool, dict]:
+    
+    
         if not rule.parameters or not isinstance(rule.parameters, dict):
-            return True
+            return True, {} 
         
         try:
             parsed_output = self._parse_output_values(command_output)
-            return self._compare_with_parameters(rule.parameters, parsed_output)
+            is_passed = self._compare_with_parameters(rule.parameters, parsed_output)
+            
+            return is_passed, parsed_output  
+            
         except Exception as e:
             logging.error(f"Error evaluating rule {rule.name}: {str(e)}")
-            return False
+            return False, {"error": str(e)}
 
     def _parse_output_values(self, output: str) -> Dict[str, Any]:
     

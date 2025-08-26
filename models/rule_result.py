@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, Column, DateTime, Integer, String, Text, func, ForeignKey
+from sqlalchemy import JSON, Boolean, Column, DateTime, Integer, String, Text, func, ForeignKey
 from config.config_database import Base
 from sqlalchemy.orm import relationship
 
@@ -16,7 +16,7 @@ class RuleResult(Base):
     execution_time = Column(Integer, nullable=True, default=0)  
     created_at = Column(DateTime, default=func.now(), nullable=False)
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
-    
+    output = Column(JSON, nullable=True)  
     # Relationships
     compliance_result = relationship("ComplianceResult", back_populates="rule_results")
     rule = relationship("Rule", back_populates="rule_results")
