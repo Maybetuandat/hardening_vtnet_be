@@ -24,11 +24,13 @@ def get_scan_service(db: Session = Depends(get_db)) -> ScanService:
 @router.get("/", response_model=ComplianceResultListResponse)
 def get_compliance_results(
     keyword: Optional[str] = Query(None, description="Từ khóa tìm kiếm theo ip server"),
+    
     server_id: Optional[int] = Query(None, description="ID của server"),
     status: Optional[str] = Query(None, description="Filter theo trạng thái"),
     page: int = Query(1, ge=1, description="Số trang"),
     page_size: int = Query(10, ge=1, le=100, description="Số lượng item mỗi trang"),
-    compliance_service: ComplianceResultService = Depends(get_compliance_service)
+    compliance_service: ComplianceResultService = Depends(get_compliance_service),
+    
 ):
     """
     Lấy danh sách kết quả compliance
