@@ -153,6 +153,24 @@ def test_single_connection(
         raise HTTPException(status_code=500, detail=str(e))
     
 
+@router.put("/{server_id}", response_model=ServerResponse)
+def update_server(
+    server_id: int,
+    server_data: ServerUpdate,
+    server_service: ServerService = Depends(get_server_service)
+):
+    """
+    Cập nhật thông tin server bao gồm workload
+    """
+    try:
+        updated_server = server_service.update_server(server_id, server_data)
+        if not updated_server:
+            raise HTTPException(status_code=404, detail="Server không tìm thấy")
+        return updated_server
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 

@@ -12,7 +12,7 @@ from services.server_service import ServerService
 class ConnectionService:
     def __init__(self):
         self.ansible_timeout = 30
-        self.max_forks = 20
+        self.max_forks = 20   # toi da mot luot duoc bao nhieu server
      
 
 
