@@ -14,7 +14,7 @@ class ComplianceResultBase(BaseModel):
     passed_rules: int = Field(0, description="Số rules passed")
     failed_rules: int = Field(0, description="Số rules failed")
     score: float = Field(0, ge=0, le=100, description="Điểm compliance (0-100)")
-    server_ip: Optional[str] = Field(None, description="IP của server được scan")
+   
 
     @validator('score', pre=True)
     def convert_decimal_to_float(cls, v):
@@ -48,7 +48,7 @@ class ComplianceResultResponse(ComplianceResultBase):
     scan_date: datetime
     created_at: datetime
     updated_at: datetime
-
+    server_ip: Optional[str] = Field(None, description="IP của server được scan")
     class Config:
         from_attributes = True
 

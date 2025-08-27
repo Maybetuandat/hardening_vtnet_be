@@ -90,13 +90,7 @@ def start_compliance_scan(
                 detail="Batch size tối đa là 500 servers"
             )
             
-        # Validate server_ids if provided
-        if scan_request.server_ids and len(scan_request.server_ids) > 1000:
-            raise HTTPException(
-                status_code=400,
-                detail="Số lượng server tối đa là 1000"
-            )
-
+   
         result = scan_service.start_compliance_scan(scan_request)
         print("DEBUG result:", result)
         return result

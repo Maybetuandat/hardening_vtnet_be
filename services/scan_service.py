@@ -38,11 +38,11 @@ class ScanService:
         2. quet nhung server co id trong danh sach truyen vao
         """
         try:
-            server_ids = scan_request.server_ids if scan_request.server_ids else []
-            logging.info(f"Starting compliance scan for {len(server_ids)} servers")
-            if server_ids:
+            if scan_request.server_ids :
+                print("DEBUG - Scanning specific servers:", scan_request.server_ids)
                 return self.scan_specific_servers(scan_request)
             else: 
+                print("DEBUG - Scanning all active servers")
                 return self.scan_all_servers(scan_request)
         except Exception as e:
             logging.error(f"Error starting compliance scan: {str(e)}")
