@@ -1,22 +1,25 @@
-# main.py
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import os
 import uvicorn
+import logging
 
+from config.config_database import engine, Base, get_db
 
-from config.config_database import engine, Base
-from models import (
-
-    workload, 
-    server, 
-    rule, 
-    command, 
-    compliance_result, 
-    rule_result
+from routers import (
+    command_controller, 
+    compliance_controller, 
+    dashboard_controller, 
+    rule_controller, 
+    rule_result_controller, 
+    schedule_controller,
+    server_controller, 
+    workload_controller
 )
-from routers import command_controller, compliance_controller, dashboard_controller, rule_controller, rule_result_controller, server_controller, workload_controller
+from services.scheduler_singleton import SchedulerSingleton
+
+
 
 app = FastAPI(
     title="Ansible Security Scan API", 
@@ -30,36 +33,55 @@ load_dotenv()
 @app.on_event("startup")
 async def startup_event():
     try:
-        # Tạo tất cả bảng được định nghĩa trong models
-        # SQLAlchemy sẽ tự động check và chỉ tạo table chưa có
+        # Tạo tất cả bảng
         Base.metadata.create_all(bind=engine)
         print("✅ Database tables initialized successfully!")
         
-        # Optional: Log tables được tạo
         table_names = list(Base.metadata.tables.keys())
         print(f"📋 Available tables: {table_names}")
         
-        # Kiểm tra Ansible installation
+        
+        try:
+            db = next(get_db())
+            scheduler_instance = SchedulerSingleton.start_scheduler(db)
+            
+            # Debug info
+            debug_info = scheduler_instance.get_debug_info()
+            print(f"🔍 Scheduler debug info: {debug_info}")
+            
+        except Exception as scheduler_error:
+            print(f"⚠️ Error starting scheduler: {scheduler_error}")
+            import traceback
+            traceback.print_exc()
+        
+        # Kiểm tra Ansible
         try:
             import subprocess
             result = subprocess.run(['ansible', '--version'], capture_output=True, text=True)
             if result.returncode == 0:
                 print("✅ Ansible is installed and available")
-                print(f"📋 Ansible version: {result.stdout.split()[0]} {result.stdout.split()[1]}")
-            else:
-                print("⚠️ Ansible is not installed or not accessible")
         except FileNotFoundError:
-            print("⚠️ Ansible is not installed. Please install Ansible for full functionality")
+            print("⚠️ Ansible is not installed")
         
     except Exception as e:
         print(f"❌ Error initializing application: {e}")
-        # App vẫn có thể start, chỉ log error
-        pass
+        import traceback
+        traceback.print_exc()
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Cleanup khi tắt app"""
+    try:
+        SchedulerSingleton.stop_scheduler()
+    except Exception as e:
+        print(f"⚠️ Error stopping scheduler: {e}")
+
 
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000"],  # Add more origins as needed
+    allow_origins=["http://localhost:5173", "http://localhost:3000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -70,7 +92,6 @@ PORT = int(os.getenv("SERVER_PORT", 8000))
 RELOAD = os.getenv("SERVER_RELOAD", "False").lower() == "true"
 
 # Include routers
-
 app.include_router(server_controller.router, tags=["Servers"])
 app.include_router(workload_controller.router, tags=["Workloads"])
 app.include_router(rule_controller.router, tags=["Rules"])
@@ -78,6 +99,11 @@ app.include_router(command_controller.router, tags=["Commands"])
 app.include_router(compliance_controller.router, tags=["Compliance"])
 app.include_router(rule_result_controller.router, tags=["Rule Results"])
 app.include_router(dashboard_controller.router, tags=["Dashboard"])
+app.include_router(schedule_controller.router, tags=["Schedule"])
+
+
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host=HOST, port=PORT, reload=RELOAD)

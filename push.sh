@@ -1,3 +1,3 @@
 git add .
-git commit -m "update api for update server with workload"
+git commit -m "update api for auto scan schedule with singleton pattern"
 git push origin main 
