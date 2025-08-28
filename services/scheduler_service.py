@@ -106,7 +106,7 @@ class SchedulerService:
                 id=self.scan_job_id,
                 name=f"Daily Hardening Scan at {scan_time}",
                 replace_existing=True,
-                misfire_grace_time=300  # 5 phút grace time
+                misfire_grace_time=300 
             )
             
             logging.info(f" Scheduled daily hardening scan at {scan_time}")

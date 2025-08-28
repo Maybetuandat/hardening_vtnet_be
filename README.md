@@ -23,3 +23,22 @@ Công việc hoàn thành hết ngày 14/08/2025:
   | 2 | net.ipv4.tcp_rmem | Tham số quy định... | high | Network | {"min": 4096, "default": 87380, "max": 87380, "unit": "byte", "range": "4096-6291456", "recommended": "4096 87380 56623104"} | true |
 
 - con mot loai tham so nua la tra ve ucredit=-1, dcredit=-1, ...
+- Lý thuyết về cách hoạt động của crontab service:
+  thư viện sư dụng: Apscheduler là một thư viện cho phép đặt lịch thực thi hàm tác vụ theo thời gian định trước
+  có 3 thành phần chính:
+- Scheduler: Blocking Scheduler: khi khởi chạy sẽ chặn main thread
+  BackgroundScheduler: chạy ở nền
+  AsyncIOScheduler: asynce
+- trigger có 3 điều kiện chạy:
+  DateTrigger: chạy vào một thời điểm cụ thể
+  IntervalTrigger: chạy lặp lại theo khoảng thời gian
+  CrontabTrigger: chạy giống crontab
+- Khi thêm job, có thể gán:
+
+id: định danh duy nhất.
+
+misfire_grace_time: thời gian cho phép bù nếu lỡ giờ.
+
+max_instances: số lần chạy song song tối đa.
+
+coalesce: gộp nhiều lần chạy bị bỏ lỡ thành một lần.
