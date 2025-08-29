@@ -120,7 +120,7 @@ async def create_workload_with_rules_and_commands(
             rule_create = RuleCreate(
                 name=rule.name,
                 description=rule.description,
-                severity=rule.severity,
+                
                 workload_id=0,  # Sẽ được gán lại trong service
                 parameters=rule.parameters,
                 is_active=rule.is_active
@@ -219,3 +219,23 @@ async def delete_workload(
             detail=f"Lỗi khi xóa workload: {str(e)}"
         )
 
+@router.post("/validate/workload-name/{workload_name}")
+async def validate_workload_name(
+       workload_name: str,
+    db: Session = Depends(get_db)
+):
+    """
+    Kiểm tra tên workload đã tồn tại hay chưa
+    """
+    try:
+        workload_service = WorkloadService(db)
+        exists = workload_service.check_workload_name_exists(workload_name)
+        return {
+            "exists": exists,
+            "message": "Tên workload đã tồn tại" if exists else "Tên workload hợp lệ"
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Lỗi khi kiểm tra tên workload: {str(e)}"
+        )

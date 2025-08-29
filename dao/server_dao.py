@@ -89,6 +89,10 @@ class ServerDAO:
             self.db.rollback()
             raise e
 
+
+    def create_batch(self, servers: List[Server]) -> List[Server]:
+        self.db.add_all(servers)   
+        return servers
     def delete(self, server_id: int) -> bool:
         try:
             server = self.get_by_id(server_id)

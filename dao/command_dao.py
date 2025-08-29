@@ -26,7 +26,7 @@ class CommandDAO:
         for cmd in commands:
             cmd_os = cmd.os_version.strip().lower() if cmd.os_version else ""
             print(f"DEBUG: Comparing '{cmd_os}' with '{target_os}'")
-            if cmd_os == target_os:
+            if target_os.startswith(cmd_os):  
                 print(f"DEBUG: Found matching command: {cmd.id}")
                 return cmd
         

@@ -39,6 +39,7 @@ class ComplianceResultService:
         
         results, total = self.dao.search_compliance_results(
             server_id=search_params.server_id,
+            today=search_params.today,
             keyword=search_params.keyword,
             status=search_params.status,
             skip=skip,

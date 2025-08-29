@@ -117,7 +117,7 @@ class RuleService:
             id=rule.id,
             name=rule.name,
             description=rule.description,
-            severity=rule.severity,
+            
             workload_id=rule.workload_id,
             parameters=rule.parameters,
             is_active=rule.is_active,
@@ -129,9 +129,7 @@ class RuleService:
         if not rule_data.name or not rule_data.name.strip():
             raise ValueError("Tên rule không được để trống")
             
-        if not rule_data.severity or rule_data.severity not in ["low", "medium", "high", "critical"]:
-            raise ValueError("Severity phải là một trong: low, medium, high, critical")
-            
+       
         if rule_data.workload_id and rule_data.workload_id <= 0:
             raise ValueError("Workload ID phải lớn hơn 0")
     
@@ -139,8 +137,7 @@ class RuleService:
         if rule_data.name is not None and (not rule_data.name or not rule_data.name.strip()):
             raise ValueError("Tên rule không được để trống")
             
-        if rule_data.severity is not None and rule_data.severity not in ["low", "medium", "high", "critical"]:
-            raise ValueError("Severity phải là một trong: low, medium, high, critical")
+       
             
         if rule_data.workload_id is not None and rule_data.workload_id <= 0:
             raise ValueError("Workload ID phải lớn hơn 0")

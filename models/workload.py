@@ -15,6 +15,6 @@ class WorkLoad(Base):
     description = Column(Text, nullable=True)
     created_at = Column(DateTime, default=func.now(), nullable=False)
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
-    servers = relationship("Server", back_populates="workload")
+    servers = relationship("Server", back_populates="workload", cascade="all, delete-orphan")
 
     rules = relationship("Rule", back_populates="workload", cascade="all, delete-orphan")

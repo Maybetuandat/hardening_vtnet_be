@@ -11,7 +11,7 @@ from schemas.server import (
     ServerSearchParams
 )
 import math
-
+from sqlalchemy.exc import IntegrityError
 from services.workload_service import WorkloadService
 
 
@@ -169,28 +169,35 @@ class ServerService:
 
 
     def create_servers_batch(self, servers: List[ServerCreate]) -> List[ServerResponse]:
-        created_servers = []
+        server_model_list = []
         for server_data in servers:
-            try:
-                self._validate_server_data(server_data)
+            self._validate_server_data(server_data)
                 
-                if self.dao.check_hostname_exists(server_data.hostname):
-                    raise ValueError(f"Hostname '{server_data.hostname}' đã tồn tại")
+            if self.dao.check_hostname_exists(server_data.hostname):
+                raise ValueError(f"Hostname '{server_data.hostname}' đã tồn tại")
                 
-                if self.dao.check_ip_exists(server_data.ip_address):
-                    raise ValueError(f"IP address '{server_data.ip_address}' đã tồn tại")
-                
-                server_dict = server_data.dict()
-                server_model = Server(**server_dict)
-                
-                created_server = self.dao.create(server_model)
-                created_servers.append(self._convert_to_response(created_server))
-            except ValueError as e:
-                raise ValueError(str(e))
-            except Exception as e:
-                raise Exception(f"Lỗi khi tạo server: {str(e)}")
+            if self.dao.check_ip_exists(server_data.ip_address):
+                raise ValueError(f"IP address '{server_data.ip_address}' đã tồn tại")
+            server_dict = server_data.dict()
+            server_model_list.append(Server(**server_dict))
+        try:
+            created_servers = self.dao.create_batch(server_model_list)
+            self.dao.db.commit()
+            for server in created_servers:
+                self.dao.db.refresh(server)
+            return [self._convert_to_response(server) for server in created_servers]
+        except IntegrityError as e:
+            self.dao.db.rollback()
+            if "hostname" in str(e.orig):
+                raise ValueError("Hostname đã tồn tại")
+            elif "ip_address" in str(e.orig):
+                raise ValueError("IP address đã tồn tại")
+            else:
+                raise ValueError("Dữ liệu không hợp lệ")
+        except Exception as e:
+            self.dao.db.rollback()
+            raise e
         
-        return created_servers
 
     def _convert_to_response(self, server: Server, workload_name: Optional[str] = None) -> ServerResponse:
         return ServerResponse(

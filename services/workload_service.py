@@ -150,7 +150,7 @@ class WorkloadService:
                     id=rule_model.id,
                     name=rule_model.name,
                     description=rule_model.description,
-                    severity=rule_model.severity,
+                    
                     workload_id=rule_model.workload_id,
                     parameters=rule_model.parameters,
                     is_active=rule_model.is_active,
@@ -290,3 +290,10 @@ class WorkloadService:
             return workload.id if workload else None
         except Exception as e:
             raise Exception(f"Lỗi khi lấy workload ID từ name: {str(e)}")
+    def check_workload_name_exists(self, name: str) -> bool:
+        try:
+            if not name or not name.strip():
+                return False
+            return self.dao.check_name_exists(name.strip())
+        except Exception as e:
+            raise Exception(f"Lỗi khi kiểm tra tên workload: {str(e)}")

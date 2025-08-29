@@ -9,7 +9,7 @@ class Rule(Base):
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     name = Column(String(100), nullable=False, index=True)
     description = Column(Text, nullable=True)
-    severity = Column(String(20), nullable=False, default="medium")  # low, medium, high, critical
+    
     workload_id = Column(Integer, ForeignKey("work_loads.id"), nullable=False)    # name o day phai la table 
 
     # Simple JSON parameter storage - can handle any parameter structure

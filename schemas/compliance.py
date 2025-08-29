@@ -84,6 +84,7 @@ class ComplianceScanResponse(BaseModel):
 
 
 class ComplianceSearchParams(BaseModel):
+    today: Optional[str] = Field(None, description="Lọc kết quả của hôm nay")
     server_id: Optional[int] = Field(None, description="ID của server")
     keyword: Optional[str] = Field(None, description="Từ khóa tìm kiếm theo ip server")
     status: Optional[str] = Field(None, description="Filter theo trạng thái")

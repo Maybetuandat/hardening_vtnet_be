@@ -1,3 +1,4 @@
+from datetime import datetime
 from sqlalchemy.orm import Session
 from sqlalchemy import func, desc
 from typing import Dict, Any, Optional
@@ -22,12 +23,17 @@ class DashboardDAO:
     def get_compliance_statistics(self) -> Dict[str, Any]:
         """Lấy thống kê compliance rate và critical issues"""
         try:
-            # Sử dụng SQLAlchemy func.sum() để tính toán trực tiếp trong database
+            today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+            today_end = datetime.now().replace(hour=23, minute=59, second=59, microsecond=999999)
+
             stats_query = self.db.query(
                 func.sum(ComplianceResult.score).label('total_score'),
                 func.count(ComplianceResult.id).label('total_count'),
                 func.sum(ComplianceResult.failed_rules).label('total_critical_issues')
-            ).filter(ComplianceResult.status == 'completed')
+
+            ).filter(ComplianceResult.status == 'completed', 
+                     ComplianceResult.scan_date >= today_start,
+                    ComplianceResult.scan_date <= today_end)
             
             result = stats_query.first()
             

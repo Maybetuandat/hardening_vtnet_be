@@ -10,7 +10,8 @@ from config.config_database import engine, Base, get_db
 from routers import (
     command_controller, 
     compliance_controller, 
-    dashboard_controller, 
+    dashboard_controller,
+    export_controller, 
     rule_controller, 
     rule_result_controller, 
     schedule_controller,
@@ -100,7 +101,7 @@ app.include_router(compliance_controller.router, tags=["Compliance"])
 app.include_router(rule_result_controller.router, tags=["Rule Results"])
 app.include_router(dashboard_controller.router, tags=["Dashboard"])
 app.include_router(schedule_controller.router, tags=["Schedule"])
-
+app.include_router(export_controller.router, tags=["Export"])
 
 
 

@@ -1,4 +1,4 @@
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import and_, or_, func
 from typing import Optional, List, Tuple
@@ -63,53 +63,44 @@ class ComplianceDAO:
         server_id: Optional[int] = None,
         keyword: Optional[str] = None,
         status: Optional[str] = None,
+        today: Optional[str] = None,
         skip: int = 0,
         limit: int = 10
     ) -> Tuple[List[ComplianceResult], int]:
+        
+        today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        today_end = datetime.now().replace(hour=23, minute=59, second=59, microsecond=999999)
+
         query = self.db.query(ComplianceResult)
 
-        # filter by server_id
+        
         if server_id:
             query = query.filter(ComplianceResult.server_id == server_id)
 
-        # filter by keyword (ip or scan_date)
+        
         if keyword and keyword.strip():
             keyword = keyword.strip()
             conditions = []
 
-            # search theo ip
+            
             conditions.append(
                 func.lower(Server.ip_address).like(f"%{keyword.lower()}%")
             )
 
-            # thử parse keyword như date hoặc datetime
-            for fmt in ("%Y-%m-%d %H:%M", "%d/%m/%Y %H:%M", "%Y-%m-%d", "%d/%m/%Y"):
-                try:
-                    date_val = datetime.strptime(keyword, fmt)
-
-                    if "%H:%M" in fmt:
-                        # Nếu có giờ: lọc trong 1 giờ
-                        start = date_val
-                        end = date_val + timedelta(hours=1)
-                    else:
-                        # Nếu chỉ có ngày: lọc trong nguyên ngày
-                        start = date_val
-                        end = date_val + timedelta(days=1)
-
-                    conditions.append(
-                        ComplianceResult.scan_date.between(start, end)
-                    )
-                    break
-                except ValueError:
-                    continue
+           
 
             query = query.join(ComplianceResult.server).filter(or_(*conditions))
 
-        # filter by status
+        
         if status and status.strip():
             query = query.filter(ComplianceResult.status == status.strip())
 
-        # count + paging
+        if today:
+            query = query.filter(
+                ComplianceResult.scan_date >= today_start,
+                ComplianceResult.scan_date <= today_end
+            )
+        
         total = query.count()
         results = (
             query.order_by(ComplianceResult.scan_date.desc())
@@ -119,3 +110,42 @@ class ComplianceDAO:
         )
 
         return results, total
+    
+
+    def get_today_compliance_results(
+        self,
+        server_id: Optional[int] = None,
+        keyword: Optional[str] = None,
+        status: Optional[str] = None
+    ) -> List[ComplianceResult]:
+       
+        today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        today_end = datetime.now().replace(hour=23, minute=59, second=59, microsecond=999999)
+
+        
+        query = self.db.query(ComplianceResult).options(
+            joinedload(ComplianceResult.server).joinedload(Server.workload)
+        ).join(Server)
+
+        
+        query = query.filter(
+            and_(
+                ComplianceResult.scan_date >= today_start,
+                ComplianceResult.scan_date <= today_end
+            )
+        )
+
+        
+        if server_id:
+            query = query.filter(ComplianceResult.server_id == server_id)
+
+        if keyword and keyword.strip():
+            query = query.filter(
+                func.lower(Server.ip_address).like(func.lower(f"%{keyword.strip()}%"))
+            )
+
+        if status:
+            query = query.filter(ComplianceResult.status == status)
+
+        
+        return query.order_by(ComplianceResult.scan_date.desc()).all()
