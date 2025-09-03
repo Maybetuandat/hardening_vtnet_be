@@ -7,7 +7,8 @@ from sqlalchemy.orm import Session
 
 from dao.compliance_dao import ComplianceDAO
 
-from dao.server_dao import ServerDAO
+
+from models import workload
 from models.compliance_result import ComplianceResult
 from models.rule_result import RuleResult
 from schemas.compliance import (
@@ -16,6 +17,7 @@ from schemas.compliance import (
     ComplianceSearchParams, RuleResultResponse
 )
 from services.rule_result_service import RuleResultService
+from services.server_service import ServerService
 from services.workload_service import WorkloadService
 
 
@@ -26,7 +28,7 @@ class ComplianceResultService:
         self.db = db
         self.dao = ComplianceDAO(db)
         self.rule_result_service = RuleResultService(db)
-        self.server_dao = ServerDAO(db)
+        self.server_service = ServerService(db)
         self.workload_service = WorkloadService(db)
 
     
@@ -94,7 +96,7 @@ class ComplianceResultService:
                 return None
                 
             # Get server info
-            server = self.server_dao.get_by_id(compliance_result.server_id)
+            server = self.server_service.get_server_by_id(compliance_result.server_id)
             server_hostname = server.hostname if server else "Unknown"
             
             # Get workload info
@@ -141,7 +143,7 @@ class ComplianceResultService:
             if not compliance_result:
                 return None
                 
-            server = self.server_dao.get_by_id(compliance_result.server_id)
+            server = self.server_service.get_server_by_id(compliance_result.server_id)
             server_hostname = server.hostname if server else "Unknown"
                 
             return {
@@ -317,7 +319,8 @@ class ComplianceResultService:
 
     def _convert_to_response(self, compliance: ComplianceResult) -> ComplianceResultResponse:
         
-        server = self.server_dao.get_by_id(compliance.server_id)
+        server = self.server_service.get_server_by_id(compliance.server_id)
+        workload = self.workload_service.get_workload_by_id(server.workload_id) if server else None
         return ComplianceResultResponse(
             id=compliance.id,
             server_ip=server.ip_address ,
@@ -329,7 +332,8 @@ class ComplianceResultService:
             score=compliance.score,
             scan_date=compliance.scan_date,
             created_at=compliance.created_at,
-            updated_at=compliance.updated_at
+            updated_at=compliance.updated_at,
+            workload_name=workload.name if workload else None,
         )
 
     def _convert_rule_result_to_response(self, rule_result: RuleResult) -> RuleResultResponse:

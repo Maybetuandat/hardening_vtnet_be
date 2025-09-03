@@ -49,6 +49,7 @@ class ComplianceResultResponse(ComplianceResultBase):
     created_at: datetime
     updated_at: datetime
     server_ip: Optional[str] = Field(None, description="IP của server được scan")
+    workload_name: Optional[str] = Field(None, description="Tên workload")
     class Config:
         from_attributes = True
 
