@@ -48,9 +48,7 @@
           "stdin": null
         }
       },
-      "stdout_lines": [
-        "4096\t131072\t6291456"
-      ],
+      "stdout_lines": ["4096\t131072\t6291456"],
       "stderr_lines": [],
       "_ansible_no_log": false
     },

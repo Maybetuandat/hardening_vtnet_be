@@ -7,8 +7,11 @@ import tempfile
 import yaml 
 import ansible_runner 
 from typing import Any, Dict, List, Optional
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import threading
 
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy import create_engine
 from models.rule import Rule
 from models.rule_result import RuleResult
 from models.server import Server
@@ -23,14 +26,15 @@ from services.workload_service import WorkloadService
 class ScanService: 
     def __init__(self, db: Session):
         self.db = db
-        self.server_serivice = ServerService(db)
-        self.compliance_result_service = ComplianceResultService(db)
-        self.workload_service = WorkloadService(db)
-        self.rule_service = RuleService(db)
-        self.command_service = CommandService(db)
-        # Timeout này sẽ được ansible-runner quản lý
-        self.ansible_timeout = 30 
-
+        # Lưu thông tin kết nối database để tạo session mới cho mỗi thread
+        self.db_engine = db.bind
+        self.session_maker = sessionmaker(bind=self.db_engine)
+        
+        # Các service sẽ được khởi tạo trong mỗi thread với session riêng
+        self.ansible_timeout = 30
+        # Số luồng tối đa chạy đồng thời
+        self.max_workers = 10
+        
     def start_compliance_scan(self, scan_request : ComplianceScanRequest) -> ComplianceScanResponse:
         """
         co hai loai chinh: 
@@ -40,142 +44,204 @@ class ScanService:
         try:
             if scan_request.server_ids :
                 print("DEBUG - Scanning specific servers:", scan_request.server_ids)
-                return self.scan_specific_servers(scan_request)
+                return self._scan_servers_by_batch(scan_request, specific_ids=scan_request.server_ids)
             else: 
                 print("DEBUG - Scanning all active servers")
-                return self.scan_all_servers(scan_request)
+                return self._scan_servers_by_batch(scan_request)
         except Exception as e:
             logging.error(f"Error starting compliance scan: {str(e)}")
             raise e
 
-    def scan_all_servers(self, scan_request: ComplianceScanRequest) -> ComplianceScanResponse:
-
-        total_servers = self.server_serivice.count_servers()
-        started_scans = []
-
-        skip = 0
-        limit = scan_request.batch_size
-
-        while skip < total_servers:
-            servers = self.server_serivice.get_active_servers(skip=skip, limit=limit)
-            if not servers:
-                break
+    def _scan_servers_by_batch(self, scan_request: ComplianceScanRequest, specific_ids: Optional[List[int]] = None) -> ComplianceScanResponse:
+            server_service = ServerService(self.db)
             
-            batch_compliance = []
-            for server in servers:
+            started_scans_count = 0 
+            
+            skip = 0
+            limit = scan_request.batch_size 
+
+            
+            while True:
+                servers_in_batch_objects = []
+                if specific_ids:
+                    current_batch_ids = specific_ids[skip: skip + limit]
+                    if not current_batch_ids:
+                        break 
+                    
+                    for server_id in current_batch_ids:
+                        server = server_service.get_server_by_id(server_id)
+                        if server and server.status:
+                            servers_in_batch_objects.append(server)
+                else:
+                    servers_in_batch_objects = server_service.get_active_servers(skip=skip, limit=limit)
+                    if not servers_in_batch_objects:
+                        break 
+
+                
+                if not servers_in_batch_objects:
+                    break
+
+                
+                current_batch_data = []
+                for server in servers_in_batch_objects:
+                    server_data = {
+                        'id': server.id,
+                        'hostname': server.hostname,
+                        'ip_address': server.ip_address, 
+                        'workload_id': server.workload_id,
+                        'os_version': server.os_version,
+                        'ssh_user': server.ssh_user,
+                        'ssh_password': server.ssh_password,
+                        'ssh_port': server.ssh_port,
+                    }
+                    current_batch_data.append(server_data)
+                
+              
+                # cau lenh nay co tac dung tach doi tuong ra khoi session hien tai
+                self.db.expunge_all() 
+                self.db.close() 
+
+                
+                if current_batch_data:
+                    logging.info(f"Processing batch of {len(current_batch_data)} servers (offset={skip})")
+                    # Gọi hàm xử lý đa luồng cho batch này và đợi nó hoàn thành
+                    processed_in_batch = self._process_compliance_scan_batch_threaded(current_batch_data)
+                    started_scans_count += processed_in_batch
+                
+                skip += limit 
+
+                # Sau khi một batch hoàn thành, nếu  muốn tiếp tục vòng lặp,
+                # cần một session mới cho `server_service` để lấy batch tiếp theo.
+                # Cách đơn giản là tạo lại `server_service` hoặc `self.db`
+                # hoặc truyền self.session_maker() vào hàm này.
+                # Để giữ ví dụ đơn giản, ta sẽ khởi tạo lại self.db = self.session_maker()
+                # trong thực tế, bạn nên xem xét cách quản lý session application-wide.
+                self.db = self.session_maker() # Mở một session mới cho vòng lặp tiếp theo
+
+
+            return ComplianceScanResponse(
+                message=f"Đã bắt đầu quá trình quét cho {started_scans_count} servers",
+                total_servers=started_scans_count,
+                started_scans=[] 
+            )
+
+    def _process_compliance_scan_batch_threaded(self, batch_server_data: List[Dict[str, Any]]) -> int:  
+        successful_scans_in_batch = 0
+        with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
+            # Submit tất cả các task trong batch này vào thread pool
+            future_to_server_data = {
+                executor.submit(self._scan_single_server_threaded, server_data): server_data
+                for server_data in batch_server_data
+            }
+            
+            # Đợi tất cả các task trong batch này hoàn thành
+            for future in as_completed(future_to_server_data):
+                server_data = future_to_server_data[future]
                 try:
-                    compliance_result = self.compliance_result_service.create_pending_result(server.id)
-                    batch_compliance.append(compliance_result)
-                    started_scans.append(compliance_result.id)
+                    future.result() 
+                    successful_scans_in_batch += 1
+                    logging.info(f"Server {server_data['hostname']} scan completed successfully within batch.")
                 except Exception as e:
-                    logging.error(f"Error creating pending result for server {server.id}: {str(e)}")
-                    continue
+                    logging.error(f"Server {server_data['hostname']} scan failed within batch: {str(e)}")
             
-            if servers and batch_compliance: 
-                self._process_compliance_scan_batches(servers, batch_compliance)
-            
-            skip += limit
+            logging.info(f"Batch scan completed. Successful: {successful_scans_in_batch}, Failed: {len(batch_server_data) - successful_scans_in_batch}")
+        
+        return successful_scans_in_batch
 
-        return ComplianceScanResponse(
-            message=f"Đã bắt đầu quét {len(started_scans)} servers thành công",
-            total_servers=len(started_scans),
-            started_scans=started_scans
-        )        
-    def scan_specific_servers(self, scan_request: ComplianceScanRequest) -> ComplianceScanResponse:
-        total_servers = len(scan_request.server_ids)
-        started_scans = []
-
-        index = 0
-        while index < total_servers:
-            batch_ids = scan_request.server_ids[index: index + scan_request.batch_size]
-            servers = []
-            batch_compliance = []
-            
-            for server_id in batch_ids:
-                server = self.server_serivice.get_server_by_id(server_id)
-                if server and server.status:
-                    servers.append(server)
-                    try:
-                        compliance_result = self.compliance_result_service.create_pending_result(server.id)
-                        batch_compliance.append(compliance_result)
-                        started_scans.append(compliance_result.id)
-                    except Exception as e:
-                        logging.error(f"Error creating pending result for server {server.id}: {str(e)}")
-                        continue
-            
-            if servers and batch_compliance: 
-                self._process_compliance_scan_batches(servers, batch_compliance)
-            
-            index += scan_request.batch_size
-
-        return ComplianceScanResponse(
-            message=f"Đã bắt đầu quét {len(started_scans)} servers thành công",
-            total_servers=len(started_scans),
-            started_scans=started_scans
-        )
-
-    def _process_compliance_scan_batches(self, servers: List[Server], compliance_results: List[Any]):
-        for server, compliance_result in zip(servers, compliance_results):
-             self.scan_single_server(server, compliance_result)
-
-    def scan_single_server(self, server: Server, compliance_result: Any):
+    def _scan_single_server_threaded(self, server_data: Dict[str, Any]):
+        thread_session = self.session_maker()
+        thread_id = threading.current_thread().ident
+        
+        compliance_result_id = None 
+        
         try:
-            self.compliance_result_service.update_status(compliance_result.id, "running")
-            workload = self.workload_service.get_workload_by_id(server.workload_id)
-
-            if not workload:
-                logging.warning(f"Server {server.hostname} không có workload")
-                self.compliance_result_service.update_status(compliance_result.id, "failed", detail_error="Không có workload")
-                return
-
-            rules = self.rule_service.get_active_rule_by_workload(workload.id)
-            if not rules:
-                logging.warning(f"Workload {workload.name} không có rule nào được kích hoạt")
-                self.compliance_result_service.update_status(compliance_result.id, "failed", detail_error="Không có rule nào được kích hoạt")
-                return
-
+            print(f"DEBUG - Thread {thread_id} scanning server: {server_data}")
+            logging.info(f"Thread {thread_id}: Starting scan for server {server_data['hostname']}")
             
-            rule_results, error_message = self._execute_rules_with_ansible_runner(server, rules, compliance_result.id)
+            compliance_result_service = ComplianceResultService(thread_session)
+            workload_service = WorkloadService(thread_session)
+            rule_service = RuleService(thread_session)
+            command_service = CommandService(thread_session)
+
+            compliance_result = compliance_result_service.create_pending_result(server_data['id'])
+            compliance_result_id = compliance_result.id 
+            thread_session.commit()
+            
+            compliance_result_service.update_status(compliance_result_id, "running")
+            thread_session.commit()
+
+            workload = workload_service.get_workload_by_id(server_data['workload_id'])
+            if not workload:
+                logging.warning(f"Thread {thread_id}: Server {server_data['hostname']} không có workload")
+                compliance_result_service.update_status(compliance_result_id, "failed", detail_error="Không có workload")
+                thread_session.commit()
+                return
+
+            rules = rule_service.get_active_rule_by_workload(workload.id)
+            if not rules:
+                logging.warning(f"Thread {thread_id}: Workload {workload.name} không có rule nào được kích hoạt")
+                compliance_result_service.update_status(compliance_result_id, "failed", detail_error="Không có rule nào được kích hoạt")
+                thread_session.commit()
+                return
+
+            rule_results, error_message = self._execute_rules_with_ansible_runner_threaded(
+                server_data, rules, compliance_result_id, command_service, thread_id
+            )
             
             if error_message:
-                self.compliance_result_service.update_status(compliance_result.id, "failed", detail_error=error_message)
+                compliance_result_service.update_status(compliance_result_id, "failed", detail_error=error_message)
+                thread_session.commit()
                 return
 
-            self.compliance_result_service.complete_result(compliance_result.id, rule_results, len(rules))
-            logging.info(f"Server {server.hostname} scan completed successfully")
+            compliance_result_service.complete_result(compliance_result_id, rule_results, len(rules))
+            thread_session.commit()
+            
+            logging.info(f"Thread {thread_id}: Server {server_data['hostname']} scan completed successfully")
 
         except Exception as e:
-            logging.error(f"Error scanning server {server.id}: {str(e)}")
-            self.compliance_result_service.update_status(compliance_result.id, "failed", detail_error=str(e))
+            thread_session.rollback()
+            logging.error(f"Thread {thread_id}: Error scanning server {server_data['id']}: {str(e)}")
+            if compliance_result_id:
+                try:
+                    temp_session_for_error = self.session_maker() 
+                    temp_compliance_result_service = ComplianceResultService(temp_session_for_error)
+                    temp_compliance_result_service.update_status(compliance_result_id, "failed", detail_error=str(e))
+                    temp_session_for_error.commit()
+                    temp_session_for_error.close()
+                except Exception as update_e:
+                    logging.error(f"Thread {thread_id}: Failed to update error status for server {server_data['id']}: {update_e}")
+            raise 
+        finally:
+            thread_session.close()
 
-
-    def _execute_rules_with_ansible_runner(
-    self, server: Server, rules: List[Rule], compliance_result_id: int
-) -> (List[RuleResult], Optional[str]): # type: ignore
-  
+    def _execute_rules_with_ansible_runner_threaded(
+        self, server_data: Dict[str, Any], rules: List[Rule], compliance_result_id: int, 
+        command_service: CommandService, thread_id: int
+    ) -> (List[RuleResult], Optional[str]): 
+       
         all_rule_results = []
-      
-        rules_to_run = {}   # dict luu tru rule de map nguoc lai voi name 
-
+        rules_to_run = {}
         playbook_tasks = []
-        # duyet qua toan bo rule de tao file playbook ansible -> thuc hien mot lan khong can phai ssh connection nhieu lan 
+
+        logging.info(f"Thread {thread_id}: Preparing {len(rules)} rules for server {server_data['hostname']}")
+
+        # Chuẩn bị playbook tasks
         for rule in rules:
             start_time = time.time()
-            command = self.command_service.get_command_for_rule_excecution(rule.id, server.os_version)
+            command = command_service.get_command_for_rule_excecution(rule.id, server_data['os_version'])
 
             if not command:
                 all_rule_results.append(RuleResult(
                     compliance_result_id=compliance_result_id, rule_id=rule.id, rule_name=rule.name,
-                    status="skipped", message=f"Không có command cho OS {server.os_version}", execution_time=0
+                    status="skipped", message=f"Không có command cho OS {server_data['os_version']}", execution_time=0
                 ))
                 continue
-            
             
             task_name = f"Execute rule ID {rule.id}: {rule.name}"
             rules_to_run[task_name] = {'rule': rule, 'start_time': start_time}
             
             playbook_tasks.append({
-                'name': task_name, # Dùng tên task đã tạo
+                'name': task_name,
                 'shell': command.command_text,
                 'ignore_errors': True
             })
@@ -183,46 +249,51 @@ class ScanService:
         if not playbook_tasks:
             return all_rule_results, None
 
+        # Thực hiện ansible runner
         with tempfile.TemporaryDirectory() as private_data_dir:
-            inventory = { 'all': { 'hosts': { server.ip_address: {
-                'ansible_user': server.ssh_user, 'ansible_password': server.ssh_password,
-                'ansible_port': server.ssh_port,
+            inventory = { 'all': { 'hosts': { server_data['ip_address']: {
+                'ansible_user': server_data['ssh_user'], 'ansible_password': server_data['ssh_password'],
+                'ansible_port': server_data['ssh_port'],
                 'ansible_ssh_common_args': '-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
             }}}}
             inventory_path = os.path.join(private_data_dir, 'inventory.yml')
-            with open(inventory_path, 'w') as f: yaml.dump(inventory, f)
+            with open(inventory_path, 'w') as f: 
+                yaml.dump(inventory, f)
 
             playbook = [{'hosts': 'all', 'gather_facts': False, 'tasks': playbook_tasks}]
             playbook_path = os.path.join(private_data_dir, 'scan_playbook.yml')
-            with open(playbook_path, 'w') as f: yaml.dump(playbook, f)
+            with open(playbook_path, 'w') as f: 
+                yaml.dump(playbook, f)
 
-            logging.info(f"Running single ansible-runner process for {len(playbook_tasks)} rules on {server.hostname}")
+            logging.info(f"Thread {thread_id}: Running ansible-runner for {len(playbook_tasks)} rules on {server_data['hostname']}")
             runner = ansible_runner.run(
-                private_data_dir=private_data_dir, playbook=playbook_path, inventory=inventory_path,
-                quiet=True, cmdline=f'--timeout {self.ansible_timeout}'
+                private_data_dir=private_data_dir, 
+                playbook=playbook_path, 
+                inventory=inventory_path,
+                quiet=True, 
+                cmdline=f'--timeout {self.ansible_timeout}'
             )
             
             all_events = list(runner.events)
-            # logging.debug("Ansible Runner Events JSON: %s", json.dumps(all_events, indent=2))
             
             if runner.status in ('failed', 'unreachable') or (runner.rc != 0 and not all_events):
                 error_output = runner.stdout.read()
-                full_error = f"Ansible run failed for {server.hostname}. Status: {runner.status}, RC: {runner.rc}. Output: {error_output}"
+                full_error = f"Thread {thread_id}: Ansible run failed for {server_data['hostname']}. Status: {runner.status}, RC: {runner.rc}. Output: {error_output}"
                 logging.error(full_error)
                 return [], f"Ansible connection failed: {error_output[:500] or 'Check logs for details'}"
         
-            
+            # Xử lý kết quả
             for event in all_events:
                 if event['event'] in ('runner_on_ok', 'runner_on_failed'):
-                    
-                    
+
+                    print(f"DEBUG - Thread Event {thread_id} Event: {event}")  
                     task_name_from_event = event['event_data'].get('task')
                     if not task_name_from_event:
                         continue 
 
                     rule_info = rules_to_run.get(task_name_from_event)
                     if not rule_info:
-                        logging.warning(f"Could not map event task '{task_name_from_event}' back to a rule.")
+                        logging.warning(f"Thread {thread_id}: Could not map event task '{task_name_from_event}' back to a rule.")
                         continue
                         
                     task_result = event['event_data']['res']
@@ -231,7 +302,6 @@ class ScanService:
 
                     output = task_result.get('stdout', '')
                     error = task_result.get('stderr', '')
-
 
                     is_passed, parsed_output_dict = self._evaluate_rule_result(rule_obj, output)
                     status = "passed"
@@ -252,14 +322,13 @@ class ScanService:
                         details=details,
                         execution_time=execution_time,
                         output=parsed_output_dict
-
                     ))
 
+        
         return all_rule_results, None
         
     def _evaluate_rule_result(self, rule: Rule, command_output: str) -> tuple[bool, dict]:
-    
-    
+       
         if not rule.parameters or not isinstance(rule.parameters, dict):
             return True, {} 
         
@@ -274,9 +343,9 @@ class ScanService:
             return False, {"error": str(e)}
 
     def _parse_output_values(self, output: str) -> Dict[str, Any]:
-    
-       
+      
         parsed_data = {}
+        print(f"DEBUG - Raw command output: '{output}'")
         clean_output = output.strip()
         if not clean_output:
             return parsed_data
@@ -313,28 +382,24 @@ class ScanService:
             return parsed_data
 
     def _compare_with_parameters(self, parameters: Dict, parsed_output: Dict[str, Any]) -> bool:
+      
         print("DEBUG - Rule Parameters:", parameters)
         print("DEBUG - Parsed Output for Comparison:", parsed_output)
 
-       
         params_to_check = {k: v for k, v in parameters.items() if k not in ["docs", "note", "description"]}
         
-      
         if not params_to_check:
             return True
             
         print("DEBUG - Parameters to Check:", params_to_check)
         
         expected_values = list(params_to_check.values())
-
         print("DEBUG - Expected Values:", expected_values)
+        
         actual_values = []
         for key in parsed_output:
             actual_values.append(parsed_output[key])
         print("DEBUG - Actual Values:", actual_values)
-
-
-       
 
         # Kiểm tra số lượng phần tử
         if len(actual_values) < len(expected_values):
@@ -345,7 +410,6 @@ class ScanService:
             return False
             
         # So sánh từng phần tử theo thứ tự
-        # Chỉ so sánh số lượng phần tử có trong expected_values
         for i in range(len(expected_values)):
             if str(actual_values[i]).strip() != str(expected_values[i]).strip():
                 logging.debug(
