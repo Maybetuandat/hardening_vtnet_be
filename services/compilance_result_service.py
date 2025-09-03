@@ -1,3 +1,4 @@
+import asyncio
 import keyword
 import logging
 import math
@@ -16,6 +17,8 @@ from schemas.compliance import (
     ComplianceResultDetailResponse, ComplianceResultListResponse,
     ComplianceSearchParams, RuleResultResponse
 )
+from services.notification_service import notification_service
+
 from services.rule_result_service import RuleResultService
 from services.server_service import ServerService
 from services.workload_service import WorkloadService
@@ -261,15 +264,44 @@ class ComplianceResultService:
             compliance_result.passed_rules = rules_passed
             compliance_result.failed_rules = rules_failed
             compliance_result.score = int((rules_passed / total_rules * 100) if total_rules > 0 else 0)
-            
             self.dao.update(compliance_result)
+            print(f"✅ About to send notification for compliance {compliance_id}")
+            self._notify_completion_async(compliance_result)
+            print(f"✅ Finished calling notification method for compliance {compliance_id}")
             return True
         except Exception as e:
             logging.error(f"Error completing compliance result {compliance_id}: {str(e)}")
             return False
 
     
-
+    def _notify_completion_async(self, compliance_result):
+        """Send async notification to frontend"""
+        try:
+            # Get server info for notification
+            print("da goi")
+            server = self.server_service.get_server_by_id(compliance_result.server_id)
+            workload = self.workload_service.get_workload_by_id(server.workload_id) if server else None
+            
+            notification_data = {
+                "id": compliance_result.id,
+                "server_id": compliance_result.server_id,
+                "server_ip": server.ip_address if server else None,
+                "server_hostname": server.hostname if server else None,
+                "workload_name": workload.name if workload else None,
+                "status": compliance_result.status,
+                "total_rules": compliance_result.total_rules,
+                "passed_rules": compliance_result.passed_rules,
+                "failed_rules": compliance_result.failed_rules,
+                "score": float(compliance_result.score) if compliance_result.score else 0,
+                "scan_date": compliance_result.scan_date.isoformat(),
+                "updated_at": compliance_result.updated_at.isoformat()
+            }
+            
+            # Send notification async
+            notification_service.notify_compliance_completed_sync(notification_data)
+            
+        except Exception as e:
+            logging.error(f"Error sending completion notification: {str(e)}")
     def delete_compliance_result(self, compliance_id: int) -> bool:
         """Xóa compliance result"""
         try:
@@ -298,7 +330,7 @@ class ComplianceResultService:
             return False
 
     def cancel_running_scan_by_server(self, server_id: int) -> bool:
-        """Cancel scan đang chạy cho server"""
+        
         try:
             running_result = self.db.query(ComplianceResult).filter(
                 ComplianceResult.server_id == server_id,
