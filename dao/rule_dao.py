@@ -24,10 +24,13 @@ class RuleDAO:
     def search_rules(
             self, 
             keyword: Optional[str] = None,
+            workload_id: Optional[int] = None,
             skip : int = 0,
             limit : int = 10
     ) -> Tuple[List[Rule], int]:
         query = self.db.query(Rule)
+        if workload_id is not None and workload_id > 0:
+            query = query.filter(Rule.workload_id == workload_id)
         if keyword and keyword.strip():
             query = query.filter(
                 Rule.name.ilike(f"%{keyword.strip()}%")

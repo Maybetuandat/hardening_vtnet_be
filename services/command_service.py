@@ -38,7 +38,7 @@ class CommandService:
     def get_command_for_rule_excecution(self, rule_id: int, os_version: str) -> Command:
         if rule_id <= 0 or not os_version or not os_version.strip():
             return None
-        command = self.command_dao.get_by_rule_id_and_os_version(rule_id, os_version.strip().lower())
+        command = self.command_dao.get_command_active_by_rule_id_and_os_version(rule_id, os_version.strip().lower())
         if command:
             return command
         

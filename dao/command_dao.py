@@ -11,13 +11,13 @@ class CommandDAO:
     
 
 
-    def get_by_rule_id_and_os_version(self, rule_id: int, os_version: str) -> Command:
+    def get_command_active_by_rule_id_and_os_version(self, rule_id: int, os_version: str) -> Command:
         print("DEBUG get_by_rule_id_and_os_version:", rule_id, os_version)
         
         
         commands = (
             self.db.query(Command)
-            .filter(Command.rule_id == rule_id)
+            .filter(Command.rule_id == rule_id, Command.is_active == True)
             .all()
         )
         

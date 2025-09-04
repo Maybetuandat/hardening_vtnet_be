@@ -29,21 +29,14 @@ class RuleService:
         page_size = max(1, min(100, search_params.page_size))
             
         skip = (page - 1) * page_size
-        if search_params.workload_id is not None:
-            print("Fetching rules for workload ID:", search_params.workload_id)
-            rules, total = self.rule_dao.get_rules_with_workload_id(
+    
+        rules, total = self.rule_dao.search_rules(
                 workload_id=search_params.workload_id,
-                skip=skip,
-                limit=page_size
-            )
-        else:
-            print("Fetching rules with keyword:", search_params.keyword)
-            rules, total = self.rule_dao.search_rules(
                 keyword=search_params.keyword,
-                
                 skip=skip,
                 limit=page_size
-            )
+        )
+        
         total_pages = math.ceil(total / page_size) if total > 0 else 0
         
         rule_responses = []
