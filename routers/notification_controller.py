@@ -10,19 +10,18 @@ from services.notification_service import notification_service
 router = APIRouter(prefix="/api/notifications", tags=["Notifications"])
 
 def custom_json_serializer(obj):
-    """Custom JSON serializer for SQLAlchemy objects"""
     if isinstance(obj, Decimal):
         return float(obj)
     raise TypeError(f"Object of type {obj.__class__.__name__} is not JSON serializable")
-# routers/notification_controller.py
 @router.get("/stream")
 async def compliance_notifications_stream(request: Request):
-    """SSE endpoint để frontend lắng nghe realtime notifications"""
+    
     
     async def event_stream():
         client_queue = asyncio.Queue()
         
         try:
+            # khi goi den url se thuc hien them client vao danh sach
             await notification_service.add_client(client_queue)
             
             # Send initial connection message
@@ -33,17 +32,17 @@ async def compliance_notifications_stream(request: Request):
                     break
                 
                 try:
-                    # 🔥 THÊM: Process queued notifications from background threads
                     await notification_service.process_queued_notifications()
                     
-                    # Wait for message with shorter timeout
+                    
                     message = await asyncio.wait_for(client_queue.get(), timeout=5.0)
                     
-                    # Send message
+                    
+                    # function send data to frontend 
                     yield f"data: {json.dumps(message, default=custom_json_serializer)}\n\n"
                     
                 except asyncio.TimeoutError:
-                    # Send heartbeat
+                    
                     yield f"data: {json.dumps({'type': 'heartbeat', 'timestamp': str(asyncio.get_event_loop().time())})}\n\n"
                     
                 except Exception as e:

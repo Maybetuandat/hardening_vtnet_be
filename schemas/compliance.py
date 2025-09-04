@@ -73,7 +73,7 @@ class ComplianceResultListResponse(BaseModel):
 
 class ComplianceScanRequest(BaseModel):
     server_ids: Optional[List[int]] = Field(None, description="Danh sách server IDs cụ thể cần scan (None = scan all servers)")
-    batch_size: int = Field(100, ge=1, le=500, description="Số server mỗi batch")
+    batch_size: int = Field(10, ge=1, le=50, description="Số server mỗi batch")
 
  
 

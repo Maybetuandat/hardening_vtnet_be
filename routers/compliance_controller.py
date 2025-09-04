@@ -85,10 +85,10 @@ def start_compliance_scan(
     """
     try:
         # Validate batch_size
-        if scan_request.batch_size > 500:
+        if scan_request.batch_size > 50:
             raise HTTPException(
                 status_code=400, 
-                detail="Batch size tối đa là 500 servers"
+                detail="Batch size tối đa là 50 servers"
             )
             
    

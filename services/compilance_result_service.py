@@ -265,9 +265,9 @@ class ComplianceResultService:
             compliance_result.failed_rules = rules_failed
             compliance_result.score = int((rules_passed / total_rules * 100) if total_rules > 0 else 0)
             self.dao.update(compliance_result)
-            print(f"✅ About to send notification for compliance {compliance_id}")
+            
             self._notify_completion_async(compliance_result)
-            print(f"✅ Finished calling notification method for compliance {compliance_id}")
+            
             return True
         except Exception as e:
             logging.error(f"Error completing compliance result {compliance_id}: {str(e)}")
@@ -275,10 +275,10 @@ class ComplianceResultService:
 
     
     def _notify_completion_async(self, compliance_result):
-        """Send async notification to frontend"""
+        
         try:
-            # Get server info for notification
-            print("da goi")
+        
+        
             server = self.server_service.get_server_by_id(compliance_result.server_id)
             workload = self.workload_service.get_workload_by_id(server.workload_id) if server else None
             
@@ -297,13 +297,13 @@ class ComplianceResultService:
                 "updated_at": compliance_result.updated_at.isoformat()
             }
             
-            # Send notification async
+            
             notification_service.notify_compliance_completed_sync(notification_data)
             
         except Exception as e:
             logging.error(f"Error sending completion notification: {str(e)}")
     def delete_compliance_result(self, compliance_id: int) -> bool:
-        """Xóa compliance result"""
+        
         try:
             return self.dao.delete(compliance_id)
         except Exception as e:
@@ -313,7 +313,7 @@ class ComplianceResultService:
     
 
     def cancel_compliance_scan(self, compliance_id: int) -> bool:
-        """Hủy compliance scan đang chạy"""
+        
         try:
             compliance_result = self.dao.get_by_id(compliance_id)
             if not compliance_result:
