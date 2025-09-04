@@ -1,5 +1,6 @@
 
 import asyncio
+from datetime import datetime
 import json
 import logging
 from decimal import Decimal
@@ -12,7 +13,10 @@ router = APIRouter(prefix="/api/notifications", tags=["Notifications"])
 def custom_json_serializer(obj):
     if isinstance(obj, Decimal):
         return float(obj)
-    raise TypeError(f"Object of type {obj.__class__.__name__} is not JSON serializable")
+    if isinstance(obj, datetime):
+        return obj.isoformat()
+    return str(obj)
+    
 @router.get("/stream")
 async def compliance_notifications_stream(request: Request):
     

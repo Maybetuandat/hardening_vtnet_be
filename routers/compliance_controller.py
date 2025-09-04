@@ -4,7 +4,7 @@ from typing import Optional
 
 from config.config_database import get_db
 from schemas.compliance import (
-    ComplianceResultResponse, ComplianceResultDetailResponse,
+    ComplianceResultResponse, 
     ComplianceResultListResponse, ComplianceScanRequest,
     ComplianceScanResponse, ComplianceSearchParams
 )
@@ -52,7 +52,7 @@ def get_compliance_results(
 
 
 
-@router.get("/{compliance_id}", response_model=ComplianceResultDetailResponse)
+@router.get("/{compliance_id}", response_model=ComplianceResultResponse)
 def get_compliance_result_detail(
     compliance_id: int,
     compliance_service: ComplianceResultService = Depends(get_compliance_service)

@@ -11,11 +11,4 @@ class DashboardStatsResponse(BaseModel):
     
     class Config:
         from_attributes = True
-        json_schema_extra = {
-            "example": {
-                "total_nodes": 247,
-                "compliance_rate": 78.5,
-                "critical_issues": 12,
-                "last_audit": "2024-01-30 14:32:00"
-            }
-        }
+       

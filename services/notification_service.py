@@ -21,15 +21,11 @@ class SSENotificationService:
             self._clients.discard(client_queue)
             logging.info(f"SSE client disconnected. Remaining clients: {len(self._clients)}")
     
-    def notify_compliance_completed_sync(self, compliance_result_data: Dict):
-        message = {
-            "type": "compliance_completed",
-            "data": compliance_result_data,
-            "timestamp": compliance_result_data.get("updated_at")
-        }
+    def notify_compliance_completed_sync(self, message: Dict):
+       
         
         self._notification_queue.put(message)
-        logging.info(f"Queued notification for compliance {compliance_result_data.get('id')}")
+        
     
     async def process_queued_notifications(self):
         while True:

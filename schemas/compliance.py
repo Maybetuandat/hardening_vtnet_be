@@ -14,7 +14,7 @@ class ComplianceResultBase(BaseModel):
     passed_rules: int = Field(0, description="Số rules passed")
     failed_rules: int = Field(0, description="Số rules failed")
     score: float = Field(0, ge=0, le=100, description="Điểm compliance (0-100)")
-   
+    detail_error: Optional[str] = Field(None, description="Chi tiết lỗi nếu có")
 
     @validator('score', pre=True)
     def convert_decimal_to_float(cls, v):
@@ -50,14 +50,12 @@ class ComplianceResultResponse(ComplianceResultBase):
     updated_at: datetime
     server_ip: Optional[str] = Field(None, description="IP của server được scan")
     workload_name: Optional[str] = Field(None, description="Tên workload")
+    server_hostname: Optional[str] = Field(None, description="Hostname của server")
     class Config:
         from_attributes = True
 
 
-class ComplianceResultDetailResponse(ComplianceResultResponse):
-    
-    server_hostname: Optional[str] = Field(None, description="Hostname của server")
-    workload_name: Optional[str] = Field(None, description="Tên workload")
+
 
 
 class ComplianceResultListResponse(BaseModel):

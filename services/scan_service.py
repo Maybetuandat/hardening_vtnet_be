@@ -31,7 +31,7 @@ class ScanService:
         self.session_maker = sessionmaker(bind=self.db_engine)
         
         # Các service sẽ được khởi tạo trong mỗi thread với session riêng
-        self.ansible_timeout = 30
+        self.ansible_timeout = 5
         # Số luồng tối đa chạy đồng thời
         self.max_workers = 10
         
