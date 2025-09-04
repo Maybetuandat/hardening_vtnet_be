@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import List, Optional, Any
+from typing import Dict, List, Literal, Optional, Any
 from pydantic import BaseModel, Field, validator
 
 class RuleBase(BaseModel):
@@ -54,3 +54,15 @@ class WorkloadRuleCreate(BaseModel):
     description: Optional[str] = Field(None, description="Mô tả về rule")
     parameters: Optional[dict] = Field(None, description="Tham số của rule dưới dạng JSON")
     is_active: bool = Field(True, description="Trạng thái hoạt động của rule")
+class RuleCheckResult(BaseModel):
+    
+    name: str = Field(..., description="Tên rule")
+    description: Optional[str] = Field(None, description="Mô tả rule")
+    workload_id: int = Field(..., description="ID workload")
+    parameters: Optional[Dict[str, Any]] = Field(None, description="Parameters JSON key-value")
+    is_active: bool = Field(..., description="Trạng thái active")
+    is_duplicate: bool = Field(..., description="Rule có trùng lặp không")
+    duplicate_reason: Optional[Literal['name', 'parameter_hash']] = Field(None, description="Lý do trùng lặp")
+
+    class Config:
+        from_attributes = True

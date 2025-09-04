@@ -2,7 +2,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from config.config_database import get_db
-from schemas.rule import RuleCreate, RuleListResponse, RuleResponse, RuleSearchParams
+from schemas.rule import RuleCheckResult, RuleCreate, RuleListResponse, RuleResponse, RuleSearchParams
 from services.rule_service import RuleService
 
 router = APIRouter(prefix="/api/rules", tags=["Rules"])
@@ -64,5 +64,18 @@ async def delete_rule(rule_id: int, rule_service: RuleService = Depends(get_rule
             "success": True,
             "message": "Rule deleted successfully"
         }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+@router.post("/check-existence", response_model=List[RuleCheckResult])
+async def check_rules_existence(
+    workload_id: int,
+    rules: List[RuleCreate],
+    rule_service: RuleService = Depends(get_rule_service)
+) -> List[RuleCheckResult]:
+    try:
+        results = rule_service.check_rules_existence_in_workload(workload_id, rules)
+        return results
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=str(ve))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

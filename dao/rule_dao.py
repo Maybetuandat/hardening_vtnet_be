@@ -66,13 +66,11 @@ class RuleDAO:
         except Exception as e :
             self.db.rollback()
             raise e
-    def get_rules_with_workload_id(
-            self, 
-            workload_id: int, 
-            skip: int = 0, 
-            limit: int = 10
-    ) -> Tuple[List[Rule], int]:
-        query = self.db.query(Rule).filter(Rule.workload_id == workload_id)
-        total = query.count()
-        rules = query.offset(skip).limit(limit).all()
-        return rules, total
+    def get_rules_by_workload(self, workload_id: int) -> List[Rule]:
+        try:
+            return self.db.query(Rule).filter(
+                Rule.workload_id == workload_id,
+                Rule.is_active == True
+            ).all()
+        except Exception as e:
+            raise Exception(f"Lỗi khi lấy rules từ database: {str(e)}")

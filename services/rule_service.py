@@ -1,5 +1,6 @@
+import json
 from sqlalchemy.orm import Session
-from typing import Optional, List
+from typing import Dict, Optional, List
 from dao.rule_dao import RuleDAO
 from models.rule import Rule
 from schemas.rule import RuleCreate, RuleUpdate, RuleResponse, RuleListResponse, RuleSearchParams
@@ -129,8 +130,88 @@ class RuleService:
     def _validate_rule_update_data(self, rule_data: RuleUpdate) -> None:
         if rule_data.name is not None and (not rule_data.name or not rule_data.name.strip()):
             raise ValueError("Tên rule không được để trống")
-            
-       
-            
+             
         if rule_data.workload_id is not None and rule_data.workload_id <= 0:
             raise ValueError("Workload ID phải lớn hơn 0")
+   
+
+    def check_rules_existence_in_workload(self, workload_id: int, rules_to_check: List[RuleCreate]) -> List[Dict]:
+        
+        try:
+            
+            if workload_id <= 0:
+                raise ValueError("Workload ID phải lớn hơn 0")
+            
+            if not rules_to_check or len(rules_to_check) == 0:
+                return []
+            
+            
+            existing_rules = self.rule_dao.get_rules_by_workload(workload_id)
+            
+            
+            existing_names = set()
+            existing_param_hashes = set()
+            
+            for existing_rule in existing_rules:
+               
+                existing_names.add(existing_rule.name.lower().strip())
+                
+               
+                param_hash = self._create_parameter_hash(existing_rule.parameters)
+                if param_hash:
+                    existing_param_hashes.add(param_hash)
+            
+            
+            results = []
+            
+            for rule_input in rules_to_check:
+                rule_name = rule_input.name.lower().strip()
+                rule_parameters = rule_input.parameters
+                
+                is_duplicate = False
+                duplicate_reason = None
+                
+                # Kiểm tra trùng tên
+                if rule_name in existing_names:
+                    is_duplicate = True
+                    duplicate_reason = 'name'
+                
+                # Kiểm tra trùng hash parameter )
+                if not is_duplicate:
+                    input_param_hash = self._create_parameter_hash(rule_parameters)
+                    if input_param_hash in existing_param_hashes:
+                        is_duplicate = True
+                        duplicate_reason = 'parameter_hash'
+                
+                
+                result = {
+                    'name': rule_input.name,
+                    'description': rule_input.description,
+                    'parameters': rule_input.parameters,
+                    'workload_id': rule_input.workload_id,
+                    'is_active': rule_input.is_active,
+                    'is_duplicate': is_duplicate,
+                    'duplicate_reason': duplicate_reason
+                }
+                
+                results.append(result)
+            
+            return results
+            
+        except ValueError as ve:
+            raise ve
+        except Exception as e:
+            raise Exception(f"Lỗi khi kiểm tra rule existence: {str(e)}")
+
+    def _create_parameter_hash(self, parameters):
+       
+        if not parameters:
+            return None
+        
+        try:
+            normalized_json = json.dumps(parameters, sort_keys=True, separators=(',', ':'))
+            return normalized_json
+            
+        except (json.JSONDecodeError, TypeError):
+            
+            return str(parameters)
