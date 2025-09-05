@@ -12,11 +12,6 @@ class ComplianceDAO:
     def __init__(self, db: Session):
         self.db = db
 
-    def get_all(self, skip: int = 0, limit: int = 10) -> Tuple[List[ComplianceResult], int]:
-        query = self.db.query(ComplianceResult)
-        total = query.count()
-        results = query.offset(skip).limit(limit).all()
-        return results, total
 
     def get_by_id(self, compliance_id: int) -> Optional[ComplianceResult]:
         return self.db.query(ComplianceResult).filter(ComplianceResult.id == compliance_id).first()

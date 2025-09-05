@@ -65,12 +65,4 @@ class WorkLoadDAO:
             raise e
     def check_name_exists(self, name: str) -> bool:
         return self.db.query(WorkLoad).filter(WorkLoad.name == name).count() > 0
-    def get_all_names(self) -> List[str]:
-        """
-        Lấy danh sách tất cả workload names
-        """
-        try:
-            result = self.db.query(WorkLoad.name).all()
-            return [row[0] for row in result]
-        except Exception as e:
-            raise e
+    

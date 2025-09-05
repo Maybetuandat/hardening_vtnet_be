@@ -79,15 +79,7 @@ class ComplianceResultService:
         self.dao.update(compliance_result)
         
 
-    def get_compliance_result_by_id(self, compliance_id: int) -> Optional[ComplianceResultResponse]:
-        try:
-            compliance_result = self.dao.get_by_id(compliance_id)
-            if not compliance_result:
-                return None
-            return self._convert_to_response(compliance_result)
-        except Exception as e:
-            logging.error(f"Error getting compliance result {compliance_id}: {str(e)}")
-            return None
+  
 
     def get_compliance_result_detail(self, compliance_id: int) -> Optional[ComplianceResultResponse]:
         try:
@@ -100,51 +92,11 @@ class ComplianceResultService:
             logging.error(f"Error getting compliance result detail {compliance_id}: {str(e)}")
             return None
 
-    def get_server_compliance_history(self, server_id: int, limit: int = 10) -> List[ComplianceResultResponse]:
-        try:
-            results, _ = self.dao.search_compliance_results(server_id=server_id, skip=0, limit=limit)
-            return [self._convert_to_response(result) for result in results]
-        except Exception as e:
-            logging.error(f"Error getting server compliance history: {str(e)}")
-            return []
+   
 
-    def get_compliance_status(self, compliance_id: int) -> Optional[Dict[str, Any]]:
-        try:
-            compliance_result = self.dao.get_by_id(compliance_id)
-            if not compliance_result:
-                return None
-                
-            server = self.server_service.get_server_by_id(compliance_result.server_id)
-            server_hostname = server.hostname if server else "Unknown"
-                
-            return {
-                "id": compliance_result.id,
-                "server_id": compliance_result.server_id,
-                "server_hostname": server_hostname,
-                "status": compliance_result.status,
-                "progress": {
-                    "total_rules": compliance_result.total_rules,
-                    "passed_rules": compliance_result.passed_rules,
-                    "failed_rules": compliance_result.failed_rules,
-                    "score": compliance_result.score
-                },
-                "scan_date": compliance_result.scan_date.isoformat(),
-                "updated_at": compliance_result.updated_at.isoformat()
-            }
-        except Exception as e:
-            logging.error(f"Error getting compliance status {compliance_id}: {str(e)}")
-            return None
+   
 
-    def get_pending_result_by_server(self, server_id: int) -> Optional[ComplianceResult]:
-        try:
-            return self.db.query(ComplianceResult).filter(
-                ComplianceResult.server_id == server_id,
-                ComplianceResult.status == "pending"
-            ).first()
-        except Exception as e:
-            logging.error(f"Error getting pending result for server {server_id}: {str(e)}")
-            return None
-
+  
     
 
     def create_pending_result(self, server_id: int) -> ComplianceResult:
@@ -165,15 +117,7 @@ class ComplianceResultService:
             logging.error(f"Error creating pending result for server {server_id}: {str(e)}")
             raise e
 
-    def create_compliance_result(self, compliance_data: ComplianceResultCreate) -> ComplianceResult:
-        try:
-            compliance_dict = compliance_data.dict()
-            compliance_model = ComplianceResult(**compliance_dict)
-            return self.dao.create(compliance_model)
-        except Exception as e:
-            logging.error(f"Error creating compliance result: {str(e)}")
-            raise e
-
+   
     
 
     def update_status(self, compliance_id: int, status: str, detail_error: Optional[str] = None) -> bool:
@@ -192,23 +136,7 @@ class ComplianceResultService:
             logging.error(f"Error updating compliance result status {compliance_id}: {str(e)}")
             return False
 
-    def update_compliance_result(self, compliance_id: int, update_data: ComplianceResultUpdate) -> Optional[ComplianceResult]:
-        
-        try:
-            compliance_result = self.dao.get_by_id(compliance_id)
-            if not compliance_result:
-                return None
-            
-            # Update các fields có trong update_data
-            update_dict = update_data.dict(exclude_unset=True)
-            for field, value in update_dict.items():
-                if hasattr(compliance_result, field) and value is not None:
-                    setattr(compliance_result, field, value)
-            
-            return self.dao.update(compliance_result)
-        except Exception as e:
-            logging.error(f"Error updating compliance result {compliance_id}: {str(e)}")
-            return None
+  
 
     def complete_result(self, compliance_id: int, rule_results: List[RuleResult], total_rules: int) -> bool:
         """Complete compliance result sau khi scan xong"""
@@ -265,41 +193,9 @@ class ComplianceResultService:
 
     
 
-    def cancel_compliance_scan(self, compliance_id: int) -> bool:
-        
-        try:
-            compliance_result = self.dao.get_by_id(compliance_id)
-            if not compliance_result:
-                return False
-                
-            if compliance_result.status not in ["running", "pending"]:
-                return False
-                
-            compliance_result.status = "cancelled"
-            self.dao.update(compliance_result)
-            return True
-        except Exception as e:
-            logging.error(f"Error cancelling compliance scan {compliance_id}: {str(e)}")
-            return False
+   
 
-    def cancel_running_scan_by_server(self, server_id: int) -> bool:
-        
-        try:
-            running_result = self.db.query(ComplianceResult).filter(
-                ComplianceResult.server_id == server_id,
-                ComplianceResult.status.in_(["running", "pending"])
-            ).first()
-            
-            if not running_result:
-                return False
-            
-            running_result.status = "cancelled"
-            self.dao.update(running_result)
-            return True
-        except Exception as e:
-            logging.error(f"Error cancelling scan for server {server_id}: {str(e)}")
-            return False
-
+   
    
 
     def _convert_to_response(self, compliance: ComplianceResult) -> ComplianceResultResponse:

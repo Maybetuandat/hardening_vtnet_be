@@ -52,7 +52,7 @@ class RuleSearchParams(BaseModel):
     
     
 class WorkloadRuleCreate(BaseModel):
-    """Rule create không cần workload_id vì sẽ được gán tự động"""
+    
     name: str = Field(..., max_length=100, description="Tên của rule")
     description: Optional[str] = Field(None, description="Mô tả về rule")
     parameters: Optional[dict] = Field(None, description="Tham số của rule dưới dạng JSON")

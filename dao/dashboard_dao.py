@@ -13,7 +13,6 @@ class DashboardDAO:
         self.db = db
     
     def get_total_active_servers(self) -> int:
-        """Lấy tổng số server đang hoạt động"""
         try:
             return self.db.query(Server).filter(Server.status == True).count()
         except Exception as e:
@@ -21,7 +20,6 @@ class DashboardDAO:
             return 0
     
     def get_compliance_statistics(self) -> Dict[str, Any]:
-        """Lấy thống kê compliance rate và critical issues"""
         try:
             today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
             today_end = datetime.now().replace(hour=23, minute=59, second=59, microsecond=999999)
@@ -37,14 +35,14 @@ class DashboardDAO:
             
             result = stats_query.first()
             
-            # Kiểm tra nếu không có dữ liệu
+            
             if not result or result.total_count == 0 or result.total_score is None:
                 return {
                     "compliance_rate": 0.0,
                     "critical_issues": 0
                 }
             
-            # Tính compliance rate: tổng điểm / tổng số lượng records
+            
             compliance_rate = round(float(result.total_score) / float(result.total_count), 1)
             critical_issues = int(result.total_critical_issues or 0)
             
@@ -61,7 +59,6 @@ class DashboardDAO:
             }
     
     def get_last_audit_time(self) -> Optional[str]:
-        """Lấy thời gian audit gần nhất"""
         try:
             latest_result = self.db.query(ComplianceResult)\
                 .filter(ComplianceResult.status == 'completed')\
@@ -77,7 +74,6 @@ class DashboardDAO:
             return None
     
     def get_dashboard_statistics(self) -> Dict[str, Any]:
-        """Lấy tất cả thống kê cho dashboard"""
         try:
             total_nodes = self.get_total_active_servers()
             compliance_stats = self.get_compliance_statistics()

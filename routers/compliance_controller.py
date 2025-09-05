@@ -32,9 +32,7 @@ def get_compliance_results(
     compliance_service: ComplianceResultService = Depends(get_compliance_service),
     
 ):
-    """
-    Lấy danh sách kết quả compliance
-    """
+   
     try:
         search_params = ComplianceSearchParams(
             server_id=server_id,
@@ -57,9 +55,7 @@ def get_compliance_result_detail(
     compliance_id: int,
     compliance_service: ComplianceResultService = Depends(get_compliance_service)
 ):
-    """
-    Lấy chi tiết kết quả compliance bao gồm rule results
-    """
+   
     try:
         result = compliance_service.get_compliance_result_detail(compliance_id)
         if not result:
@@ -76,13 +72,7 @@ def start_compliance_scan(
     scan_request: ComplianceScanRequest,
     scan_service: ScanService = Depends(get_scan_service)
 ):
-    """
-    Bắt đầu quét compliance cho servers theo batch
-    
-    - server_ids: Danh sách server IDs cụ thể (None = scan all servers)
-    
-    - batch_size: Số servers mỗi batch (default: 100, max: 500)
-    """
+   
     try:
         # Validate batch_size
         if scan_request.batch_size > 50:
@@ -113,9 +103,7 @@ def delete_compliance_result(
     compliance_id: int,
     compliance_service: ComplianceResultService = Depends(get_compliance_service)
 ):
-    """
-    Xóa kết quả compliance
-    """
+   
     try:
         success = compliance_service.delete_compliance_result(compliance_id)
         if not success:
