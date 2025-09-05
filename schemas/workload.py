@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import List, Optional
 from pydantic import BaseModel, Field
 
-from schemas.command import CommandCreate, WorkloadCommandCreate
+
 from schemas.rule import RuleCreate, WorkloadRuleCreate
 
 
@@ -42,4 +42,4 @@ class WorkLoadSearchParams(BaseModel):
 class WorkloadWithRulesAndCommandsRequest(BaseModel):
     workload: WorkLoadCreate
     rules: List[WorkloadRuleCreate]
-    commands: List[WorkloadCommandCreate]
+    

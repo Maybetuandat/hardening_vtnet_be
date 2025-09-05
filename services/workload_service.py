@@ -2,10 +2,10 @@ from sqlalchemy.orm import Session
 from typing import Optional, List
 from dao.workload_dao import WorkLoadDAO
 from services.rule_service import RuleService
-from services.command_service import CommandService
+
 from models.workload import WorkLoad
 from models.rule import Rule
-from models.command import Command
+
 from schemas.workload import (
     WorkLoadCreate, 
     WorkLoadUpdate, 
@@ -14,7 +14,7 @@ from schemas.workload import (
     WorkLoadSearchParams
 )
 from schemas.rule import RuleCreate, RuleResponse
-from schemas.command import CommandCreate, CommandResponse
+
 import math
 
 class WorkloadService:
@@ -22,7 +22,7 @@ class WorkloadService:
         self.dao = WorkLoadDAO(db)
         self.db = db
         self.rule_service = RuleService(db)
-        self.command_service = CommandService(db)
+        
     
     def get_all_workloads(self, page: int = 1, page_size: int = 10) -> WorkLoadListResponse:
         if page < 1:
@@ -112,7 +112,7 @@ class WorkloadService:
         self, 
         workload_data: WorkLoadCreate, 
         rules_data: List[RuleCreate], 
-        commands_data: List[CommandCreate]
+        
     ) -> dict:
         """
         Tạo workload cùng với danh sách rules và commands
@@ -159,38 +159,7 @@ class WorkloadService:
                 )
                 created_rules.append(rule_response)
             
-            # 3. Tạo commands cho từng rule
-            created_commands = []
-            for command_data in commands_data:
-                # Xử lý rule_id cho command
-                if hasattr(command_data, 'rule_index') and command_data.rule_index is not None:
-                    # neu co rule index, thi gan id vao command 
-                    if 0 <= command_data.rule_index < len(created_rules):
-                        command_data.rule_id = created_rules[command_data.rule_index].id
-                    else:
-                        raise ValueError(f"Rule index {command_data.rule_index} không hợp lệ. Chỉ có {len(created_rules)} rules.")
-                else:
-                    raise ValueError("Không có rule nào để gán cho command")
-                
-                # Tạo command model - loại bỏ rule_index trước khi tạo
-                command_dict = command_data.dict()
-                # Loại bỏ rule_index vì Command model không có field này
-                command_dict.pop('rule_index', None)
-                command_model = Command(**command_dict)
-                self.db.add(command_model)
-                self.db.flush()  # Để lấy ID
-                
-                # Convert to response
-                command_response = CommandResponse(
-                    id=command_model.id,
-                    rule_id=command_model.rule_id,
-                    os_version=command_model.os_version,
-                    command_text=command_model.command_text,
-                    is_active=command_model.is_active,
-                    created_at=command_model.created_at,
-                    updated_at=command_model.updated_at
-                )
-                created_commands.append(command_response)
+          
             
             # Commit tất cả changes
             self.db.commit()
@@ -198,7 +167,7 @@ class WorkloadService:
             return {
                 "workload": self._convert_to_response(workload_model),
                 "rules": created_rules,
-                "commands": created_commands,
+                
                 "message": "Tạo workload với rules và commands thành công"
             }
             
