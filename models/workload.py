@@ -17,4 +17,5 @@ class WorkLoad(Base):
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
     servers = relationship("Server", back_populates="workload", cascade="all, delete-orphan")
 
+    os_version = Column(String(50), nullable=False)
     rules = relationship("Rule", back_populates="workload", cascade="all, delete-orphan")

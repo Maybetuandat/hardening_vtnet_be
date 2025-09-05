@@ -24,27 +24,48 @@ class DashboardDAO:
             today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
             today_end = datetime.now().replace(hour=23, minute=59, second=59, microsecond=999999)
 
-            stats_query = self.db.query(
+            # Query cho completed results để tính compliance rate
+            completed_stats_query = self.db.query(
                 func.sum(ComplianceResult.score).label('total_score'),
-                func.count(ComplianceResult.id).label('total_count'),
-                func.sum(ComplianceResult.failed_rules).label('total_critical_issues')
-
-            ).filter(ComplianceResult.status == 'completed', 
-                     ComplianceResult.scan_date >= today_start,
-                    ComplianceResult.scan_date <= today_end)
+                func.count(ComplianceResult.id).label('total_count')
+            ).filter(
+                ComplianceResult.status == 'completed', 
+                ComplianceResult.scan_date >= today_start,
+                ComplianceResult.scan_date <= today_end
+            )
             
-            result = stats_query.first()
+            completed_result = completed_stats_query.first()
             
+            # Query để tính tổng failed_rules từ tất cả ComplianceResult
+            failed_rules_query = self.db.query(
+                func.sum(ComplianceResult.failed_rules).label('total_failed_rules')
+            ).filter(
+                ComplianceResult.scan_date >= today_start,
+                ComplianceResult.scan_date <= today_end
+            )
             
-            if not result or result.total_count == 0 or result.total_score is None:
-                return {
-                    "compliance_rate": 0.0,
-                    "critical_issues": 0
-                }
+            failed_rules_result = failed_rules_query.first()
             
+            # Query để đếm số ComplianceResult có status = 'failed'
+            failed_compliance_query = self.db.query(
+                func.count(ComplianceResult.id).label('failed_compliance_count')
+            ).filter(
+                ComplianceResult.status == 'failed',
+                ComplianceResult.scan_date >= today_start,
+                ComplianceResult.scan_date <= today_end
+            )
             
-            compliance_rate = round(float(result.total_score) / float(result.total_count), 1)
-            critical_issues = int(result.total_critical_issues or 0)
+            failed_compliance_result = failed_compliance_query.first()
+            
+            # Tính compliance_rate từ completed results
+            compliance_rate = 0.0
+            if completed_result and completed_result.total_count > 0 and completed_result.total_score is not None:
+                compliance_rate = round(float(completed_result.total_score) / float(completed_result.total_count), 1)
+            
+            # Tính critical_issues = số failed_rules + số ComplianceResult failed
+            total_failed_rules = int(failed_rules_result.total_failed_rules or 0) if failed_rules_result else 0
+            failed_compliance_count = int(failed_compliance_result.failed_compliance_count or 0) if failed_compliance_result else 0
+            critical_issues = total_failed_rules + failed_compliance_count
             
             return {
                 "compliance_rate": compliance_rate,

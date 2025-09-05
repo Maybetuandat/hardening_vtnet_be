@@ -9,6 +9,7 @@ from schemas.rule import RuleCreate, WorkloadRuleCreate
 class WorkLoadBase(BaseModel):
     name : str = Field(..., max_length=100, description="Tên của workload")
     description: Optional[str] = Field(None, description="Mô tả về workload")
+    os_version: str = Field(..., max_length=50, description="Phiên bản hệ điều hành")
 class WorkLoadCreate(WorkLoadBase):
     pass
 class WorkLoadUpdate(WorkLoadBase):
