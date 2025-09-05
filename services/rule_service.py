@@ -111,7 +111,7 @@ class RuleService:
             id=rule.id,
             name=rule.name,
             description=rule.description,
-            
+            command=rule.command,
             workload_id=rule.workload_id,
             parameters=rule.parameters,
             is_active=rule.is_active,

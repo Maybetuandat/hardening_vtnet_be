@@ -1,5 +1,6 @@
 from datetime import datetime
 from typing import Dict, List, Literal, Optional, Any
+from click import command
 from pydantic import BaseModel, Field, validator
 
 class RuleBase(BaseModel):
@@ -8,6 +9,7 @@ class RuleBase(BaseModel):
     workload_id: int = Field(..., description="ID của workload")
     parameters: Optional[Any] = Field(None, description="Tham số của rule dưới dạng JSON")
     is_active: bool = Field(True, description="Trạng thái hoạt động của rule")
+    command: str = Field(..., description="Lệnh shell hoặc script để kiểm tra rule")
 
   
 
@@ -20,6 +22,7 @@ class RuleUpdate(BaseModel):
     workload_id: Optional[int] = Field(None, description="ID của workload")
     parameters: Optional[Any] = Field(None, description="Tham số của rule dưới dạng JSON")
     is_active: Optional[bool] = Field(None, description="Trạng thái hoạt động của rule")
+    command: Optional[str] = Field(None, description="Lệnh shell hoặc script để kiểm tra rule")
 
     
 
@@ -66,3 +69,6 @@ class RuleCheckResult(BaseModel):
 
     class Config:
         from_attributes = True
+class RuleExistenceCheckRequest(BaseModel):
+    workload_id: int
+    rules: List[RuleCreate]

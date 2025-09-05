@@ -17,7 +17,7 @@ from models.rule_result import RuleResult
 from models.server import Server
 
 from schemas.compliance import ComplianceScanRequest, ComplianceScanResponse
-from services.command_service import CommandService
+
 from services.compilance_result_service import ComplianceResultService
 from services.rule_service import RuleService
 from services.server_service import ServerService
@@ -110,13 +110,8 @@ class ScanService:
                 
                 skip += limit 
 
-                # Sau khi một batch hoàn thành, nếu  muốn tiếp tục vòng lặp,
-                # cần một session mới cho `server_service` để lấy batch tiếp theo.
-                # Cách đơn giản là tạo lại `server_service` hoặc `self.db`
-                # hoặc truyền self.session_maker() vào hàm này.
-                # Để giữ ví dụ đơn giản, ta sẽ khởi tạo lại self.db = self.session_maker()
-                # trong thực tế, bạn nên xem xét cách quản lý session application-wide.
-                self.db = self.session_maker() # Mở một session mới cho vòng lặp tiếp theo
+               
+                self.db = self.session_maker()
 
 
             return ComplianceScanResponse(
@@ -161,7 +156,7 @@ class ScanService:
             compliance_result_service = ComplianceResultService(thread_session)
             workload_service = WorkloadService(thread_session)
             rule_service = RuleService(thread_session)
-            command_service = CommandService(thread_session)
+            
 
             compliance_result = compliance_result_service.create_pending_result(server_data['id'])
             compliance_result_id = compliance_result.id 
@@ -185,7 +180,7 @@ class ScanService:
                 return
 
             rule_results, error_message = self._execute_rules_with_ansible_runner_threaded(
-                server_data, rules, compliance_result_id, command_service, thread_id
+                server_data, rules, compliance_result_id,  thread_id
             )
             
             if error_message:
@@ -216,7 +211,7 @@ class ScanService:
 
     def _execute_rules_with_ansible_runner_threaded(
         self, server_data: Dict[str, Any], rules: List[Rule], compliance_result_id: int, 
-        command_service: CommandService, thread_id: int
+         thread_id: int
     ) -> (List[RuleResult], Optional[str]): 
        
         all_rule_results = []
@@ -228,28 +223,19 @@ class ScanService:
         # Chuẩn bị playbook tasks
         for rule in rules:
             start_time = time.time()
-            command = command_service.get_command_for_rule_excecution(rule.id, server_data['os_version'])
-
-            if not command:
-                all_rule_results.append(RuleResult(
-                    compliance_result_id=compliance_result_id, rule_id=rule.id, rule_name=rule.name,
-                    status="skipped", message=f"Không có command cho OS {server_data['os_version']}", execution_time=0
-                ))
-                continue
-            
             task_name = f"Execute rule ID {rule.id}: {rule.name}"
             rules_to_run[task_name] = {'rule': rule, 'start_time': start_time}
             
             playbook_tasks.append({
                 'name': task_name,
-                'shell': command.command_text,
+                'shell': rule.command,
                 'ignore_errors': True
             })
 
         if not playbook_tasks:
             return all_rule_results, None
 
-        # Thực hiện ansible runner
+        
         with tempfile.TemporaryDirectory() as private_data_dir:
             inventory = { 'all': { 'hosts': { server_data['ip_address']: {
                 'ansible_user': server_data['ssh_user'], 'ansible_password': server_data['ssh_password'],

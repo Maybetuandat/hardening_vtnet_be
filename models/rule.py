@@ -1,3 +1,4 @@
+from click import command
 from sqlalchemy import Boolean, Column, DateTime, Integer, String, Text, func, ForeignKey, JSON
 from config.config_database import Base
 from sqlalchemy.orm import relationship
@@ -10,10 +11,11 @@ class Rule(Base):
     name = Column(String(100), nullable=False, index=True)
     description = Column(Text, nullable=True)
     
-    workload_id = Column(Integer, ForeignKey("work_loads.id"), nullable=False)    # name o day phai la table 
+    workload_id = Column(Integer, ForeignKey("work_loads.id"), nullable=False)
 
-    # Simple JSON parameter storage - can handle any parameter structure
-    parameters = Column(JSON, nullable=True)  # Store all parameters as simple JSON
+    command=Column(Text, nullable=False)
+    
+    parameters = Column(JSON, nullable=True)  
     
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=func.now(), nullable=False) 

@@ -13,7 +13,7 @@ from schemas.workload import (
     WorkloadWithRulesAndCommandsRequest
 )
 from schemas.rule import RuleCreate
-from schemas.command import CommandCreate
+
 from pydantic import BaseModel, Field
 from typing import Optional
 
@@ -102,47 +102,29 @@ async def create_workload_with_rules_and_commands(
     request: WorkloadWithRulesAndCommandsRequest,
     db: Session = Depends(get_db)
 ):
-    """
-    Tạo workload cùng với rules và commands
-    Thực hiện rollback nếu có lỗi xảy ra trong quá trình tạo
-    
-    Lưu ý:
-    - workload_id sẽ được gán tự động cho các rules
-    - rule_id sẽ được gán tự động cho các commands dựa trên rule_index
-    - rule_index là chỉ số của rule trong danh sách rules (bắt đầu từ 0)
-    """
+   
     try:
         workload_service = WorkloadService(db)
         
-        # Convert WorkloadRuleCreate thành RuleCreate
+        
         rules_data = []
         for rule in request.rules:
             rule_create = RuleCreate(
                 name=rule.name,
                 description=rule.description,
                 
-                workload_id=0,  # Sẽ được gán lại trong service
+                workload_id=0, 
                 parameters=rule.parameters,
                 is_active=rule.is_active
             )
             rules_data.append(rule_create)
         
-        # Convert WorkloadCommandCreate thành CommandCreate
-        commands_data = []
-        for command in request.commands:
-            command_create = CommandCreate(
-                rule_id=0,  # Sẽ được gán lại trong service
-                rule_index=command.rule_index,
-                os_version=command.os_version,
-                command_text=command.command_text,
-                is_active=command.is_active
-            )
-            commands_data.append(command_create)
+       
         
         result = workload_service.create_workload_with_rules_and_commands(
             workload_data=request.workload,
             rules_data=rules_data,
-            commands_data=commands_data
+            
         )
         return {
             "success": True,
