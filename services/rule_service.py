@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from typing import Dict, Optional, List
 from dao.rule_dao import RuleDAO
 from models.rule import Rule
-from schemas.rule import RuleCreate, RuleUpdate, RuleResponse, RuleListResponse, RuleSearchParams
+from schemas.rule import RuleCheckResult, RuleCreate, RuleUpdate, RuleResponse, RuleListResponse, RuleSearchParams
 import math
 
 class RuleService:
@@ -135,7 +135,7 @@ class RuleService:
             raise ValueError("Workload ID phải lớn hơn 0")
    
 
-    def check_rules_existence_in_workload(self, workload_id: int, rules_to_check: List[RuleCreate]) -> List[Dict]:
+    def check_rules_existence_in_workload(self, workload_id: int, rules_to_check: List[RuleCreate]) -> List[RuleCheckResult]:
         
         try:
             
@@ -146,7 +146,7 @@ class RuleService:
                 return []
             
             
-            existing_rules = self.rule_dao.get_rules_by_workload(workload_id)
+            existing_rules = self.rule_dao.get_active_rules_by_workload_id(workload_id)
             
             
             existing_names = set()
@@ -183,16 +183,17 @@ class RuleService:
                         is_duplicate = True
                         duplicate_reason = 'parameter_hash'
                 
+                result = RuleCheckResult(
+                    name=rule_input.name,
+                    description=rule_input.description,
+                    parameters=rule_input.parameters,
+                    workload_id=rule_input.workload_id,
+                    is_active=rule_input.is_active,
+                    is_duplicate=is_duplicate,
+                    duplicate_reason=duplicate_reason, 
+                    command=rule_input.command
+                )
                 
-                result = {
-                    'name': rule_input.name,
-                    'description': rule_input.description,
-                    'parameters': rule_input.parameters,
-                    'workload_id': rule_input.workload_id,
-                    'is_active': rule_input.is_active,
-                    'is_duplicate': is_duplicate,
-                    'duplicate_reason': duplicate_reason
-                }
                 
                 results.append(result)
             

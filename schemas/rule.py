@@ -66,6 +66,7 @@ class RuleCheckResult(BaseModel):
     is_active: bool = Field(..., description="Trạng thái active")
     is_duplicate: bool = Field(..., description="Rule có trùng lặp không")
     duplicate_reason: Optional[Literal['name', 'parameter_hash']] = Field(None, description="Lý do trùng lặp")
+    command: str = Field(..., description="Lệnh shell hoặc script để kiểm tra rule")
 
     class Config:
         from_attributes = True

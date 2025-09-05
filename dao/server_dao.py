@@ -83,7 +83,7 @@ class ServerDAO:
         except Exception as e:
             self.db.rollback()
             raise e
-
+    
 
     def create_batch(self, servers: List[Server]) -> List[Server]:
         self.db.add_all(servers)   

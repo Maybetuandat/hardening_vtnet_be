@@ -82,9 +82,9 @@ def start_compliance_scan(
             )
             
    
-        result = scan_service.start_compliance_scan(scan_request)
-        print("DEBUG result:", result)
-        return result
+        return scan_service.start_compliance_scan(scan_request)
+        
+        
         
     except HTTPException:
         raise

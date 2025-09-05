@@ -84,17 +84,8 @@ class ScanService:
                 
                 current_batch_data = []
                 for server in servers_in_batch_objects:
-                    server_data = {
-                        'id': server.id,
-                        'hostname': server.hostname,
-                        'ip_address': server.ip_address, 
-                        'workload_id': server.workload_id,
-                        'os_version': server.os_version,
-                        'ssh_user': server.ssh_user,
-                        'ssh_password': server.ssh_password,
-                        'ssh_port': server.ssh_port,
-                    }
-                    current_batch_data.append(server_data)
+                    server_dict = self.convert_server_model_to_dict(server)
+                    current_batch_data.append(server_dict)
                 
               
                 # cau lenh nay co tac dung tach doi tuong ra khoi session hien tai
@@ -120,6 +111,26 @@ class ScanService:
                 started_scans=[] 
             )
 
+    def convert_server_dict_to_model(self, data: Dict[str, Any]):
+        if not data:
+            return None
+        return Server(**data)
+
+    def convert_server_model_to_dict(self, server) -> Dict[str, Any]:
+        if not server:
+            return {}
+        return {
+            "id": server.id,
+            "hostname": server.hostname,
+            "ip_address": server.ip_address,
+            "ssh_user": server.ssh_user,
+            "ssh_password": server.ssh_password,
+            "ssh_port": server.ssh_port,
+            "workload_id": server.workload_id,
+            "status": server.status,
+            "created_at": server.created_at.isoformat() if server.created_at else None,
+            "updated_at": server.updated_at.isoformat() if server.updated_at else None
+        }
     def _process_compliance_scan_batch_threaded(self, batch_server_data: List[Dict[str, Any]]) -> int:  
         successful_scans_in_batch = 0
         with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
@@ -151,12 +162,12 @@ class ScanService:
         
         try:
             print(f"DEBUG - Thread {thread_id} scanning server: {server_data}")
-            logging.info(f"Thread {thread_id}: Starting scan for server {server_data['hostname']}")
+            
             
             compliance_result_service = ComplianceResultService(thread_session)
             workload_service = WorkloadService(thread_session)
             rule_service = RuleService(thread_session)
-            
+            server_service = ServerService(thread_session)
 
             compliance_result = compliance_result_service.create_pending_result(server_data['id'])
             compliance_result_id = compliance_result.id 
@@ -185,13 +196,18 @@ class ScanService:
             
             if error_message:
                 compliance_result_service.update_status(compliance_result_id, "failed", detail_error=error_message)
+                
+                server_service.update_status(server_data['id'], False)
+
                 thread_session.commit()
+                
                 return
 
             compliance_result_service.complete_result(compliance_result_id, rule_results, len(rules))
             thread_session.commit()
             
             logging.info(f"Thread {thread_id}: Server {server_data['hostname']} scan completed successfully")
+            
 
         except Exception as e:
             thread_session.rollback()

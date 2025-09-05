@@ -1,5 +1,6 @@
 from typing import List, Optional
 from venv import create
+from sqlalchemy import Boolean
 from sqlalchemy.orm import Session
 from dao.server_dao import ServerDAO
 from models.server import Server
@@ -62,6 +63,41 @@ class ServerService:
             page_size=page_size,
             total_pages=total_pages
         )
+    
+    def update(self, server: Server) -> Server:
+        try:
+            updated_server = self.dao.update(server)
+            print("Server Updated", updated_server)
+            return updated_server
+        except IntegrityError as e:
+            self.dao.db.rollback()
+            if "hostname" in str(e.orig):
+                raise ValueError("Hostname đã tồn tại")
+            elif "ip_address" in str(e.orig):
+                raise ValueError("IP address đã tồn tại")
+            else:
+                raise ValueError("Dữ liệu không hợp lệ")
+        except Exception as e:
+            self.dao.db.rollback()
+            raise e
+
+    def update_status(self, id : int, status: Boolean):
+        try:
+            server = self.dao.get_by_id(id)
+            server.status = status
+            update_server = self.dao.update(server)
+            return update_server
+        except IntegrityError as e:
+            self.dao.db.rollback()
+            if "hostname" in str(e.orig):
+                raise ValueError("Hostname đã tồn tại")
+            elif "ip_address" in str(e.orig):
+                raise ValueError("IP address đã tồn tại")
+            else:
+                raise ValueError("Dữ liệu không hợp lệ")
+        except Exception as e:
+            self.dao.db.rollback()
+            raise e
 
     def create_server(self, server_data: ServerCreate) -> ServerResponse:
         try:
