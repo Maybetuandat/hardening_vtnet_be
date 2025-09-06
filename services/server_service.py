@@ -32,8 +32,7 @@ class ServerService:
         if server:
             return self._convert_to_response(server)
         return None
-    def count_servers(self) -> int:
-        return self.dao.count_servers()
+   
 
     def search_servers(self, search_params: ServerSearchParams) -> ServerListResponse:
         page = max(1, search_params.page)
@@ -64,22 +63,7 @@ class ServerService:
             total_pages=total_pages
         )
     
-    def update(self, server: Server) -> Server:
-        try:
-            updated_server = self.dao.update(server)
-            print("Server Updated", updated_server)
-            return updated_server
-        except IntegrityError as e:
-            self.dao.db.rollback()
-            if "hostname" in str(e.orig):
-                raise ValueError("Hostname đã tồn tại")
-            elif "ip_address" in str(e.orig):
-                raise ValueError("IP address đã tồn tại")
-            else:
-                raise ValueError("Dữ liệu không hợp lệ")
-        except Exception as e:
-            self.dao.db.rollback()
-            raise e
+   
 
     def update_status(self, id : int, status: Boolean):
         try:
@@ -99,7 +83,7 @@ class ServerService:
             self.dao.db.rollback()
             raise e
 
-    def create_server(self, server_data: ServerCreate) -> ServerResponse:
+    def create(self, server_data: ServerCreate) -> ServerResponse:
         try:
             
             self._validate_server_data(server_data)
@@ -126,7 +110,7 @@ class ServerService:
         except Exception as e:
             raise Exception(f"Lỗi khi tạo server: {str(e)}")
 
-    def update_server(self, server_id: int, server_data: ServerUpdate) -> Optional[ServerResponse]:
+    def update(self, server_id: int, server_data: ServerUpdate) -> Optional[ServerResponse]:
         try:
             if server_id <= 0:
                 return None
@@ -166,7 +150,7 @@ class ServerService:
         except Exception as e:
             raise Exception(f"Lỗi khi cập nhật server: {str(e)}")
 
-    def delete_server(self, server_id: int) -> bool:
+    def delete(self, server_id: int) -> bool:
         try:
             if server_id <= 0:
                 return False
@@ -175,8 +159,8 @@ class ServerService:
             existing_server = self.dao.get_by_id(server_id)
             if not existing_server:
                 return False
-            
-            return self.dao.delete(server_id)
+
+            return self.dao.delete(existing_server)
             
         except Exception as e:
             raise Exception(f"Lỗi khi xóa server: {str(e)}")
@@ -204,7 +188,7 @@ class ServerService:
 
 
 
-    def create_servers_batch(self, servers: List[ServerCreate]) -> List[ServerResponse]:
+    def create_batch(self, servers: List[ServerCreate]) -> List[ServerResponse]:
         server_model_list = []
         for server_data in servers:
             self._validate_server_data(server_data)

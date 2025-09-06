@@ -85,7 +85,7 @@ async def create_workload(
     """
     try:
         workload_service = WorkloadService(db)
-        return workload_service.create_workload(workload_data)
+        return workload_service.create(workload_data)
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -153,7 +153,7 @@ async def update_workload(
     """
     try:
         workload_service = WorkloadService(db)
-        updated_workload = workload_service.update_workload(workload_id, workload_data)
+        updated_workload = workload_service.update(workload_id, workload_data)
         if not updated_workload:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -183,7 +183,7 @@ async def delete_workload(
     """
     try:
         workload_service = WorkloadService(db)
-        success = workload_service.delete_workload(workload_id)
+        success = workload_service.delete(workload_id)
         if not success:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,

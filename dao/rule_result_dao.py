@@ -92,14 +92,4 @@ class RuleResultDAO:
             self.db.rollback()
             raise e
 
-    def delete(self, rule_result_id: int) -> bool:
-        try:
-            rule_result = self.db.query(RuleResult).filter(RuleResult.id == rule_result_id).first()
-            if rule_result:
-                self.db.delete(rule_result)
-                self.db.commit()
-                return True
-            return False
-        except Exception as e:
-            self.db.rollback()
-            raise e
+  

@@ -186,7 +186,9 @@ class ComplianceResultService:
     def delete_compliance_result(self, compliance_id: int) -> bool:
         
         try:
-            return self.dao.delete(compliance_id)
+            compliance = self.dao.get_by_id(compliance_id)
+            if compliance:
+                return self.dao.delete(compliance)
         except Exception as e:
             logging.error(f"Error deleting compliance result {compliance_id}: {str(e)}")
             return False

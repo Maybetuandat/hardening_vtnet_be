@@ -11,15 +11,13 @@ class ServerDAO:
     def __init__(self, db: Session):
         self.db = db
 
-    def  count_servers(self) -> int:
-        return self.db.query(Server).count()
+   
     def get_active_servers(self, skip : int, limit: int) -> List[Server]:
         return self.db.query(Server).filter(Server.status == True).offset(skip).limit(limit).all()
 
 
 
-    def get_all(self, skip: int = 0, limit: int = 10) -> Tuple[List[Server], int]:
-        return self.search_servers(skip=skip, limit=limit)
+ 
 
     def get_by_id(self, server_id: int) -> Optional[Server]:
         return self.db.query(Server).filter(Server.id == server_id).first()
@@ -88,12 +86,9 @@ class ServerDAO:
     def create_batch(self, servers: List[Server]) -> List[Server]:
         self.db.add_all(servers)   
         return servers
-    def delete(self, server_id: int) -> bool:
+    def delete(self, server: Server) -> bool:
         try:
-            server = self.get_by_id(server_id)
-            if not server:
-                return False
-            
+            self.db.delete(server)
             self.db.delete(server)
             self.db.commit()
             return True

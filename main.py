@@ -12,7 +12,8 @@ from routers import (
     compliance_controller, 
     dashboard_controller,
     export_controller,
-    notification_controller, 
+    notification_controller,
+    os_controller, 
     rule_controller, 
     rule_result_controller, 
     schedule_controller,
@@ -104,6 +105,7 @@ app.include_router(dashboard_controller.router, tags=["Dashboard"])
 app.include_router(schedule_controller.router, tags=["Schedule"])
 app.include_router(export_controller.router, tags=["Export"])
 app.include_router(notification_controller.router, tags=["Notifications"])
+app.include_router(os_controller.router, tags=["OS Version"])
 
 
 if __name__ == "__main__":

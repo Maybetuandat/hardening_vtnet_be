@@ -3,7 +3,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy import and_, or_, func
 from typing import Optional, List, Tuple
 from models.compliance_result import ComplianceResult
-from models.rule_result import RuleResult
+
 from models.server import Server
 from schemas.compliance import ComplianceResultCreate, ComplianceResultUpdate
 from datetime import datetime, timedelta
@@ -41,14 +41,11 @@ class ComplianceDAO:
             self.db.rollback()
             raise e
 
-    def delete(self, compliance_id: int) -> bool:
+    def delete(self, compliance: ComplianceResult) -> bool:
         try:
-            compliance = self.get_by_id(compliance_id)
-            if compliance:
-                self.db.delete(compliance)
-                self.db.commit()
-                return True
-            return False
+            self.db.delete(compliance)
+            self.db.commit()
+            return True
         except Exception as e:
             self.db.rollback()
             raise e

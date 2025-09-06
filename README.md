@@ -42,3 +42,6 @@ misfire_grace_time: thời gian cho phép bù nếu lỡ giờ.
 max_instances: số lần chạy song song tối đa.
 
 coalesce: gộp nhiều lần chạy bị bỏ lỡ thành một lần.
+
+- nhớ trong kiến trúc code. các hàm thao tác ở dao như crud chỉ thực hiện việc crud thôi, không thêm logic
+- các logic code sẽ nằm hết ở service đê dễ dàng trong việc bảo trì và thiết kế

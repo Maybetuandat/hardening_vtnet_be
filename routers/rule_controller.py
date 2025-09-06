@@ -44,13 +44,13 @@ async def get_rule_by_id(rule_id: int, rule_service: RuleService = Depends(get_r
 @router.post("/", response_model=RuleResponse)
 async def create_rule(rule: RuleCreate, rule_service: RuleService = Depends(get_rule_service)) -> RuleResponse:
     try:
-        return rule_service.create_rule(rule)
+        return rule_service.create(rule)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 @router.put("/{rule_id}", response_model=RuleResponse)
 async def update_rule(rule_id: int, rule: RuleCreate, rule_service: RuleService = Depends(get_rule_service)) -> RuleResponse:
     try:
-        updated_rule = rule_service.update_rule(rule_id, rule)
+        updated_rule = rule_service.update(rule_id, rule)
         if not updated_rule:
             raise HTTPException(status_code=404, detail="Rule không tìm thấy")
         return updated_rule
@@ -59,7 +59,7 @@ async def update_rule(rule_id: int, rule: RuleCreate, rule_service: RuleService 
 @router.delete("/{rule_id}", response_model=dict)
 async def delete_rule(rule_id: int, rule_service: RuleService = Depends(get_rule_service)) -> dict:
     try:
-        rule_service.delete_rule(rule_id)
+        rule_service.delete(rule_id)
         return {
             "success": True,
             "message": "Rule deleted successfully"

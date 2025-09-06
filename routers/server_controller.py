@@ -71,7 +71,7 @@ def create_server(
 ):
     
     try:
-        return server_service.create_server(server_data)
+        return server_service.create(server_data)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
@@ -92,7 +92,7 @@ def create_servers_batch(
             raise HTTPException(status_code=400, detail="Danh sách server không được rỗng")
         
         print(f"Received {len(servers)} servers to create")
-        return server_service.create_servers_batch(servers)
+        return server_service.create_batch(servers)
         
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -107,7 +107,7 @@ def delete_server(
 ):
     
     try:
-        success = server_service.delete_server(server_id)
+        success = server_service.delete(server_id)
         
         if not success:
             raise HTTPException(status_code=404, detail="Server không tìm thấy")
@@ -163,7 +163,7 @@ def update_server(
     Cập nhật thông tin server bao gồm workload
     """
     try:
-        updated_server = server_service.update_server(server_id, server_data)
+        updated_server = server_service.update(server_id, server_data)
         if not updated_server:
             raise HTTPException(status_code=404, detail="Server không tìm thấy")
         return updated_server

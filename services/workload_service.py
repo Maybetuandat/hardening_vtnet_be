@@ -89,7 +89,7 @@ class WorkloadService:
             total_pages=total_pages
         )
     
-    def create_workload(self, workload_data: WorkLoadCreate) -> WorkLoadResponse:
+    def create(self, workload_data: WorkLoadCreate) -> WorkLoadResponse:
         try:
             self._validate_workload_create_data(workload_data)
             
@@ -176,7 +176,7 @@ class WorkloadService:
             self.db.rollback()
             raise Exception(f"Lỗi khi tạo workload với rules và commands: {str(e)}")
     
-    def update_workload(self, workload_id: int, workload_data: WorkLoadUpdate) -> Optional[WorkLoadResponse]:
+    def update(self, workload_id: int, workload_data: WorkLoadUpdate) -> Optional[WorkLoadResponse]:
         try:
             if workload_id <= 0:
                 return None
@@ -205,7 +205,7 @@ class WorkloadService:
         except Exception as e:
             raise Exception(f"Lỗi khi cập nhật workload: {str(e)}")
     
-    def delete_workload(self, workload_id: int) -> bool:
+    def delete(self, workload_id: int) -> bool:
         try:
             if workload_id <= 0:
                 return False

@@ -52,7 +52,7 @@ class RuleService:
             total_pages=total_pages
         )
     
-    def create_rule(self, rule_data: RuleCreate) -> RuleResponse:
+    def create(self, rule_data: RuleCreate) -> RuleResponse:
         try:
             self._validate_rule_create_data(rule_data)
             
@@ -67,7 +67,7 @@ class RuleService:
         except Exception as e:
             raise Exception(f"Lỗi khi tạo rule: {str(e)}")
     
-    def update_rule(self, rule_id: int, rule_data: RuleUpdate) -> Optional[RuleResponse]:
+    def update(self, rule_id: int, rule_data: RuleUpdate) -> Optional[RuleResponse]:
         try:
             if rule_id <= 0:
                 return None
@@ -91,7 +91,7 @@ class RuleService:
         except Exception as e:
             raise Exception(f"Lỗi khi cập nhật rule: {str(e)}")
     
-    def delete_rule(self, rule_id: int) -> bool:
+    def delete(self, rule_id: int) -> bool:
         try:
             if rule_id <= 0:
                 return False
