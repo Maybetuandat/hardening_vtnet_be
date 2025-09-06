@@ -129,9 +129,9 @@ class WorkloadService:
             workload_dict = workload_data.dict()
             workload_model = WorkLoad(**workload_dict)
             
-            # Thêm vào session nhưng chưa commit
+            
             self.db.add(workload_model)
-            self.db.flush()  # Để lấy ID nhưng chưa commit
+            self.db.flush() 
             
             # 2. Tạo rules và gán workload_id
             created_rules = []
@@ -143,7 +143,7 @@ class WorkloadService:
                 rule_dict = rule_data.dict()
                 rule_model = Rule(**rule_dict)
                 self.db.add(rule_model)
-                self.db.flush()  # Để lấy ID
+                self.db.flush() 
                 
                 # Convert to response
                 rule_response = RuleResponse(
@@ -155,7 +155,8 @@ class WorkloadService:
                     parameters=rule_model.parameters,
                     is_active=rule_model.is_active,
                     created_at=rule_model.created_at,
-                    updated_at=rule_model.updated_at
+                    updated_at=rule_model.updated_at,
+                    command=rule_model.command
                 )
                 created_rules.append(rule_response)
             
@@ -226,7 +227,8 @@ class WorkloadService:
             name=workload.name,
             description=workload.description,
             created_at=workload.created_at,
-            updated_at=workload.updated_at
+            updated_at=workload.updated_at,
+            os_version=workload.os_version,
         )
     
     def _validate_workload_create_data(self, workload_data: WorkLoadCreate) -> None:

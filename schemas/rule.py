@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field, validator
 class RuleBase(BaseModel):
     name: str = Field(..., max_length=100, description="Tên của rule")
     description: Optional[str] = Field(None, description="Mô tả về rule")
-    workload_id: int = Field(..., description="ID của workload")
+    workload_id: Optional[int] = Field(None, description="ID của workload")
     parameters: Optional[Any] = Field(None, description="Tham số của rule dưới dạng JSON")
     is_active: bool = Field(True, description="Trạng thái hoạt động của rule")
     command: str = Field(..., description="Lệnh shell hoặc script để kiểm tra rule")
@@ -50,13 +50,7 @@ class RuleSearchParams(BaseModel):
     page_size: int = Field(10, ge=1, le=100)
 
     
-    
-class WorkloadRuleCreate(BaseModel):
-    
-    name: str = Field(..., max_length=100, description="Tên của rule")
-    description: Optional[str] = Field(None, description="Mô tả về rule")
-    parameters: Optional[dict] = Field(None, description="Tham số của rule dưới dạng JSON")
-    is_active: bool = Field(True, description="Trạng thái hoạt động của rule")
+
 class RuleCheckResult(BaseModel):
     
     name: str = Field(..., description="Tên rule")

@@ -3,7 +3,7 @@ from typing import List, Optional
 from pydantic import BaseModel, Field
 
 
-from schemas.rule import RuleCreate, WorkloadRuleCreate
+from schemas.rule import RuleCreate
 
 
 class WorkLoadBase(BaseModel):
@@ -40,7 +40,7 @@ class WorkLoadSearchParams(BaseModel):
 
 
 
-class WorkloadWithRulesAndCommandsRequest(BaseModel):
+class WorkloadWithRulesRequest(BaseModel):
     workload: WorkLoadCreate
-    rules: List[WorkloadRuleCreate]
+    rules: List[RuleCreate]
     

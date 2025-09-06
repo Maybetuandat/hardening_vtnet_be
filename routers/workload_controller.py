@@ -10,7 +10,8 @@ from schemas.workload import (
     WorkLoadResponse, 
     WorkLoadListResponse, 
     WorkLoadSearchParams,
-    WorkloadWithRulesAndCommandsRequest
+    WorkloadWithRulesRequest,
+    
 )
 from schemas.rule import RuleCreate
 
@@ -99,7 +100,7 @@ async def create_workload(
 
 @router.post("/create-with-rules-commands")
 async def create_workload_with_rules_and_commands(
-    request: WorkloadWithRulesAndCommandsRequest,
+    request: WorkloadWithRulesRequest,
     db: Session = Depends(get_db)
 ):
    
@@ -107,23 +108,11 @@ async def create_workload_with_rules_and_commands(
         workload_service = WorkloadService(db)
         
         
-        rules_data = []
-        for rule in request.rules:
-            rule_create = RuleCreate(
-                name=rule.name,
-                description=rule.description,
-                
-                workload_id=0, 
-                parameters=rule.parameters,
-                is_active=rule.is_active
-            )
-            rules_data.append(rule_create)
-        
        
         
         result = workload_service.create_workload_with_rules_and_commands(
             workload_data=request.workload,
-            rules_data=rules_data,
+            rules_data=request.rules,
             
         )
         return {
