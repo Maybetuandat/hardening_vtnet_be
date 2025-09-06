@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, Column, DateTime, Integer, String, Text, func 
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, Text, func 
 from config.config_database import Base
 
 from sqlalchemy.orm import relationship
@@ -17,5 +17,6 @@ class WorkLoad(Base):
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
     servers = relationship("Server", back_populates="workload", cascade="all, delete-orphan")
 
-    os_version = Column(String(50), nullable=False)
+    os_id = Column(Integer, ForeignKey("os.id"), unique=True)
+    os = relationship("Os", back_populates="workload", uselist=False)
     rules = relationship("Rule", back_populates="workload", cascade="all, delete-orphan")

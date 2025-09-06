@@ -9,17 +9,18 @@ from schemas.rule import RuleCreate
 class WorkLoadBase(BaseModel):
     name : str = Field(..., max_length=100, description="Tên của workload")
     description: Optional[str] = Field(None, description="Mô tả về workload")
-    os_version: str = Field(..., max_length=50, description="Phiên bản hệ điều hành")
+    os_id: int = Field(..., description="ID của hệ điều hành")
 class WorkLoadCreate(WorkLoadBase):
     pass
-class WorkLoadUpdate(WorkLoadBase):
+class WorkLoadUpdate(BaseModel):
     name: Optional[str] = Field(None, max_length=100, description="Tên của workload")
     description: Optional[str] = Field(None, description="Mô tả về workload")
+    os_id: Optional[int] = Field(None, description="ID của hệ điều hành")
 class WorkLoadResponse(WorkLoadBase):
     id: int
     created_at: datetime
     updated_at: datetime
-
+    os_version: Optional[str] = Field(None, description="Phiên bản hệ điều hành")
     class Config:
         from_attributes = True
 class WorkLoadListResponse(BaseModel):

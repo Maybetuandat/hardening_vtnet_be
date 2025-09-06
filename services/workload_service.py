@@ -1,5 +1,6 @@
 from sqlalchemy.orm import Session
 from typing import Optional, List
+from dao.os_dao import OsDao
 from dao.workload_dao import WorkLoadDAO
 from services.rule_service import RuleService
 
@@ -22,7 +23,7 @@ class WorkloadService:
         self.dao = WorkLoadDAO(db)
         self.db = db
         self.rule_service = RuleService(db)
-        
+        self.os_dao = OsDao(db)
     
     def get_all_workloads(self, page: int = 1, page_size: int = 10) -> WorkLoadListResponse:
         if page < 1:
@@ -222,13 +223,18 @@ class WorkloadService:
             raise Exception(f"Lỗi khi xóa workload: {str(e)}")
     
     def _convert_to_response(self, workload: WorkLoad) -> WorkLoadResponse:
+        
+
+        os_model = self.os_dao.get_by_id(workload.os_id)
         return WorkLoadResponse(
             id=workload.id,
             name=workload.name,
             description=workload.description,
             created_at=workload.created_at,
             updated_at=workload.updated_at,
-            os_version=workload.os_version,
+            os_version=os_model.version if os_model else None,
+            os_id=workload.os_id
+            
         )
     
     def _validate_workload_create_data(self, workload_data: WorkLoadCreate) -> None:
