@@ -3,6 +3,8 @@ from httpx import delete
 from sqlalchemy.orm import Session
 
 from models.os import Os
+from models.workload import WorkLoad
+
 class OsDao:
     def __init__(self, db: Session):
         self.db = db
@@ -18,8 +20,15 @@ class OsDao:
             raise e
     def get_by_id(self, os_id: int) -> Optional[Os]:
         return self.db.query(Os).filter(Os.id == os_id).first()
-    def search(self, keyword: Optional[str] = None, offset: int = 0, limit: int = 10) -> tuple[list[Os], int]:
+    def search(self, 
+    
+            keyword: Optional[str] = None, 
+            offset: int = 0, 
+            limit: int = 10, 
+            os_available: Optional[bool] = None) -> tuple[list[Os], int]:
         query = self.db.query(Os)
+        if os_available is True:
+            query = query.outerjoin(WorkLoad, Os.id == WorkLoad.os_id).filter(WorkLoad.os_id.is_(None))
         if keyword:
             query = query.filter(Os.version.ilike(f"%{keyword}%"))
         try:

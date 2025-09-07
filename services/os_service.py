@@ -19,7 +19,8 @@ class OsService:
         os_list, total = self.dao.search(
             keyword=search_params.keyword,
             offset=offset,
-            limit=limit
+            limit=limit, 
+            os_available=search_params.os_available
         )
         total_pages = (total + search_params.size - 1) // search_params.size
         return OsListResponse(
