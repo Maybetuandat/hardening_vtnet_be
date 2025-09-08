@@ -25,10 +25,9 @@ class OsDao:
             keyword: Optional[str] = None, 
             offset: int = 0, 
             limit: int = 10, 
-            os_available: Optional[bool] = None) -> tuple[list[Os], int]:
+            ) -> tuple[list[Os], int]:
         query = self.db.query(Os)
-        if os_available is True:
-            query = query.outerjoin(WorkLoad, Os.id == WorkLoad.os_id).filter(WorkLoad.os_id.is_(None))
+       
         if keyword:
             query = query.filter(Os.version.ilike(f"%{keyword}%"))
         try:

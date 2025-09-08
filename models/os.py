@@ -12,4 +12,5 @@ class Os(Base):
     create_at = Column(DateTime, default=func.now(), nullable=False)
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
     
-    workload = relationship("WorkLoad", back_populates="os", uselist=False)
+    workload_os_links = relationship("OsWorkload", back_populates="os")
+    workloads = relationship("WorkLoad", secondary="os_workload", back_populates="os_list")

@@ -21,7 +21,7 @@ def get_os_versions(
     keyword: str = Query(None, max_length=255, description="Tên hệ điều hành để tìm kiếm"),
     page: int = Query(1, ge=1, description="Trang hiện tại"),
     page_size: int = Query(10, ge=1, le=100, description="Số mục trên mỗi trang"),
-    os_available: Optional[bool] = Query(None, description="Lọc hệ điều hành chưa được sử dụng"),
+    
 
     os_service: OsService = Depends(get_os_service)
 ):
@@ -29,8 +29,7 @@ def get_os_versions(
         search_params = OsSearchParams(
             keyword=keyword,
             page=page,
-            size=page_size, 
-            os_available=os_available
+            size=page_size
         )
         print("Debug: search_params =", search_params)
         return os_service.search(search_params)

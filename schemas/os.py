@@ -26,4 +26,4 @@ class OsSearchParams(BaseModel):
     keyword: Optional[str] = Field(None, max_length=255, description="Tên hệ điều hành để tìm kiếm")
     page: int = Field(1, ge=1, description="Trang hiện tại")
     size: int = Field(10, ge=1, le=100, description="Số mục trên mỗi trang")
-    os_available: Optional[bool] = Field(None, description="Lọc hệ điều hành chưa được sử dụng")
+    

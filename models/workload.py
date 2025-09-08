@@ -17,6 +17,8 @@ class WorkLoad(Base):
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
     servers = relationship("Server", back_populates="workload", cascade="all, delete-orphan")
 
-    os_id = Column(Integer, ForeignKey("os.id"), unique=True)
-    os = relationship("Os", back_populates="workload", uselist=False)
+    
+    workload_os_links = relationship("OsWorkload", back_populates="workload")
+    os_list = relationship("Os", secondary="os_workload", back_populates="workloads")
     rules = relationship("Rule", back_populates="workload", cascade="all, delete-orphan")
+    

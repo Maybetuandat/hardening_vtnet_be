@@ -5,6 +5,7 @@ from typing import Optional, List, Tuple
 from models.compliance_result import ComplianceResult
 
 from models.server import Server
+from models.workload import WorkLoad
 from schemas.compliance import ComplianceResultCreate, ComplianceResultUpdate
 from datetime import datetime, timedelta
 
@@ -132,9 +133,13 @@ class ComplianceDAO:
             query = query.filter(ComplianceResult.server_id == server_id)
 
         if keyword and keyword.strip():
-            query = query.filter(
-                func.lower(Server.ip_address).like(func.lower(f"%{keyword.strip()}%"))
-            )
+            keyword = keyword.strip().lower()
+            query = query.join(Server.workload).filter(
+                or_(
+                    func.lower(Server.ip_address).like(f"%{keyword}%"),
+                    func.lower(WorkLoad.name).like(f"%{keyword}%")
+                )
+        )
 
         if status:
             query = query.filter(ComplianceResult.status == status)
