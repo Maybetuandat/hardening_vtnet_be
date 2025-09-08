@@ -15,10 +15,12 @@ class WorkLoad(Base):
     description = Column(Text, nullable=True)
     created_at = Column(DateTime, default=func.now(), nullable=False)
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
-    servers = relationship("Server", back_populates="workload", cascade="all, delete-orphan")
-
     
-    workload_os_links = relationship("OsWorkload", back_populates="workload")
-    os_list = relationship("Os", secondary="os_workload", back_populates="workloads")
+
+    os_id = Column(Integer, ForeignKey("os.id"), nullable=False, index=True)
+    
+    os = relationship("Os", back_populates="workloads")
+    
     rules = relationship("Rule", back_populates="workload", cascade="all, delete-orphan")
+    servers = relationship("Server", back_populates="workload", cascade="all, delete-orphan")
     

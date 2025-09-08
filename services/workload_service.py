@@ -240,13 +240,22 @@ class WorkloadService:
     def _validate_workload_create_data(self, workload_data: WorkLoadCreate) -> None:
         if not workload_data.name or not workload_data.name.strip():
             raise ValueError("Tên workload không được để trống")
+        if not workload_data.os_id:
+            raise ValueError("OS ID không được để trống")
+        os_exists = self.os_dao.get_by_id(workload_data.os_id)
+        if not os_exists:
+            raise ValueError(f"OS với ID {workload_data.os_id} không tồn tại")
+
     
     def _validate_workload_update_data(self, workload_data: WorkLoadUpdate) -> None:
         if workload_data.name is not None and (not workload_data.name or not workload_data.name.strip()):
             raise ValueError("Tên workload không được để trống")
-      
-   
-            
+        if workload_data.os_id is not None:
+            os_exists = self.os_dao.get_by_id(workload_data.os_id)
+            if not os_exists:
+                raise ValueError(f"OS với ID {workload_data.os_id} không tồn tại")
+
+
     def get_workload_id_by_name(self, name: str) -> Optional[int]:
         """
         Lấy workload ID từ name để sử dụng khi upload server
