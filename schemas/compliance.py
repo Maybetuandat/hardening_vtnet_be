@@ -84,7 +84,7 @@ class ComplianceScanResponse(BaseModel):
 
 class ComplianceSearchParams(BaseModel):
     today: Optional[str] = Field(None, description="Lọc kết quả của hôm nay")
-    server_id: Optional[int] = Field(None, description="ID của server")
+    list_workload_id: Optional[List[int]] = Field(None, description="ID của workload")
     keyword: Optional[str] = Field(None, description="Từ khóa tìm kiếm theo ip server")
     status: Optional[str] = Field(None, description="Filter theo trạng thái")
     page: int = Field(1, ge=1)

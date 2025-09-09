@@ -8,3 +8,9 @@ python-dotenv
 cryptography
 ansible
 paramiko
+ansible_runner
+httpx
+pandas
+requests
+apscheduler
+xlsxwriter

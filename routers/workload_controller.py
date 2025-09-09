@@ -13,10 +13,10 @@ from schemas.workload import (
     WorkloadWithRulesRequest,
     
 )
-from schemas.rule import RuleCreate
 
-from pydantic import BaseModel, Field
-from typing import Optional
+
+
+
 
 router = APIRouter(prefix="/api/workloads", tags=["Workloads"])
 

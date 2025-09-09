@@ -24,7 +24,7 @@ class ExportService:
         try:
             # Lấy dữ liệu compliance results trong ngày hiện tại
             results = self.compliance_dao.get_today_compliance_results(
-                server_id=search_params.server_id if search_params else None,
+                list_workload_id=search_params.list_workload_id if search_params else None,
                 keyword=search_params.keyword if search_params else None,
                 status=search_params.status if search_params else None
             )

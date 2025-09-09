@@ -122,7 +122,7 @@ class ConnectionService:
                 timeout=(self.ansible_timeout + 10) * len(servers) // forks + 30
             )
             
-            
+            print("Debug: Ansible command executed", result.stderr)
             
             return {
                 "success": True,  
@@ -131,12 +131,14 @@ class ConnectionService:
             }
                 
         except subprocess.TimeoutExpired:
+            print("Debug: Ansible command timed out")
             return {
                 "success": False,
                 "error": f"Ansible execution timeout",
                 "stdout": "",
             }
         except Exception as e:
+            print("Debug: Ansible command executed", result.stderr)
             return {
                 "success": False,
                 "error": f"Ansible execution error: {str(e)}",
@@ -158,6 +160,7 @@ class ConnectionService:
                 try:
                     
                     # doi voi moi con server thi find theo ip mot lan de lay ket qua 
+                    print("Debug: Ansible command executed", all_output)
                     server_result = self._parse_server_from_mixed_output(all_output, server)
                     results.append(server_result)
                    

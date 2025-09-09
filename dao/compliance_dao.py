@@ -53,7 +53,7 @@ class ComplianceDAO:
 
     def search_compliance_results(
         self,
-        server_id: Optional[int] = None,
+        
         keyword: Optional[str] = None,
         status: Optional[str] = None,
         today: Optional[str] = None,
@@ -67,8 +67,7 @@ class ComplianceDAO:
         query = self.db.query(ComplianceResult)
 
         
-        if server_id:
-            query = query.filter(ComplianceResult.server_id == server_id)
+        
 
         
         if keyword and keyword.strip():
@@ -107,7 +106,7 @@ class ComplianceDAO:
 
     def get_today_compliance_results(
         self,
-        server_id: Optional[int] = None,
+        list_workload_id: Optional[List[int]] = None,
         keyword: Optional[str] = None,
         status: Optional[str] = None
     ) -> List[ComplianceResult]:
@@ -129,17 +128,13 @@ class ComplianceDAO:
         )
 
         
-        if server_id:
-            query = query.filter(ComplianceResult.server_id == server_id)
+        if list_workload_id and len(list_workload_id) > 0:
+            query = query.join(Server.workload).filter(WorkLoad.id.in_(list_workload_id))
+            
 
         if keyword and keyword.strip():
             keyword = keyword.strip().lower()
-            query = query.join(Server.workload).filter(
-                or_(
-                    func.lower(Server.ip_address).like(f"%{keyword}%"),
-                    func.lower(WorkLoad.name).like(f"%{keyword}%")
-                )
-        )
+            query = query.join(Server.workload).filter(func.lower(Server.ip_address).like(f"%{keyword}%"))
 
         if status:
             query = query.filter(ComplianceResult.status == status)
