@@ -1,0 +1,8 @@
+{
+    "python-envs.pythonProjects": [],
+     "python.analysis.autoImportCompletions": true,
+      "python.analysis.autoSearchPaths": true,
+    "python.analysis.extraPaths": [
+    "."
+  ]
+}
