@@ -17,5 +17,12 @@ services:
     volumes:
       - mysql_data:/var/lib/mysql
 
+  adminer:
+    image: adminer:latest
+    container_name: adminer
+    restart: always
+    ports:
+      - "8080:8080"
+
 volumes:
   mysql_data:

@@ -57,7 +57,7 @@ def get_compliance_result_detail(
 ):
    
     try:
-        result = compliance_service.get_compliance_result_detail(compliance_id)
+        result = compliance_service.get_by_id(compliance_id)
         if not result:
             raise HTTPException(status_code=404, detail="Compliance result không tìm thấy")
         return result

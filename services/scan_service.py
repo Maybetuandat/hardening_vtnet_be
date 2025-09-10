@@ -169,20 +169,22 @@ class ScanService:
             rule_service = RuleService(thread_session)
             server_service = ServerService(thread_session)
 
-            compliance_result = compliance_result_service.create_pending_result(server_data['id'])
+            # tạo ra compliance result khi bắt đầu scan
+            compliance_result = compliance_result_service.create_pending_result(server_data['id'], server_data['workload_id'])
             compliance_result_id = compliance_result.id 
             thread_session.commit()
             
             compliance_result_service.update_status(compliance_result_id, "running")
             thread_session.commit()
 
+            # thực hiện lấy workload 
             workload = workload_service.get_workload_by_id(server_data['workload_id'])
             if not workload:
                 logging.warning(f"Thread {thread_id}: Server {server_data['hostname']} không có workload")
                 compliance_result_service.update_status(compliance_result_id, "failed", detail_error="Không có workload")
                 thread_session.commit()
                 return
-
+            # thực hiện lấy rule thuộc về workload 
             rules = rule_service.get_active_rule_by_workload(workload.id)
             if not rules:
                 logging.warning(f"Thread {thread_id}: Workload {workload.name} không có rule nào được kích hoạt")
@@ -251,7 +253,7 @@ class ScanService:
         if not playbook_tasks:
             return all_rule_results, None
 
-        
+        # thực hiện gen ra file playbook để thực hiện với ansible 
         with tempfile.TemporaryDirectory() as private_data_dir:
             inventory = { 'all': { 'hosts': { server_data['ip_address']: {
                 'ansible_user': server_data['ssh_user'], 'ansible_password': server_data['ssh_password'],
@@ -309,20 +311,22 @@ class ScanService:
                     status = "passed"
                     message = "Rule execution successful"
                     
-                    if task_result.get('rc', 1) != 0 or not is_passed:
+                    if task_result.get('rc', 1) != 0 :
                         status = "failed"
-                        message = "Rule execution failed or parameters mismatch"
-                    
-                    details = output[:500] if status == "passed" else (error or output)[:500]
+                        message = "Rule execution failed"
+                    if not is_passed:
+                        status = "failed"
+                        message = "Paramter mismatch "
+                    details_error = output[:500] if status == "passed" else (error or output)[:500]
 
                     all_rule_results.append(RuleResult(
                         compliance_result_id=compliance_result_id,
                         rule_id=rule_obj.id,
-                        rule_name=rule_obj.name,
+                        
                         status=status,
                         message=message,
-                        details=details,
-                        execution_time=execution_time,
+                        details_error=details_error,
+                        
                         output=parsed_output_dict
                     ))
 
@@ -336,6 +340,8 @@ class ScanService:
         
         try:
             parsed_output = self._parse_output_values(command_output)
+
+            # is_passed là true nếu giá trị khớp, failed nếu giá trị sai 
             is_passed = self._compare_with_parameters(rule.parameters, parsed_output)
             
             return is_passed, parsed_output  

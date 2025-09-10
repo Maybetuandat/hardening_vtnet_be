@@ -66,7 +66,26 @@ class RuleService:
             raise ValueError(str(e))
         except Exception as e:
             raise Exception(f"Lỗi khi tạo rule: {str(e)}")
-    
+    def create_bulk(self, rules_data: List[RuleCreate]) -> List[RuleResponse]:
+        try:
+            if not rules_data or len(rules_data) == 0:
+                return []
+            
+            created_rules = []
+            for rule_data in rules_data:
+                self._validate_rule_create_data(rule_data)
+                rule_dict = rule_data.dict()
+                rule_model = Rule(**rule_dict)
+                created_rules.append(rule_model)
+               
+            list_rule_creates = self.rule_dao.create_bulk(created_rules)
+            return [self._convert_to_response(rule) for rule in list_rule_creates]
+            
+            
+        except ValueError as e:
+            raise ValueError(str(e))
+        except Exception as e:
+            raise Exception(f"Lỗi khi tạo bulk rules: {str(e)}")
     def update(self, rule_id: int, rule_data: RuleUpdate) -> Optional[RuleResponse]:
         try:
             if rule_id <= 0:

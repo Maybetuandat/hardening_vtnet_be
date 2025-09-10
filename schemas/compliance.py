@@ -9,6 +9,7 @@ from schemas.rule_result import RuleResultResponse
 
 class ComplianceResultBase(BaseModel):
     server_id: int = Field(..., description="ID của server được scan")
+    name: Optional[str] = Field(None, description="Tên của bản scan")
     status: str = Field(..., description="Trạng thái scan: pending, running, completed, failed")
     total_rules: int = Field(0, description="Tổng số rules của workload")
     passed_rules: int = Field(0, description="Số rules passed")
@@ -28,25 +29,12 @@ class ComplianceResultCreate(ComplianceResultBase):
     pass
 
 
-class ComplianceResultUpdate(BaseModel):
-    status: Optional[str] = Field(None, description="Trạng thái scan")
-    total_rules: Optional[int] = Field(None, description="Tổng số rules")
-    passed_rules: Optional[int] = Field(None, description="Số rules passed")
-    failed_rules: Optional[int] = Field(None, description="Số rules failed")
-    score: Optional[float] = Field(None, ge=0, le=100, description="Điểm compliance")
 
-    @validator('score', pre=True)
-    def convert_decimal_to_float(cls, v):
-        
-        if v is not None and isinstance(v, Decimal):
-            return float(v)
-        return v
 
 class ComplianceResultResponse(ComplianceResultBase):
     id: int
     server_ip: Optional[str] = Field(None, description="IP của server được scan")
     scan_date: datetime
-    created_at: datetime
     updated_at: datetime
     server_ip: Optional[str] = Field(None, description="IP của server được scan")
     workload_name: Optional[str] = Field(None, description="Tên workload")

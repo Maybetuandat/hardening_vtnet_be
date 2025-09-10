@@ -47,6 +47,12 @@ async def create_rule(rule: RuleCreate, rule_service: RuleService = Depends(get_
         return rule_service.create(rule)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+@router.post("/bulk", response_model=List[RuleResponse])
+async def create_rules_bulk(rules: List[RuleCreate], rule_service: RuleService = Depends(get_rule_service)) -> List[RuleResponse]:
+    try:
+        return rule_service.create_bulk(rules)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 @router.put("/{rule_id}", response_model=RuleResponse)
 async def update_rule(rule_id: int, rule: RuleCreate, rule_service: RuleService = Depends(get_rule_service)) -> RuleResponse:
     try:

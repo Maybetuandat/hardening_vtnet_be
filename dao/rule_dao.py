@@ -13,14 +13,15 @@ class RuleDAO:
     
     def create_bulk(self, rules: List[Rule]) -> List[Rule]:
         try:
-            self.db.bulk_save_objects(rules)
+            self.db.add_all(rules) 
             self.db.commit()
             for rule in rules:
                 self.db.refresh(rule)
             return rules
-        except InterruptedError as e: 
+        except Exception as e:
             self.db.rollback()
             raise e
+
     def search_rules(
             self, 
             keyword: Optional[str] = None,

@@ -51,8 +51,7 @@ class ExportService:
                     "Passed Rules": result.passed_rules,
                     "Failed Rules": result.failed_rules,
                     "Score": float(result.score) if result.score else 0.0,
-                    "Scan Date": result.scan_date.strftime("%Y-%m-%d %H:%M:%S") if result.scan_date else "",
-                    "Created At": result.created_at.strftime("%Y-%m-%d %H:%M:%S") if result.created_at else "",
+                    "Scan Date": result.scan_date.strftime("%Y-%m-%d %H:%M:%S") if result.scan_date else "",    
                     "Updated At": result.updated_at.strftime("%Y-%m-%d %H:%M:%S") if result.updated_at else ""
                 })
 

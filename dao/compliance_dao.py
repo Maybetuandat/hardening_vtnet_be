@@ -6,7 +6,7 @@ from models.compliance_result import ComplianceResult
 
 from models.server import Server
 from models.workload import WorkLoad
-from schemas.compliance import ComplianceResultCreate, ComplianceResultUpdate
+
 from datetime import datetime, timedelta
 
 class ComplianceDAO:

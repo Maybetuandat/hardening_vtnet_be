@@ -4,7 +4,7 @@ from sqlalchemy import and_, or_, func
 from typing import Optional, List, Tuple
 from models.compliance_result import ComplianceResult
 from models.rule_result import RuleResult
-from schemas.compliance import ComplianceResultCreate, ComplianceResultUpdate
+
 
 class RuleResultDAO:
     def __init__(self, db: Session):

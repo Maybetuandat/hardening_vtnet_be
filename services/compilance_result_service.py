@@ -1,4 +1,5 @@
 import asyncio
+from datetime import datetime
 import keyword
 import logging
 import math
@@ -13,13 +14,14 @@ from models import workload
 from models.compliance_result import ComplianceResult
 from models.rule_result import RuleResult
 from schemas.compliance import (
-    ComplianceResultCreate, ComplianceResultUpdate, ComplianceResultResponse,
+    ComplianceResultCreate, ComplianceResultResponse,
      ComplianceResultListResponse,
     ComplianceSearchParams, RuleResultResponse
 )
 from services.notification_service import notification_service
 
 from services.rule_result_service import RuleResultService
+from services.rule_service import RuleService
 from services.server_service import ServerService
 from services.workload_service import WorkloadService
 
@@ -33,6 +35,7 @@ class ComplianceResultService:
         self.rule_result_service = RuleResultService(db)
         self.server_service = ServerService(db)
         self.workload_service = WorkloadService(db)
+        self.rule_service = RuleService(db)
 
     
 
@@ -81,7 +84,7 @@ class ComplianceResultService:
 
   
 
-    def get_compliance_result_detail(self, compliance_id: int) -> Optional[ComplianceResultResponse]:
+    def get_by_id(self, compliance_id: int) -> Optional[ComplianceResultResponse]:
         try:
             compliance_result = self.dao.get_by_id(compliance_id)
             if not compliance_result:
@@ -99,10 +102,14 @@ class ComplianceResultService:
   
     
 
-    def create_pending_result(self, server_id: int) -> ComplianceResult:
+    def create_pending_result(self, server_id: int, workload_id : int) -> ComplianceResult:
         try:
+            workload = self.workload_service.get_workload_by_id(workload_id)
+            server = self.server_service.get_server_by_id(server_id)
+            name = f"{server.ip_address} - {workload.name} {datetime.now()}"
             compliance_data = ComplianceResultCreate(
                 server_id=server_id,
+                name=name,
                 status="pending",
                 total_rules=0,
                 passed_rules=0,
@@ -207,6 +214,7 @@ class ComplianceResultService:
         return ComplianceResultResponse(
             id=compliance.id,
             server_ip=server.ip_address ,
+            name = compliance.name,
             server_id=compliance.server_id,
             status=compliance.status,
             total_rules=compliance.total_rules,
@@ -214,23 +222,11 @@ class ComplianceResultService:
             failed_rules=compliance.failed_rules,
             score=compliance.score,
             scan_date=compliance.scan_date,
-            created_at=compliance.created_at,
+            
             updated_at=compliance.updated_at,
             workload_name=workload.name if workload else None,
             server_hostname=server.hostname if server else None,
             detail_error=compliance.detail_error
         )
 
-    def _convert_rule_result_to_response(self, rule_result: RuleResult) -> RuleResultResponse:
-        return RuleResultResponse(
-            id=rule_result.id,
-            compliance_result_id=rule_result.compliance_result_id,
-            rule_id=rule_result.rule_id,
-            rule_name=rule_result.rule_name,
-            status=rule_result.status,
-            message=rule_result.message,
-            details=rule_result.details,
-            execution_time=rule_result.execution_time,
-            created_at=rule_result.created_at,
-            updated_at=rule_result.updated_at
-        )
+  
