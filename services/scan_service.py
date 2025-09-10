@@ -317,7 +317,10 @@ class ScanService:
                     if not is_passed:
                         status = "failed"
                         message = "Paramter mismatch "
-                    details_error = output[:500] if status == "passed" else (error or output)[:500]
+                    details_error = None
+                    if status == "failed" and  error:
+                        details_error = error[:500]
+                    
 
                     all_rule_results.append(RuleResult(
                         compliance_result_id=compliance_result_id,
