@@ -84,7 +84,7 @@ async def shutdown_event():
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000"],
+    allow_origins=["http://localhost:5173"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -95,17 +95,17 @@ PORT = int(os.getenv("SERVER_PORT", 8000))
 RELOAD = os.getenv("SERVER_RELOAD", "False").lower() == "true"
 
 # Include routers
-app.include_router(server_controller.router, tags=["Servers"])
-app.include_router(workload_controller.router, tags=["Workloads"])
-app.include_router(rule_controller.router, tags=["Rules"])
+app.include_router(server_controller.router)
+app.include_router(workload_controller.router)
+app.include_router(rule_controller.router)
 
-app.include_router(compliance_result_controller.router, tags=["Compliance"])
-app.include_router(rule_result_controller.router, tags=["Rule Results"])
-app.include_router(dashboard_controller.router, tags=["Dashboard"])
-app.include_router(schedule_controller.router, tags=["Schedule"])
-app.include_router(export_controller.router, tags=["Export"])
-app.include_router(notification_controller.router, tags=["Notifications"])
-app.include_router(os_controller.router, tags=["OS Version"])
+app.include_router(compliance_result_controller.router)
+app.include_router(rule_result_controller.router)
+app.include_router(dashboard_controller.router)
+app.include_router(schedule_controller.router)
+app.include_router(export_controller.router)
+app.include_router(notification_controller.router)
+app.include_router(os_controller.router)
 
 
 if __name__ == "__main__":

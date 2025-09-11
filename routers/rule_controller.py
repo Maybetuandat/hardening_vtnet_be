@@ -10,7 +10,7 @@ router = APIRouter(prefix="/api/rules", tags=["Rules"])
 def get_rule_service(db : Session = Depends(get_db)) -> RuleService:
     return RuleService(db)
     
-@router.get("/", response_model = RuleListResponse)
+@router.get("", response_model = RuleListResponse)
 async def get_rules(
         keyword: Optional[str] = Query(None, description="Từ khóa tìm kiếm (để trống để lấy tất cả)"),
         page: int = Query(1, ge=1, description="Số trang"),
@@ -24,9 +24,10 @@ async def get_rules(
         search_params = RuleSearchParams(
             keyword=keyword,
             page=page,
-            size=page_size,
+            page_size=page_size,
             workload_id=workload_id
          )
+        print("Debug search params:", search_params)
         return rule_service.search_rules(search_params)
 
     except Exception as e:
