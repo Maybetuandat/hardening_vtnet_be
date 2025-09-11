@@ -9,7 +9,7 @@ from config.config_database import engine, Base, get_db
 
 from routers import (
     
-    compliance_controller, 
+    compliance_result_controller, 
     dashboard_controller,
     export_controller,
     notification_controller,
@@ -99,7 +99,7 @@ app.include_router(server_controller.router, tags=["Servers"])
 app.include_router(workload_controller.router, tags=["Workloads"])
 app.include_router(rule_controller.router, tags=["Rules"])
 
-app.include_router(compliance_controller.router, tags=["Compliance"])
+app.include_router(compliance_result_controller.router, tags=["Compliance"])
 app.include_router(rule_result_controller.router, tags=["Rule Results"])
 app.include_router(dashboard_controller.router, tags=["Dashboard"])
 app.include_router(schedule_controller.router, tags=["Schedule"])

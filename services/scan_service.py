@@ -16,7 +16,7 @@ from models.rule import Rule
 from models.rule_result import RuleResult
 from models.server import Server
 
-from schemas.compliance import ComplianceScanRequest, ComplianceScanResponse
+from schemas.compliance_result import ComplianceScanRequest, ComplianceScanResponse
 
 from services.compilance_result_service import ComplianceResultService
 from services.rule_service import RuleService

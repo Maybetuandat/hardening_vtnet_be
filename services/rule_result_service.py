@@ -1,6 +1,6 @@
 from typing import List, Optional
 from dao.rule_result_dao import RuleResultDAO
-from dao.compliance_dao import ComplianceDAO  # ✅ import DAO instead of service
+from dao.compliance_result_dao import ComplianceDAO  # ✅ import DAO instead of service
 from sqlalchemy.orm import Session
 import math
 
@@ -77,6 +77,7 @@ class RuleResultService:
         compliance = self.compliance_dao.get_by_id(rule_result.compliance_result_id)  
         return RuleResultResponse(
             id=rule_result.id,
+            compliance_result_id = rule_result.compliance_result_id,
             rule_name=rule.name if rule else None,
             status=rule_result.status,
             message=rule_result.message,

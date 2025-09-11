@@ -7,13 +7,13 @@ from typing import Any, Dict, List, Optional
 from sqlalchemy.orm import Session
 
 
-from dao.compliance_dao import ComplianceDAO
+from dao.compliance_result_dao import ComplianceDAO
 
 
 from models import workload
 from models.compliance_result import ComplianceResult
 from models.rule_result import RuleResult
-from schemas.compliance import (
+from schemas.compliance_result import (
     ComplianceResultCreate, ComplianceResultResponse,
      ComplianceResultListResponse,
     ComplianceSearchParams, RuleResultResponse
@@ -79,6 +79,7 @@ class ComplianceResultService:
             compliance_result.score = (pass_rule / total_rule) * 100 
         else: 
             compliance_result.score = 0
+        compliance_result.updated_at = datetime.now()
         self.dao.update(compliance_result)
         
 
@@ -165,6 +166,7 @@ class ComplianceResultService:
             compliance_result.passed_rules = rules_passed
             compliance_result.failed_rules = rules_failed
             compliance_result.score = int((rules_passed / total_rules * 100) if total_rules > 0 else 0)
+            compliance_result.updated_at = datetime.now()
             self.dao.update(compliance_result)
 
             self._notify_completion_async(self._convert_to_response(compliance_result))

@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from typing import Optional
 
 from config.config_database import get_db
-from schemas.compliance import (
+from schemas.compliance_result import (
     ComplianceResultResponse, 
     ComplianceResultListResponse, ComplianceScanRequest,
     ComplianceScanResponse, ComplianceSearchParams

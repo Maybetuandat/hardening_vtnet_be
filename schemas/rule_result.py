@@ -22,7 +22,7 @@ class RuleResultUpdate(BaseModel):
 
 class RuleResultResponse(RuleResultBase):
     id: int
-    compliance_name: Optional[str] = None
+    compliance_result_id: int
     rule_name: Optional[str] = None
     created_at: datetime
     updated_at: datetime

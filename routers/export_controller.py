@@ -5,7 +5,7 @@ from typing import List, Optional
 import io
 
 from config.config_database import get_db
-from schemas.compliance import ComplianceSearchParams
+from schemas.compliance_result import ComplianceSearchParams
 from services.export_service import ExportService
 
 

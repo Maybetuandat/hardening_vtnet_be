@@ -5,10 +5,10 @@ from typing import List, Optional
 from sqlalchemy.orm import Session
 import pandas as pd
 
-from dao.compliance_dao import ComplianceDAO
+from dao.compliance_result_dao import ComplianceDAO
 from dao.rule_dao import RuleDAO
 from dao.rule_result_dao import RuleResultDAO
-from schemas.compliance import ComplianceSearchParams
+from schemas.compliance_result import ComplianceSearchParams
 
 
 class ExportService:
@@ -168,7 +168,7 @@ class ExportService:
 
                 failed_rules_data.append({
                     "Compliance ID": compliance.id,
-                    "Compliance Name": compliance.name,
+                    
                     "Server IP": server_ip,
                     "Server Hostname": server_hostname,
                     "Workload Name": workload_name,
@@ -187,18 +187,18 @@ class ExportService:
         # Nếu không có failed rules nào, tạo một row thông báo
         if failed_rules_df.empty:
             failed_rules_df = pd.DataFrame([{
-                 "Compliance ID": compliance.id,
-                    "Compliance Name": compliance.name,
-                    "Server IP": server_ip,
-                    "Server Hostname": server_hostname,
-                    "Workload Name": workload_name,
-                    "Rule Name": rule.name if rule else "N/A",
-                    "Output": rule_result.output or "",
-                    "Parameters Rule": rule.parameters if rule else {},
-                    "Error Message": rule_result.message or "",
-                    "Error Details": rule_result.details_error or "",
-                    "Scan Date": compliance.scan_date.strftime("%Y-%m-%d %H:%M:%S") if compliance.scan_date else "",
-                    "Rule Updated At": rule_result.updated_at.strftime("%Y-%m-%d %H:%M:%S") if rule_result.updated_at else ""
+                 "Compliance ID": "",
+                    
+                    "Server IP": "",
+                    "Server Hostname": "",
+                    "Workload Name": "",
+                    "Rule Name": "",
+                    "Output": "",
+                    "Parameters Rule":  {},
+                    "Error Message":  "",
+                    "Error Details":  "",
+                    "Scan Date": "",
+                    "Rule Updated At":  ""
             }])
         
         # Ghi dữ liệu vào sheet
