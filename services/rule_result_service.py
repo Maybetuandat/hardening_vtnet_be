@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import List, Optional
 from dao.rule_result_dao import RuleResultDAO
 from dao.compliance_result_dao import ComplianceDAO  # ✅ import DAO instead of service
@@ -14,7 +15,7 @@ class RuleResultService:
         self.db = db
         self.dao = RuleResultDAO(db)
         self.rule_service = RuleService(db)
-        self.compliance_dao = ComplianceDAO(db)   # ✅ use DAO, not service
+        self.compliance_dao = ComplianceDAO(db)   
         
     def get_rule_results_by_compliance_id(
         self, 
@@ -63,6 +64,7 @@ class RuleResultService:
             return None
             
         rule_result.status = new_status
+        
         updated = self.dao.update(rule_result)
         if not updated:
             return None

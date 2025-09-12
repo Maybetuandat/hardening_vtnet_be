@@ -79,7 +79,7 @@ class ComplianceResultService:
             compliance_result.score = (pass_rule / total_rule) * 100 
         else: 
             compliance_result.score = 0
-        compliance_result.updated_at = datetime.now()
+        
         self.dao.update(compliance_result)
         
 
@@ -166,7 +166,7 @@ class ComplianceResultService:
             compliance_result.passed_rules = rules_passed
             compliance_result.failed_rules = rules_failed
             compliance_result.score = int((rules_passed / total_rules * 100) if total_rules > 0 else 0)
-            compliance_result.updated_at = datetime.now()
+            
             self.dao.update(compliance_result)
 
             self._notify_completion_async(self._convert_to_response(compliance_result))

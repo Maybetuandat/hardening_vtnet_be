@@ -1,3 +1,4 @@
+from datetime import datetime
 import logging
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
@@ -66,6 +67,7 @@ class ServerDAO:
 
     def update(self, server: Server) -> Server:
         try:
+            server.updated_at = datetime.now()
             self.db.commit()
             self.db.refresh(server)
             return server

@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Optional
 from httpx import delete
 from sqlalchemy.orm import Session
@@ -38,6 +39,7 @@ class OsDao:
             raise e
     def update(self, update_os: Os) -> Os:
         try:
+            update_os.updated_at = datetime.now()
             self.db.commit()
             self.db.refresh(update_os)
             return update_os

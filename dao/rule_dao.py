@@ -1,3 +1,4 @@
+from datetime import datetime
 from sqlalchemy.orm import Session
 from typing import Optional, List, Tuple
 
@@ -50,6 +51,7 @@ class RuleDAO:
             raise e
     def update(self, rule : Rule) -> Rule:
         try:
+            rule.updated_at = datetime.now()
             self.db.commit()
             self.db.refresh(rule)
             return rule

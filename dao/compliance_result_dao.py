@@ -32,6 +32,7 @@ class ComplianceDAO:
 
     def update(self, compliance: ComplianceResult) -> ComplianceResult:
         try:
+            compliance.updated_at = datetime.now()
             self.db.commit()
             self.db.refresh(compliance)
             return compliance

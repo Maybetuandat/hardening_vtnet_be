@@ -1,3 +1,4 @@
+from datetime import datetime
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import and_, or_, func
@@ -82,6 +83,7 @@ class RuleResultDAO:
 
     def update(self, rule_result: RuleResult) -> RuleResult:
         try:
+            rule_result.updated_at = datetime.now()
             self.db.commit()
             self.db.refresh(rule_result)
             return rule_result

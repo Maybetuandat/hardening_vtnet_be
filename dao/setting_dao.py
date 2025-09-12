@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Optional
 from sqlalchemy.orm import Session
 
@@ -14,7 +15,7 @@ class SettingsDAO:
 
     def create_or_update(self, key: str, value: str, description: Optional[str] = None) -> Settings:
         setting = self.get_by_key(key)
-        
+        setting.updated_at = datetime.now()
         if setting:
             setting.value = value
             if description is not None:
@@ -33,6 +34,7 @@ class SettingsDAO:
 
     def update_value(self, key: str, value: str) -> Optional[Settings]:
         setting = self.get_by_key(key)
+        setting.updated_at = datetime.now()
         if setting:
             setting.value = value
             self.db.commit()

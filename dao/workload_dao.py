@@ -1,3 +1,4 @@
+from datetime import datetime
 from sqlalchemy.orm import Session
 from typing import Optional, List, Tuple
 from sqlalchemy.exc import IntegrityError
@@ -44,6 +45,7 @@ class WorkLoadDAO:
             raise e
     def update(self, workload: WorkLoad) -> WorkLoad:
         try:
+            workload.updated_at = datetime.now()
             self.db.commit()
             self.db.refresh(workload)
             return workload

@@ -102,7 +102,7 @@ class RuleService:
             for field, value in update_data.items():
                 if hasattr(existing_rule, field) and value is not None:
                     setattr(existing_rule, field, value)
-            existing_rule.updated_at = datetime.now()
+            
             updated_rule = self.rule_dao.update(existing_rule)
             return self._convert_to_response(updated_rule)
             

@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-
+from datetime import datetime
 from dao.os_dao import OsDao
 from models.os import Os
 from schemas.os import OsCreate, OsListResponse, OsResponse, OsSearchParams, OsUpdate
@@ -41,7 +41,7 @@ class OsService:
             return None
         if os_update.version is not None:
             exist_os.version = os_update.version
-        exist_os.up
+        
         update_os = self.dao.update(exist_os)
         return OsResponse.from_orm(update_os)
     def delete(self, os_id: int) -> bool:
