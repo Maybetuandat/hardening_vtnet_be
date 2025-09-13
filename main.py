@@ -9,15 +9,18 @@ from config.config_database import engine, Base, get_db
 
 from routers import (
     
+    auth_controller,
     compliance_result_controller, 
     dashboard_controller,
     export_controller,
     notification_controller,
-    os_controller, 
+    os_controller,
+    role_controller, 
     rule_controller, 
     rule_result_controller, 
     schedule_controller,
-    server_controller, 
+    server_controller,
+    user_controller, 
     workload_controller
 )
 from services.scheduler_singleton import SchedulerSingleton
@@ -106,6 +109,9 @@ app.include_router(schedule_controller.router)
 app.include_router(export_controller.router)
 app.include_router(notification_controller.router)
 app.include_router(os_controller.router)
+app.include_router(auth_controller.router)
+app.include_router(user_controller.router)
+app.include_router(role_controller.router)
 
 
 if __name__ == "__main__":
