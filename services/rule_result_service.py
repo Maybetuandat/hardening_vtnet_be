@@ -1,5 +1,6 @@
 from datetime import datetime
 from typing import List, Optional
+from dao.rule_dao import RuleDAO
 from dao.rule_result_dao import RuleResultDAO
 from dao.compliance_result_dao import ComplianceDAO  # ✅ import DAO instead of service
 from sqlalchemy.orm import Session
@@ -7,14 +8,14 @@ import math
 
 from models.rule_result import RuleResult
 from schemas.rule_result import RuleResultListResponse, RuleResultResponse
-from services.rule_service import RuleService
+
 
 
 class RuleResultService:
     def __init__(self, db: Session):
         self.db = db
         self.dao = RuleResultDAO(db)
-        self.rule_service = RuleService(db)
+        self.rule_dao = RuleDAO(db)
         self.compliance_dao = ComplianceDAO(db)   
         
     def get_rule_results_by_compliance_id(
@@ -49,11 +50,9 @@ class RuleResultService:
             total_pages=total_pages
         )
 
-    def count_passed_rules(self, compliance_id: int) -> int:
-        return self.dao.count_passed_rules(compliance_id)
+   
     
-    def count_rules_by_compliance(self, compliance_id: int) -> int:
-        return self.dao.count_by_compliance_id(compliance_id)
+ 
     
     def update_rule_result_status(
         self, rule_result_id: int, new_status: str
@@ -75,7 +74,7 @@ class RuleResultService:
         return self.dao.create_bulk(rule_results)
     
     def _convert_to_response(self, rule_result: RuleResult) -> RuleResultResponse:
-        rule = self.rule_service.get_rule_by_id(rule_result.rule_id)
+        rule = self.rule_dao.get_by_id(rule_result.rule_id)
         compliance = self.compliance_dao.get_by_id(rule_result.compliance_result_id)  
         return RuleResultResponse(
             id=rule_result.id,

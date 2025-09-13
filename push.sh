@@ -1,3 +1,3 @@
 git add .
-git commit -m "update api for load server for scan dialog"
+git commit -m "fix service layer call dao not call other service "
 git push origin main 

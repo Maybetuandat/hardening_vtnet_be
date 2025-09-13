@@ -1,8 +1,9 @@
 from sqlalchemy.orm import Session
 from typing import Optional, List
 from dao.os_dao import OsDao
+from dao.rule_dao import RuleDAO
 from dao.workload_dao import WorkLoadDAO
-from services.rule_service import RuleService
+
 
 from models.workload import WorkLoad
 from models.rule import Rule
@@ -22,7 +23,7 @@ class WorkloadService:
     def __init__(self, db: Session):
         self.dao = WorkLoadDAO(db)
         self.db = db
-        self.rule_service = RuleService(db)
+        self.rule_dao = RuleDAO(db)
         self.os_dao = OsDao(db)
     
     def get_all_workloads(self, page: int = 1, page_size: int = 10) -> WorkLoadListResponse:
@@ -49,14 +50,7 @@ class WorkloadService:
             total_pages=total_pages
         )
 
-    def get_workload_name_byid(self, workload_id: int) -> Optional[str]:
-        if workload_id <= 0:
-            return None
-        workload = self.dao.get_by_id(workload_id)
-        print(f"Workload ID: {workload_id}, Name: {workload.name if workload else 'Not found'}")
-        if workload:
-            return workload.name
-        return None
+   
 
     def get_workload_by_id(self, workload_id: int) -> Optional[WorkLoadResponse]:
         if workload_id <= 0:
@@ -130,44 +124,41 @@ class WorkloadService:
             workload_dict = workload_data.dict()
             workload_model = WorkLoad(**workload_dict)
             
-            
-            self.db.add(workload_model)
-            self.db.flush() 
+            created_workload = self.dao.create(workload_model)
+
             
             # 2. Tạo rules và gán workload_id
             created_rules = []
             for rule_data in rules_data:
                 # Gán workload_id cho rule
-                rule_data.workload_id = workload_model.id
+                rule_data.workload_id = created_workload.id
                 
                 # Tạo rule model
                 rule_dict = rule_data.dict()
                 rule_model = Rule(**rule_dict)
-                self.db.add(rule_model)
-                self.db.flush() 
-                
+                rule_created = self.rule_dao.create(rule_model)
+
                 # Convert to response
                 rule_response = RuleResponse(
-                    id=rule_model.id,
-                    name=rule_model.name,
-                    description=rule_model.description,
-                    
-                    workload_id=rule_model.workload_id,
-                    parameters=rule_model.parameters,
-                    is_active=rule_model.is_active,
-                    created_at=rule_model.created_at,
-                    updated_at=rule_model.updated_at,
-                    command=rule_model.command
+                    id=rule_created.id,
+                    name=rule_created.name,
+                    description=rule_created.description,
+
+                    workload_id=rule_created.workload_id,
+                    parameters=rule_created.parameters,
+                    is_active=rule_created.is_active,
+                    created_at=rule_created.created_at,
+                    updated_at=rule_created.updated_at,
+                    command=rule_created.command
                 )
                 created_rules.append(rule_response)
             
           
             
-            # Commit tất cả changes
-            self.db.commit()
+           
             
             return {
-                "workload": self._convert_to_response(workload_model),
+                "workload": self._convert_to_response(created_workload),
                 "rules": created_rules,
                 
                 "message": "Tạo workload với rules và commands thành công"
@@ -256,18 +247,7 @@ class WorkloadService:
                 raise ValueError(f"OS với ID {workload_data.os_id} không tồn tại")
 
 
-    def get_workload_id_by_name(self, name: str) -> Optional[int]:
-        """
-        Lấy workload ID từ name để sử dụng khi upload server
-        """
-        try:
-            if not name or not name.strip():
-                return None
-                
-            workload = self.dao.get_by_name(name.strip())
-            return workload.id if workload else None
-        except Exception as e:
-            raise Exception(f"Lỗi khi lấy workload ID từ name: {str(e)}")
+   
     def check_workload_name_exists(self, name: str) -> bool:
         try:
             if not name or not name.strip():

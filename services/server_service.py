@@ -3,6 +3,7 @@ from venv import create
 from sqlalchemy import Boolean
 from sqlalchemy.orm import Session
 from dao.server_dao import ServerDAO
+from dao.workload_dao import WorkLoadDAO
 from models.server import Server
 from schemas.server import (
     ServerCreate, 
@@ -13,16 +14,15 @@ from schemas.server import (
 )
 import math
 from sqlalchemy.exc import IntegrityError
-from services.workload_service import WorkloadService
+
 
 
 class ServerService:
     def __init__(self, db: Session):
         self.dao = ServerDAO(db)
-        self.workload_service =WorkloadService(db)
+        self.workload_dao = WorkLoadDAO(db)
 
-    def get_active_servers(self, skip : int, limit : int) -> List[Server]:
-        return self.dao.get_active_servers(skip=skip, limit=limit)
+  
 
     def get_server_by_id(self, server_id: int) -> Optional[ServerResponse]:
         if server_id <= 0:
@@ -52,7 +52,8 @@ class ServerService:
         
         server_responses = []
         for server in servers:
-            workload_name = self.workload_service.get_workload_name_byid(server.workload_id)
+            workload = self.workload_dao.get_by_id(server.workload_id)
+            workload_name = workload.name if workload else "Unknown"
             server_responses.append(self._convert_to_response(server, workload_name=workload_name))
         
         return ServerListResponse(

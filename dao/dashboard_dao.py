@@ -24,70 +24,64 @@ class DashboardDAO:
             today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
             today_end = datetime.now().replace(hour=23, minute=59, second=59, microsecond=999999)
 
-            # Query cho completed results để tính compliance rate
-            completed_stats_query = self.db.query(
-                func.sum(ComplianceResult.score).label('total_score'),
-                func.count(ComplianceResult.id).label('total_count')
-            ).filter(
-                ComplianceResult.status == 'completed', 
-                ComplianceResult.scan_date >= today_start,
-                ComplianceResult.scan_date <= today_end
+            
+            subquery = (
+                self.db.query(
+                    ComplianceResult.id,
+                    ComplianceResult.status,
+                    func.row_number()
+                    .over(
+                        partition_by=Server.ip_address,
+                        order_by=desc(ComplianceResult.scan_date)
+                    )
+                    .label("rn")
+                )
+                .join(ComplianceResult.server)
+                .filter(
+                    ComplianceResult.scan_date >= today_start,
+                    ComplianceResult.scan_date <= today_end
+                )
+                .subquery()
             )
+
             
-            completed_result = completed_stats_query.first()
-            
-            # Query để tính tổng failed_rules từ tất cả ComplianceResult
-            failed_rules_query = self.db.query(
-                func.sum(ComplianceResult.failed_rules).label('total_failed_rules')
-            ).filter(
-                ComplianceResult.scan_date >= today_start,
-                ComplianceResult.scan_date <= today_end
+            latest_query = (
+                self.db.query(subquery.c.status)
+                .filter(subquery.c.rn == 1)
             )
-            
-            failed_rules_result = failed_rules_query.first()
-            
-            # Query để đếm số ComplianceResult có status = 'failed'
-            failed_compliance_query = self.db.query(
-                func.count(ComplianceResult.id).label('failed_compliance_count')
-            ).filter(
-                ComplianceResult.status == 'failed',
-                ComplianceResult.scan_date >= today_start,
-                ComplianceResult.scan_date <= today_end
-            )
-            
-            failed_compliance_result = failed_compliance_query.first()
-            
-            # Tính compliance_rate từ completed results
-            compliance_rate = 0.0
-            if completed_result and completed_result.total_count > 0 and completed_result.total_score is not None:
-                compliance_rate = round(float(completed_result.total_score) / float(completed_result.total_count), 1)
-            
-            # Tính critical_issues = số failed_rules + số ComplianceResult failed
-            total_failed_rules = int(failed_rules_result.total_failed_rules or 0) if failed_rules_result else 0
-            failed_compliance_count = int(failed_compliance_result.failed_compliance_count or 0) if failed_compliance_result else 0
-            critical_issues = total_failed_rules + failed_compliance_count
-            
+
+            latest_results = [row.status for row in latest_query.all()]
+
+            total = len(latest_results)
+            completed_count = sum(1 for s in latest_results if s == "completed")
+            failed_count = total - completed_count 
+
+            print("Debug - completed count:", completed_count)
+            print("Debug - total count:", total)
+            compliance_rate = round(completed_count / total, 2) if total > 0 else 0.0
+            critical_issues = failed_count
+
             return {
                 "compliance_rate": compliance_rate,
                 "critical_issues": critical_issues
             }
-            
+
         except Exception as e:
             logging.error(f"Error getting compliance statistics: {str(e)}")
             return {
                 "compliance_rate": 0.0,
                 "critical_issues": 0
             }
+
     
     def get_last_audit_time(self) -> Optional[str]:
         try:
             latest_result = self.db.query(ComplianceResult)\
-                .filter(ComplianceResult.status == 'completed')\
-                .order_by(desc(ComplianceResult.created_at))\
+                .order_by(desc(ComplianceResult.scan_date))\
                 .first()
             
             if latest_result:
-                return latest_result.created_at.strftime("%Y-%m-%d %H:%M:%S")
+                return latest_result.scan_date.strftime("%Y-%m-%d %H:%M:%S")
             return None
             
         except Exception as e:

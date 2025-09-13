@@ -12,6 +12,7 @@ import threading
 
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy import create_engine
+from dao.server_dao import ServerDAO
 from models.rule import Rule
 from models.rule_result import RuleResult
 from models.server import Server
@@ -65,8 +66,9 @@ class ScanService:
             raise e
 
     def _scan_servers_by_batch(self, scan_request: ComplianceScanRequest, specific_ids: Optional[List[int]] = None) -> ComplianceScanResponse:
-            server_service = ServerService(self.db)
+            server_dao = ServerDAO(self.db)
             
+            print("DEBUG - Scan request batch size:", specific_ids)
             started_scans_count = 0 
             
             skip = 0
@@ -81,11 +83,11 @@ class ScanService:
                         break 
                     
                     for server_id in current_batch_ids:
-                        server = server_service.get_server_by_id(server_id)
-                        if server and server.status:
+                        server = server_dao.get_by_id(server_id)
+                        if server:
                             servers_in_batch_objects.append(server)
                 else:
-                    servers_in_batch_objects = server_service.get_active_servers(skip=skip, limit=limit)
+                    servers_in_batch_objects = server_dao.get_servers(skip=skip, limit=limit)
                     if not servers_in_batch_objects:
                         break 
 
@@ -99,6 +101,7 @@ class ScanService:
                     server_dict = self.convert_server_model_to_dict(server)
                     current_batch_data.append(server_dict)
                 
+                print("Debug scan server", current_batch_data)
               
                 # cau lenh nay co tac dung tach doi tuong ra khoi session hien tai
                 self.db.expunge_all() 

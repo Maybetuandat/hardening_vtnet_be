@@ -13,7 +13,7 @@ class ServerDAO:
         self.db = db
 
    
-    def get_active_servers(self, skip : int, limit: int) -> List[Server]:
+    def get_servers(self, skip : int, limit: int) -> List[Server]:
         return self.db.query(Server).offset(skip).limit(limit).all()
 
 

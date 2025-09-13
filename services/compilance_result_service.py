@@ -10,6 +10,10 @@ from sqlalchemy.orm import Session
 from dao.compliance_result_dao import ComplianceDAO
 
 
+from dao.rule_dao import RuleDAO
+from dao.rule_result_dao import RuleResultDAO
+from dao.server_dao import ServerDAO
+from dao.workload_dao import WorkLoadDAO
 from models import workload
 from models.compliance_result import ComplianceResult
 from models.rule_result import RuleResult
@@ -21,7 +25,7 @@ from schemas.compliance_result import (
 from services.notification_service import notification_service
 
 from services.rule_result_service import RuleResultService
-from services.rule_service import RuleService
+
 from services.server_service import ServerService
 from services.workload_service import WorkloadService
 
@@ -32,10 +36,10 @@ class ComplianceResultService:
     def __init__(self, db: Session):
         self.db = db
         self.dao = ComplianceDAO(db)
-        self.rule_result_service = RuleResultService(db)
-        self.server_service = ServerService(db)
-        self.workload_service = WorkloadService(db)
-        self.rule_service = RuleService(db)
+        self.rule_result_dao = RuleResultDAO(db)
+        self.server_dao = ServerDAO(db)
+        self.workload_dao = WorkLoadDAO(db)
+        self.rule_dao = RuleDAO(db)
 
     
 
@@ -69,9 +73,9 @@ class ComplianceResultService:
         if not compliance_result:
             return None
 
-        pass_rule = self.rule_result_service.count_passed_rules(compliance_id)
+        pass_rule = self.rule_result_dao.count_passed_rules(compliance_id)
 
-        total_rule = self.rule_result_service.count_rules_by_compliance(compliance_id)
+        total_rule = self.rule_result_dao.count_by_compliance_id(compliance_id)
         compliance_result.passed_rules = pass_rule
         compliance_result.total_rules = total_rule
         compliance_result.failed_rules = total_rule - pass_rule
@@ -105,8 +109,8 @@ class ComplianceResultService:
 
     def create_pending_result(self, server_id: int, workload_id : int) -> ComplianceResult:
         try:
-            workload = self.workload_service.get_workload_by_id(workload_id)
-            server = self.server_service.get_server_by_id(server_id)
+            workload = self.workload_dao.get_by_id(workload_id)
+            server = self.server_dao.get_by_id(server_id)
             name = f"{server.ip_address} - {workload.name} {datetime.now()}"
             compliance_data = ComplianceResultCreate(
                 server_id=server_id,
@@ -151,7 +155,7 @@ class ComplianceResultService:
         try:
             # Bulk create rule results
             if rule_results:
-                self.rule_result_service.create_bulk(rule_results)
+                self.rule_result_dao.create_bulk(rule_results)
 
             # Update compliance result
             compliance_result = self.dao.get_by_id(compliance_id)
@@ -211,12 +215,12 @@ class ComplianceResultService:
 
     def _convert_to_response(self, compliance: ComplianceResult) -> ComplianceResultResponse:
         
-        server = self.server_service.get_server_by_id(compliance.server_id)
-        workload = self.workload_service.get_workload_by_id(server.workload_id) if server else None
+        server = self.server_dao.get_by_id(compliance.server_id)
+        workload = self.workload_dao.get_by_id(server.workload_id) if server else None
         return ComplianceResultResponse(
             id=compliance.id,
-            server_ip=server.ip_address ,
-            name = compliance.name,
+            server_ip=server.ip_address,
+            name=compliance.name,
             server_id=compliance.server_id,
             status=compliance.status,
             total_rules=compliance.total_rules,
