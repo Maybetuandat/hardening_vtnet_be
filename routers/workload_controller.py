@@ -48,7 +48,7 @@ async def get_workloads(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Lỗi khi lấy danh sách workloads: {str(e)}"
+            detail=f"Error fetching workloads: {str(e)}"
         )
 
 @router.get("/{workload_id}", response_model=WorkLoadResponse)
@@ -65,7 +65,7 @@ async def get_workload_by_id(
         if not workload:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Không tìm thấy workload với ID: {workload_id}"
+                detail=f"Workload not found: {workload_id}"
             )
         return workload
     except HTTPException:
@@ -73,7 +73,7 @@ async def get_workload_by_id(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Lỗi khi lấy thông tin workload: {str(e)}"
+            detail=f"Error fetching workload information: {str(e)}"
         )
 
 @router.post("/", response_model=WorkLoadResponse)
@@ -95,7 +95,7 @@ async def create_workload(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Lỗi khi tạo workload: {str(e)}"
+            detail=f"Error creating workload: {str(e)}"
         )
 
 @router.post("/create-with-rules-commands")
@@ -118,7 +118,7 @@ async def create_workload_with_rules_and_commands(
         return {
             "success": True,
             "data": result,
-            "message": "Tạo workload với rules và commands thành công"
+            "message": "Create workload with rules and commands successfully"
         }
     except ValueError as e:
         raise HTTPException(
@@ -128,7 +128,7 @@ async def create_workload_with_rules_and_commands(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Lỗi khi tạo workload với rules và commands: {str(e)}"
+            detail=f"Error creating workload with rules and commands: {str(e)}"
         )
 
 @router.put("/{workload_id}", response_model=WorkLoadResponse)
@@ -146,7 +146,7 @@ async def update_workload(
         if not updated_workload:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Không tìm thấy workload với ID: {workload_id}"
+                detail=f"Workload not found: {workload_id}"
             )
         return updated_workload
     except HTTPException:
@@ -159,7 +159,7 @@ async def update_workload(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Lỗi khi cập nhật workload: {str(e)}"
+            detail=f"Error updating workload: {str(e)}"
         )
 
 @router.delete("/{workload_id}")
@@ -176,18 +176,18 @@ async def delete_workload(
         if not success:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Không tìm thấy workload với ID: {workload_id}"
+                detail=f"Workload not found: {workload_id}"
             )
         return {
             "success": True,
-            "message": f"Xóa workload ID {workload_id} thành công"
+            "message": f"Delete workload ID {workload_id} successfully"
         }
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Lỗi khi xóa workload: {str(e)}"
+            detail=f"Error deleting workload: {str(e)}"
         )
 
 @router.post("/validate/workload-name/{workload_name}")
@@ -203,10 +203,10 @@ async def validate_workload_name(
         exists = workload_service.check_workload_name_exists(workload_name)
         return {
             "exists": exists,
-            "message": "Tên workload đã tồn tại" if exists else "Tên workload hợp lệ"
+            "message": "Workload name already exists" if exists else "Valid workload name"
         }
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Lỗi khi kiểm tra tên workload: {str(e)}"
+            detail=f"Error checking workload name: {str(e)}"
         )

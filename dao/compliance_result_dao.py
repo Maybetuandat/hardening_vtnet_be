@@ -85,58 +85,32 @@ class ComplianceDAO:
             )
 
             # Áp dụng filter nếu có keyword
-            if keyword and keyword.strip():
+            
+
+        if keyword and keyword.strip():
                 keyword = keyword.strip()
                 subquery = subquery.filter(
                     func.lower(Server.ip_address).like(f"%{keyword.lower()}%")
                 )
 
             # Áp dụng filter theo status
-            if status and status.strip():
+        if status and status.strip():
                 subquery = subquery.filter(ComplianceResult.status == status.strip())
 
-            subquery = subquery.subquery()
+        subquery = subquery.subquery()
 
             # Query chính để lấy compliance result với rank = 1 (gần nhất cho mỗi IP)
-            query = (
+        query = (
                 self.db.query(ComplianceResult)
                 .join(subquery, ComplianceResult.id == subquery.c.id)
                 .filter(subquery.c.rn == 1)
             )
 
             # Đếm tổng số record
-            total = query.count()
+        total = query.count()
 
             # Lấy kết quả với pagination
-            results = (
-                query.order_by(ComplianceResult.scan_date.desc())
-                .offset(skip)
-                .limit(limit)
-                .all()
-            )
-
-        else:
-            # Logic cũ khi không có today
-            query = self.db.query(ComplianceResult)
-
-            # Filter theo keyword
-            if keyword and keyword.strip():
-                keyword = keyword.strip()
-                conditions = []
-                conditions.append(
-                    func.lower(Server.ip_address).like(f"%{keyword.lower()}%")
-                )
-                query = query.join(ComplianceResult.server).filter(or_(*conditions))
-
-            # Filter theo status
-            if status and status.strip():
-                query = query.filter(ComplianceResult.status == status.strip())
-                
-            # Đếm tổng số record
-            total = query.count()
-            
-            # Lấy kết quả với pagination
-            results = (
+        results = (
                 query.order_by(ComplianceResult.scan_date.desc())
                 .offset(skip)
                 .limit(limit)

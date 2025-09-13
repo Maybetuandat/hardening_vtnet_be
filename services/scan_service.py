@@ -31,10 +31,22 @@ class ScanService:
         self.session_maker = sessionmaker(bind=self.db_engine)
         
         # Các service sẽ được khởi tạo trong mỗi thread với session riêng
-        self.ansible_timeout = 5
+        self.ansible_timeout = 30
         # Số luồng tối đa chạy đồng thời
         self.max_workers = 10
+        self._thread_pool = ThreadPoolExecutor(max_workers=self.max_workers)
+        self._warm_up_threads()
         
+    def _warm_up_threads(self):
+        
+        def dummy_task():
+            time.sleep(0.01)  
+            return "warmed"
+        futures = [self._thread_pool.submit(dummy_task) for _ in range(self.max_workers)]
+        for future in futures:
+            future.result()
+        
+        logging.info(f"Thread pool warmed up with {self.max_workers} threads")
     def start_compliance_scan(self, scan_request : ComplianceScanRequest) -> ComplianceScanResponse:
         """
         co hai loai chinh: 
@@ -133,30 +145,29 @@ class ScanService:
         }
     def _process_compliance_scan_batch_threaded(self, batch_server_data: List[Dict[str, Any]]) -> int:  
         successful_scans_in_batch = 0
-        with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
-            # Submit tất cả các task trong batch này vào thread pool
-            future_to_server_data = {
-                executor.submit(self._scan_single_server_threaded, server_data): server_data
-                for server_data in batch_server_data
-            }
-            
-            # Đợi tất cả các task trong batch này hoàn thành
-            for future in as_completed(future_to_server_data):
-                server_data = future_to_server_data[future]
-                try:
-                    future.result() 
-                    successful_scans_in_batch += 1
-                    logging.info(f"Server {server_data['hostname']} scan completed successfully within batch.")
-                except Exception as e:
-                    logging.error(f"Server {server_data['hostname']} scan failed within batch: {str(e)}")
-            
-            logging.info(f"Batch scan completed. Successful: {successful_scans_in_batch}, Failed: {len(batch_server_data) - successful_scans_in_batch}")
+        future_to_server_data = {}
+        for server_data in batch_server_data:
+            future = self._thread_pool.submit(self._scan_single_server_threaded, server_data)
+            future_to_server_data[future] = server_data
+            logging.info(f"IMMEDIATE - Submitted task for {server_data['hostname']} to pre-warmed thread")
+        
+        
+        for future in as_completed(future_to_server_data):
+            server_data = future_to_server_data[future]
+            try:
+                future.result() 
+                successful_scans_in_batch += 1
+                logging.info(f"Server {server_data['hostname']} scan completed successfully within batch.")
+            except Exception as e:
+                logging.error(f"Server {server_data['hostname']} scan failed within batch: {str(e)}")
         
         return successful_scans_in_batch
-
     def _scan_single_server_threaded(self, server_data: Dict[str, Any]):
-        thread_session = self.session_maker()
+        
         thread_id = threading.current_thread().ident
+        start_time = time.time()
+        logging.info(f" THREAD {thread_id} STARTED IMMEDIATELY for {server_data['hostname']} at {start_time}")
+        thread_session = self.session_maker()
         
         compliance_result_id = None 
         
