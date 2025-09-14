@@ -22,9 +22,7 @@ class UserService:
         self.dao = UserDAO(db)
         self.role_dao = RoleDAO(db)
     
-    def get_all_users_with_role(self) -> List[UserResponse]:
-        users = self.dao.get_all_with_role()
-        return [self._convert_to_response(user) for user in users]
+    
     
     def get_user_by_id(self, user_id: int) -> Optional[UserResponse]:
         if user_id <= 0:
@@ -159,12 +157,12 @@ class UserService:
         try:
             user = self.dao.get_by_id(user_id)
             if not user:
-                raise ValueError("User không tồn tại")
+                raise ValueError("User is not found")
             
             # Verify current password
             if not self._verify_password(password_data.current_password, user.password_hash):
-                raise ValueError("Mật khẩu hiện tại không đúng")
-            
+                raise ValueError("Current password is incorrect")
+
             # Update password
             user.password_hash = self._hash_password(password_data.new_password)
             self.dao.update(user)

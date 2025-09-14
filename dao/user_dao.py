@@ -17,8 +17,7 @@ class UserDAO:
     def get_by_email(self, email: str) -> Optional[User]:
         return self.db.query(User).options(joinedload(User.role)).filter(User.email == email).first()
     
-    def get_all_with_role(self) -> List[User]:
-        return self.db.query(User).options(joinedload(User.role)).order_by(User.username).all()
+  
     
     def search_users(
         self,
@@ -35,8 +34,7 @@ class UserDAO:
         if keyword:
             search_filter = or_(
                 User.username.ilike(f"%{keyword}%"),
-                User.email.ilike(f"%{keyword}%"),
-                User.full_name.ilike(f"%{keyword}%")
+                User.email.ilike(f"%{keyword}%")
             )
             filters.append(search_filter)
         
@@ -50,20 +48,12 @@ class UserDAO:
             query = query.filter(and_(*filters))
         
         total = query.count()
-        users = query.order_by(User.username).offset(skip).limit(limit).all()
+        users = query.order_by(User.created_at).offset(skip).limit(limit).all()
         
         return users, total
+  
     
-    def get_active_users(self, skip: int = 0, limit: int = 10) -> Tuple[List[User], int]:
-        query = self.db.query(User).options(joinedload(User.role)).filter(User.is_active == True)
-        total = query.count()
-        users = query.order_by(User.username).offset(skip).limit(limit).all()
-        return users, total
-    
-    def get_users_by_role(self, role_id: int) -> List[User]:
-        return self.db.query(User).options(joinedload(User.role)).filter(
-            and_(User.role_id == role_id, User.is_active == True)
-        ).order_by(User.username).all()
+  
     
     def create(self, user: User) -> User:
         self.db.add(user)
