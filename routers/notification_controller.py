@@ -1,4 +1,4 @@
-
+# notifications.py - KHÔNG CẦN THAY ĐỔI
 import asyncio
 from datetime import datetime
 import json
@@ -7,7 +7,7 @@ from decimal import Decimal
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import StreamingResponse
 from services.notification_service import notification_service
-from utils.auth import require_user
+from utils.auth import require_user # Vẫn sử dụng require_user cũ
 
 router = APIRouter(prefix="/api/notifications", tags=["Notifications"])
 
@@ -20,16 +20,14 @@ def custom_json_serializer(obj):
     
 @router.get("/stream")
 async def compliance_notifications_stream(request: Request, current_user = Depends(require_user())):
-
-
+    # ... phần còn lại của code không thay đổi ...
+    print("Debug Log: User connected to SSE stream", current_user.username, "at", datetime.utcnow())
     async def event_stream():
         client_queue = asyncio.Queue()
         
         try:
-            # khi goi den url se thuc hien them client vao danh sach
             await notification_service.add_client(client_queue)
             
-            # Send initial connection message
             yield f"data: {json.dumps({'type': 'connected', 'message': 'SSE connected successfully'})}\n\n"
             
             while True:
@@ -39,15 +37,11 @@ async def compliance_notifications_stream(request: Request, current_user = Depen
                 try:
                     await notification_service.process_queued_notifications()
                     
-                    
                     message = await asyncio.wait_for(client_queue.get(), timeout=5.0)
                     
-                    
-                    # function send data to frontend 
                     yield f"data: {json.dumps(message, default=custom_json_serializer)}\n\n"
                     
                 except asyncio.TimeoutError:
-                    
                     yield f"data: {json.dumps({'type': 'heartbeat', 'timestamp': str(asyncio.get_event_loop().time())})}\n\n"
                     
                 except Exception as e:

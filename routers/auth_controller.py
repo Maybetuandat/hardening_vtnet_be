@@ -35,7 +35,15 @@ async def refresh_token(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-
+@router.get("/me", response_model=UserResponse)
+async def get_current_user(
+    current_user: User = Depends(get_current_user_dependency)
+):
+    """Get current user info from token"""
+    from services.user_service import UserService
+    # Temporarily create UserService for convert
+    user_service = UserService(None)  # db will not be used in convert
+    return user_service._convert_to_response(current_user)
 @router.post("/logout")
 async def logout(
     current_user: User = Depends(get_current_user_dependency)
