@@ -14,7 +14,7 @@ services:
     ports:
       - "${DB_PORT}:3306"
     env_file:
-      - .env
+      - ./hardening_vtnet_be/.env
     volumes:
       - mysql_data:/var/lib/mysql
     healthcheck:
@@ -25,7 +25,7 @@ services:
 
   backend:
     build:
-      context: ./backend_path  # Thay bằng path thực tế
+      context: ./hardening_vtnet_be # Thay bằng path thực tế
       dockerfile: Dockerfile
     container_name: hardening_backend
     restart: always
@@ -39,11 +39,11 @@ services:
       mysql:
         condition: service_healthy
     volumes:
-      - ./backend_path:/app  # Mount để live reload
+      - ./backend_path:/app # Mount để live reload
 
   frontend:
     build:
-      context: ./frontend_path  # Thay bằng path thực tế  
+      context: ./hardening_vtnet_fe
       dockerfile: Dockerfile
     container_name: hardening_frontend
     restart: always
