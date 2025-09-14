@@ -50,7 +50,7 @@ def require_admin() -> Callable:
     return admin_checker
 
 def require_user() -> Callable:
-    """Decorator to require user role (admin or user)"""
+    
     def user_checker(
         current_user: User = Depends(get_current_user_dependency),
         db: Session = Depends(get_db)

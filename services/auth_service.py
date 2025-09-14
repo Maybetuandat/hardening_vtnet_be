@@ -27,14 +27,9 @@ class AuthService:
                 headers={"WWW-Authenticate": "Bearer"},
             )
         
-        if not user.is_active:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="User account is disabled",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
+      
         
-        # Create access token
+        # Create access token (options: expired time can be customized :  minutes)
         access_token = self._create_access_token(
             data={
                 "sub": user.username,
@@ -49,12 +44,10 @@ class AuthService:
         return LoginResponse(
             access_token=access_token,
             token_type="bearer",
-            user=user_response,
-            permissions=self._get_permissions_by_role(user.role)
+            user=user_response
         )
     
     def get_current_user(self, credentials: HTTPAuthorizationCredentials) -> User:
-        """Get user information from JWT token"""
         credentials_exception = HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token",
@@ -81,15 +74,14 @@ class AuthService:
         return user_model
     
     def is_admin(self, user: User) -> bool:
-        """Check if user is admin"""
+        
         return user.role == "admin"
     
     def is_user(self, user: User) -> bool:
-        """Check if user is regular user"""
-        return user.role in ["user", "admin"]  # Admin can also act as user
+        
+        return user.role in ["user", "admin"]  
     
     def refresh_token(self, user: User) -> str:
-        """Refresh JWT token for user"""
         return self._create_access_token(
             data={
                 "sub": user.username,
@@ -99,7 +91,6 @@ class AuthService:
         )
     
     def _create_access_token(self, data: dict, expires_delta: Optional[timedelta] = None):
-        """Create JWT access token"""
         to_encode = data.copy()
         if expires_delta:
             expire = datetime.utcnow() + expires_delta
@@ -110,18 +101,4 @@ class AuthService:
         encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
         return encoded_jwt
     
-    def _get_permissions_by_role(self, role_name: str) -> List[str]:
-        """Get permissions based on role"""
-        if role_name == "admin":
-            return [
-                "user.create", "user.read", "user.update", "user.delete",
-                "workload.create", "workload.read", "workload.update", "workload.delete",
-                "rule.create", "rule.read", "rule.update", "rule.delete",
-                "server.create", "server.read", "server.update", "server.delete",
-                "dashboard.read", "schedule.read", "schedule.update"
-            ]
-        else:  # user role
-            return [
-                "workload.read", "rule.read", "server.read", 
-                "dashboard.read", "schedule.read"
-            ]
+    

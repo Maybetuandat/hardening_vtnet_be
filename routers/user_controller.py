@@ -41,6 +41,7 @@ async def search_users(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+# me for current user
 @router.get("/me", response_model=UserResponse)
 async def get_current_user_info(
     current_user: User = Depends(get_current_user_dependency),
@@ -52,6 +53,7 @@ async def get_current_user_info(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+# id for admin to get any user
 @router.get("/{user_id}", response_model=UserResponse)
 async def get_user_by_id(
     user_id: int,

@@ -164,7 +164,6 @@ class UserService:
             raise e
     
     def authenticate_user(self, username: str, password: str) -> Optional[User]:
-        """Authenticate user for login"""
         user = self.dao.get_by_username(username)
         if not user:
             return None

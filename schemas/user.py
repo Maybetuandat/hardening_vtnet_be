@@ -51,7 +51,7 @@ class LoginResponse(BaseModel):
     access_token: str
     token_type: str
     user: UserResponse
-    permissions: List[str] = []
+    
 
 class TokenData(BaseModel):
     username: Optional[str] = None

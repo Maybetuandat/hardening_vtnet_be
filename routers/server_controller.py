@@ -59,7 +59,7 @@ def get_server_by_id(
     try:
         server = server_service.get_server_by_id(server_id)
         if not server:
-            raise HTTPException(status_code=404, detail="Server không tìm thấy")
+            raise HTTPException(status_code=404, detail="Server not found")
         return server
     except HTTPException:
         raise
@@ -116,9 +116,9 @@ def delete_server(
         success = server_service.delete(server_id)
         
         if not success:
-            raise HTTPException(status_code=404, detail="Server không tìm thấy")
-        
-        return {"message": "Xóa server thành công"}
+            raise HTTPException(status_code=404, detail="Server not found")
+
+        return {"message": "Server deleted successfully"}
     except HTTPException:
         raise
     except Exception as e:
@@ -174,7 +174,7 @@ def update_server(
     try:
         updated_server = server_service.update(server_id, server_data)
         if not updated_server:
-            raise HTTPException(status_code=404, detail="Server không tìm thấy")
+            raise HTTPException(status_code=404, detail="Server not found")
         return updated_server
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

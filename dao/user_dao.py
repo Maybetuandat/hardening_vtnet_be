@@ -1,6 +1,6 @@
 
 from sqlalchemy.orm import Session
-from sqlalchemy import and_, or_
+from sqlalchemy import and_, func, or_
 from typing import Optional, List, Tuple
 from models.user import User
 
@@ -58,6 +58,7 @@ class UserDAO:
         return user
     
     def update(self, user: User) -> User:
+        user.updated_at = func.now()
         self.db.flush()
         self.db.refresh(user)
         return user
