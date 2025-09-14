@@ -12,6 +12,7 @@ from schemas.server import (
     ServerListResponse,
     ServerSearchParams
 )
+from utils.auth import require_admin, require_user
 
 router = APIRouter(prefix="/api/servers", tags=["Servers"])
 
@@ -31,7 +32,8 @@ def get_servers(
     status: Optional[bool] = Query(None, description="Trạng thái server"),
     page: int = Query(1, ge=1, description="Số trang"),
     page_size: int = Query(10, ge=1, le=100, description="Số lượng item mỗi trang"),
-    server_service: ServerService = Depends(get_server_service)
+    server_service: ServerService = Depends(get_server_service),
+    current_user = Depends(require_user())
 ):
     
     try:
@@ -50,7 +52,8 @@ def get_servers(
 @router.get("/{server_id}", response_model=ServerResponse)
 def get_server_by_id(
     server_id: int,
-    server_service: ServerService = Depends(get_server_service)
+    server_service: ServerService = Depends(get_server_service),
+    current_user = Depends(require_user())
 ):
     
     try:
@@ -67,7 +70,8 @@ def get_server_by_id(
 @router.post("/", response_model=ServerResponse)
 def create_server(
     server_data: ServerCreate,
-    server_service: ServerService = Depends(get_server_service)
+    server_service: ServerService = Depends(get_server_service),
+    current_user = Depends(require_admin())
 ):
     
     try:
@@ -80,11 +84,12 @@ def create_server(
 
 @router.post("/batch", response_model=List[ServerResponse])
 def create_servers_batch(
-    servers: List[ServerCreate],  # Đổi từ ServerCreate thành ServerUploadItem
-    server_service: ServerService = Depends(get_server_service)
+    servers: List[ServerCreate],  
+    server_service: ServerService = Depends(get_server_service),
+    current_user = Depends(require_admin())
 ):
     """
-    Tạo nhiều servers từ danh sách ServerUploadItem (có workload_name)
+    
     Sẽ convert workload_name thành workload_id trong service layer
     """
     try:
@@ -103,7 +108,8 @@ def create_servers_batch(
 @router.delete("/{server_id}")
 def delete_server(
     server_id: int,
-    server_service: ServerService = Depends(get_server_service)
+    server_service: ServerService = Depends(get_server_service),
+    current_user = Depends(require_admin())
 ):
     
     try:
@@ -122,7 +128,8 @@ def delete_server(
 @router.post("/test-connection", response_model=TestConnectionResponse)
 def test_connections(
     request: TestConnectionRequest,
-    connection_service: ConnectionService = Depends(get_connection_service)
+    connection_service: ConnectionService = Depends(get_connection_service),
+    current_user = Depends(require_admin())
 ):
     
     try:
@@ -141,7 +148,8 @@ def test_connections(
 @router.post("/test-single-connection", response_model=ServerConnectionResult)
 def test_single_connection(
     server: ServerConnectionInfo, 
-    connection_service: ConnectionService = Depends(get_connection_service)
+    connection_service: ConnectionService = Depends(get_connection_service),
+    current_user = Depends(require_admin())
 ):
     
     try:
@@ -157,7 +165,8 @@ def test_single_connection(
 def update_server(
     server_id: int,
     server_data: ServerUpdate,
-    server_service: ServerService = Depends(get_server_service)
+    server_service: ServerService = Depends(get_server_service),
+    current_user = Depends(require_admin())
 ):
     """
     Cập nhật thông tin server bao gồm workload
@@ -178,7 +187,8 @@ def update_server(
 def validate_hostname(
     hostname: str,
     server_id: Optional[int] = Query(None, description="ID server để exclude (dành cho update)"),
-    server_service: ServerService = Depends(get_server_service)
+    server_service: ServerService = Depends(get_server_service),
+    current_user = Depends(require_admin())
 ):
     """Kiểm tra hostname đã tồn tại hay chưa"""
     try:
@@ -197,7 +207,8 @@ def validate_hostname(
 def validate_ip_address(
     ip_address: str,
     server_id: Optional[int] = Query(None, description="ID server để exclude (dành cho update)"),
-    server_service: ServerService = Depends(get_server_service)
+    server_service: ServerService = Depends(get_server_service),
+    current_user = Depends(require_admin())
 ):
     """Kiểm tra IP address đã tồn tại hay chưa"""
     try:

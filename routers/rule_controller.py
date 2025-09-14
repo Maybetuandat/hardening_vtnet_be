@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from config.config_database import get_db
 from schemas.rule import RuleCheckResult, RuleCreate, RuleExistenceCheckRequest, RuleListResponse, RuleResponse, RuleSearchParams
 from services.rule_service import RuleService
+from utils.auth import require_admin, require_user
 
 router = APIRouter(prefix="/api/rules", tags=["Rules"])
 
@@ -16,7 +17,8 @@ async def get_rules(
         page: int = Query(1, ge=1, description="Số trang"),
         page_size: int = Query(10, ge=1, le=100, description="Số lượng item mỗi trang"),
         workload_id: Optional[int] = Query(None, description="ID workload"),
-        rule_service: RuleService = Depends(get_rule_service)
+        rule_service: RuleService = Depends(get_rule_service),
+        current_user = Depends(require_user())
         ) -> List[RuleResponse]:
 
     try:
@@ -33,7 +35,11 @@ async def get_rules(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 @router.get("/{rule_id}", response_model=RuleResponse)
-async def get_rule_by_id(rule_id: int, rule_service: RuleService = Depends(get_rule_service)) -> RuleResponse:
+async def get_rule_by_id(
+        rule_id: int, 
+        rule_service: RuleService = Depends(get_rule_service),
+        current_user = Depends(require_user())
+) -> RuleResponse:
     try:
         rule = rule_service.get_rule_by_id(rule_id)
         if not rule:
@@ -43,19 +49,29 @@ async def get_rule_by_id(rule_id: int, rule_service: RuleService = Depends(get_r
         raise HTTPException(status_code=500, detail=str(e))
     
 @router.post("/", response_model=RuleResponse)
-async def create_rule(rule: RuleCreate, rule_service: RuleService = Depends(get_rule_service)) -> RuleResponse:
+async def create_rule(
+        rule: RuleCreate, 
+        rule_service: RuleService = Depends(get_rule_service),
+        current_user = Depends(require_admin())
+) -> RuleResponse:
     try:
         return rule_service.create(rule)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 @router.post("/bulk", response_model=List[RuleResponse])
-async def create_rules_bulk(rules: List[RuleCreate], rule_service: RuleService = Depends(get_rule_service)) -> List[RuleResponse]:
+async def create_rules_bulk(
+    rules: List[RuleCreate], rule_service: RuleService = Depends(get_rule_service),
+    current_user = Depends(require_admin())
+) -> List[RuleResponse]:
     try:
         return rule_service.create_bulk(rules)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 @router.put("/{rule_id}", response_model=RuleResponse)
-async def update_rule(rule_id: int, rule: RuleCreate, rule_service: RuleService = Depends(get_rule_service)) -> RuleResponse:
+async def update_rule(
+    rule_id: int, rule: RuleCreate, rule_service: RuleService = Depends(get_rule_service),
+    current_user = Depends(require_admin())
+) -> RuleResponse:
     try:
         updated_rule = rule_service.update(rule_id, rule)
         if not updated_rule:
@@ -64,7 +80,10 @@ async def update_rule(rule_id: int, rule: RuleCreate, rule_service: RuleService 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 @router.delete("/{rule_id}", response_model=dict)
-async def delete_rule(rule_id: int, rule_service: RuleService = Depends(get_rule_service)) -> dict:
+async def delete_rule(
+    rule_id: int, rule_service: RuleService = Depends(get_rule_service),
+    current_user = Depends(require_admin())
+) -> dict:
     try:
         rule_service.delete(rule_id)
         return {
@@ -76,7 +95,8 @@ async def delete_rule(rule_id: int, rule_service: RuleService = Depends(get_rule
 @router.post("/check-existence", response_model=List[RuleCheckResult])
 async def check_rules_existence(
    request: RuleExistenceCheckRequest,
-    rule_service: RuleService = Depends(get_rule_service)
+    rule_service: RuleService = Depends(get_rule_service),
+    current_user = Depends(require_admin())
 ) -> List[RuleCheckResult]:
     try:
         results = rule_service.check_rules_existence_in_workload(request.workload_id, request.rules)

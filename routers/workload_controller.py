@@ -13,6 +13,7 @@ from schemas.workload import (
     WorkloadWithRulesRequest,
     
 )
+from utils.auth import require_admin, require_user
 
 
 
@@ -27,7 +28,8 @@ async def get_workloads(
     keyword: str = None,
     page: int = 1,
     page_size: int = 10,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db), 
+    current_user = Depends(require_user())
 ):
     """
     Lấy danh sách workloads với phân trang và tìm kiếm
@@ -54,7 +56,8 @@ async def get_workloads(
 @router.get("/{workload_id}", response_model=WorkLoadResponse)
 async def get_workload_by_id(
     workload_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user = Depends(require_user())
 ):
     """
     Lấy thông tin workload theo ID
@@ -79,7 +82,8 @@ async def get_workload_by_id(
 @router.post("/", response_model=WorkLoadResponse)
 async def create_workload(
     workload_data: WorkLoadCreate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user = Depends(require_admin())
 ):
     """
     Tạo workload mới
@@ -101,7 +105,8 @@ async def create_workload(
 @router.post("/create-with-rules-commands")
 async def create_workload_with_rules_and_commands(
     request: WorkloadWithRulesRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user = Depends(require_admin())
 ):
    
     try:
@@ -135,7 +140,8 @@ async def create_workload_with_rules_and_commands(
 async def update_workload(
     workload_id: int,
     workload_data: WorkLoadUpdate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user = Depends(require_admin())
 ):
     """
     Cập nhật thông tin workload
@@ -165,7 +171,8 @@ async def update_workload(
 @router.delete("/{workload_id}")
 async def delete_workload(
     workload_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user = Depends(require_admin())
 ):
     """
     Xóa workload
@@ -193,7 +200,8 @@ async def delete_workload(
 @router.post("/validate/workload-name/{workload_name}")
 async def validate_workload_name(
        workload_name: str,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user = Depends(require_admin())
 ):
     """
     Kiểm tra tên workload đã tồn tại hay chưa

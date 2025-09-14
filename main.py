@@ -7,6 +7,7 @@ import logging
 
 from config.config_database import engine, Base, get_db
 
+from create_default_user import create_default_users
 from routers import (
     
     auth_controller,
@@ -15,7 +16,7 @@ from routers import (
     export_controller,
     notification_controller,
     os_controller,
-    role_controller, 
+    
     rule_controller, 
     rule_result_controller, 
     schedule_controller,
@@ -45,6 +46,11 @@ async def startup_event():
         
         table_names = list(Base.metadata.tables.keys())
         print(f"📋 Available tables: {table_names}")
+
+        try:
+            create_default_users()
+        except Exception as user_error:
+            print(f"⚠️ Error creating default users: {user_error}")
         
         
         try:
@@ -111,7 +117,7 @@ app.include_router(notification_controller.router)
 app.include_router(os_controller.router)
 app.include_router(auth_controller.router)
 app.include_router(user_controller.router)
-app.include_router(role_controller.router)
+
 
 
 if __name__ == "__main__":

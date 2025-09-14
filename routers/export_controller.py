@@ -7,6 +7,7 @@ import io
 from config.config_database import get_db
 from schemas.compliance_result import ComplianceSearchParams
 from services.export_service import ExportService
+from utils.auth import require_user
 
 
 router = APIRouter(prefix="/api/export", tags=["Export"])
@@ -21,7 +22,8 @@ async def export_compliance_to_excel(
     keyword: Optional[str] = Query(None, description="Từ khóa tìm kiếm theo ip server"),
     list_workload_id: Optional[List[int]] = Query(None, description="Danh sach ID workload"),
     status: Optional[str] = Query(None, description="Filter theo trạng thái"),
-    export_service: ExportService = Depends(get_export_service)
+    export_service: ExportService = Depends(get_export_service),
+    current_user = Depends(require_user())
 ):
     """
     Xuất báo cáo compliance results trong ngày hiện tại ra file Excel

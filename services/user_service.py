@@ -1,3 +1,4 @@
+
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from typing import Optional, List
@@ -5,7 +6,6 @@ import math
 from passlib.context import CryptContext
 
 from dao.user_dao import UserDAO
-from dao.role_dao import RoleDAO
 from models.user import User
 from schemas.user import (
     UserCreate, UserUpdate, UserResponse, 
@@ -20,9 +20,6 @@ class UserService:
     def __init__(self, db: Session):
         self.db = db
         self.dao = UserDAO(db)
-        self.role_dao = RoleDAO(db)
-    
-    
     
     def get_user_by_id(self, user_id: int) -> Optional[UserResponse]:
         if user_id <= 0:
@@ -47,7 +44,7 @@ class UserService:
         
         users, total = self.dao.search_users(
             keyword=search_params.keyword,
-            role_id=search_params.role_id,
+            role=search_params.role,
             is_active=search_params.is_active,
             skip=skip,
             limit=page_size
@@ -71,15 +68,11 @@ class UserService:
             
             # Check if username exists
             if self.dao.check_username_exists(user_data.username):
-                raise ValueError(f"Username '{user_data.username}' đã tồn tại")
+                raise ValueError(f"Username '{user_data.username}' already exists")
             
             # Check if email exists
             if self.dao.check_email_exists(user_data.email):
-                raise ValueError(f"Email '{user_data.email}' đã tồn tại")
-            
-            # Check if role exists
-            if not self.role_dao.get_by_id(user_data.role_id):
-                raise ValueError("Role không tồn tại")
+                raise ValueError(f"Email '{user_data.email}' already exists")
             
             # Hash password
             hashed_password = self._hash_password(user_data.password)
@@ -109,15 +102,11 @@ class UserService:
             
             # Check username uniqueness
             if user_data.username and self.dao.check_username_exists(user_data.username, exclude_id=user_id):
-                raise ValueError(f"Username '{user_data.username}' đã tồn tại")
+                raise ValueError(f"Username '{user_data.username}' already exists")
             
             # Check email uniqueness
             if user_data.email and self.dao.check_email_exists(user_data.email, exclude_id=user_id):
-                raise ValueError(f"Email '{user_data.email}' đã tồn tại")
-            
-            # Check role exists
-            if user_data.role_id and not self.role_dao.get_by_id(user_data.role_id):
-                raise ValueError("Role không tồn tại")
+                raise ValueError(f"Email '{user_data.email}' already exists")
             
             # Update fields
             update_dict = user_data.dict(exclude_unset=True, exclude={'password'})
@@ -157,7 +146,7 @@ class UserService:
         try:
             user = self.dao.get_by_id(user_id)
             if not user:
-                raise ValueError("User is not found")
+                raise ValueError("User not found")
             
             # Verify current password
             if not self._verify_password(password_data.current_password, user.password_hash):
@@ -190,16 +179,19 @@ class UserService:
     
     def _validate_user_create_data(self, user_data: UserCreate):
         if not user_data.username or not user_data.username.strip():
-            raise ValueError("Username không được để trống")
+            raise ValueError("Username cannot be empty")
         
         if not user_data.email or not user_data.email.strip():
-            raise ValueError("Email không được để trống")
+            raise ValueError("Email cannot be empty")
         
         if not user_data.password or len(user_data.password) < 6:
-            raise ValueError("Mật khẩu phải có ít nhất 6 ký tự")
+            raise ValueError("Password must be at least 6 characters")
         
         if len(user_data.username.strip()) > 50:
-            raise ValueError("Username không được vượt quá 50 ký tự")
+            raise ValueError("Username cannot exceed 50 characters")
+        
+        if user_data.role and user_data.role not in ["admin", "user"]:
+            raise ValueError("Role must be 'admin' or 'user'")
     
     def _hash_password(self, password: str) -> str:
         return pwd_context.hash(password)
@@ -208,21 +200,13 @@ class UserService:
         return pwd_context.verify(plain_password, hashed_password)
     
     def _convert_to_response(self, user: User) -> UserResponse:
-        from services.role_service import RoleService
-        
-        role_response = None
-        if user.role:
-            role_service = RoleService(self.db)
-            role_response = role_service._convert_to_response(user.role)
-        
         return UserResponse(
             id=user.id,
             username=user.username,
             email=user.email,
             full_name=user.full_name,
-            role_id=user.role_id,
+            role=user.role,
             is_active=user.is_active,
             created_at=user.created_at,
-            updated_at=user.updated_at,
-            role=role_response
+            updated_at=user.updated_at
         )

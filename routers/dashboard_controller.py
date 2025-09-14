@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from config.config_database import get_db
 from schemas.dashboard import DashboardStatsResponse
 from services.dashboard_service import DashboardService
+from utils.auth import require_user
 
 
 router = APIRouter(prefix="/api/dashboard", tags=["Dashboard"])
@@ -14,7 +15,8 @@ def get_dashboard_service(db: Session = Depends(get_db)) -> DashboardService:
 
 @router.get("/statistics", response_model=DashboardStatsResponse)
 def get_dashboard_statistics(
-    dashboard_service: DashboardService = Depends(get_dashboard_service)
+    dashboard_service: DashboardService = Depends(get_dashboard_service),
+    current_user = Depends(require_user())
 ):
     """
     Lấy thống kê cho dashboard:

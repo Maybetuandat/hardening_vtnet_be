@@ -1,19 +1,17 @@
+# routers/user_controller.py
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional
 
 from config.config_database import get_db
 from services.user_service import UserService
-from services.auth_service import (
-    get_current_user_dependency, require_admin, 
-    require_permission
-)
 from models.user import User
 from schemas.user import (
     UserCreate, UserUpdate, UserResponse, 
     UserListResponse, UserSearchParams,
     ChangePasswordRequest
 )
+from utils.auth import get_current_user_dependency, require_admin, require_user
 
 router = APIRouter(prefix="/api/users", tags=["Users"])
 
@@ -23,18 +21,18 @@ def get_user_service(db: Session = Depends(get_db)) -> UserService:
 @router.get("", response_model=UserListResponse)
 async def search_users(
     keyword: Optional[str] = Query(None, description="Search keyword"),
-    role_id: Optional[int] = Query(None, description="Role ID"),
+    role: Optional[str] = Query(None, description="Role filter (admin/user)"),
     is_active: Optional[bool] = Query(None, description="Active status"),
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(10, ge=1, le=100, description="Items per page"),
     user_service: UserService = Depends(get_user_service),
-    current_user: User = Depends(get_current_user_dependency)
+    current_user: User = Depends(require_admin())  # Only admin can read
 ):
     """Search users with pagination"""
     try:
         search_params = UserSearchParams(
             keyword=keyword,
-            role_id=role_id,
+            role=role,
             is_active=is_active,
             page=page,
             page_size=page_size
@@ -58,7 +56,7 @@ async def get_current_user_info(
 async def get_user_by_id(
     user_id: int,
     user_service: UserService = Depends(get_user_service),
-    current_user: User = Depends(get_current_user_dependency)
+    current_user: User = Depends(require_admin())  # Only admin can read
 ):
     """Get user by ID"""
     try:
@@ -75,7 +73,7 @@ async def get_user_by_id(
 async def create_user(
     user_data: UserCreate,
     user_service: UserService = Depends(get_user_service),
-    current_user: User = Depends(require_admin())
+    current_user: User = Depends(require_admin())  # Only admin can create
 ):
     """Create new user (admin only)"""
     try:
@@ -95,10 +93,17 @@ async def update_user(
     """Update user (admin or user themselves)"""
     try:
         # Check permission: admin or user themselves
-        if current_user.role.name != "admin" and current_user.id != user_id:
+        if current_user.role != "admin" and current_user.id != user_id:
             raise HTTPException(
                 status_code=403, 
                 detail="No permission to update this user"
+            )
+        
+        # Only admin can change role
+        if user_data.role and current_user.role != "admin":
+            raise HTTPException(
+                status_code=403,
+                detail="Only admin can change user role"
             )
         
         updated_user = user_service.update_user(user_id, user_data)
@@ -116,7 +121,7 @@ async def update_user(
 async def delete_user(
     user_id: int,
     user_service: UserService = Depends(get_user_service),
-    current_user: User = Depends(require_admin())
+    current_user: User = Depends(require_admin())  # Only admin can delete
 ):
     """Delete user (admin only)"""
     try:

@@ -4,9 +4,10 @@ from datetime import datetime
 import json
 import logging
 from decimal import Decimal
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import StreamingResponse
 from services.notification_service import notification_service
+from utils.auth import require_user
 
 router = APIRouter(prefix="/api/notifications", tags=["Notifications"])
 
@@ -18,9 +19,9 @@ def custom_json_serializer(obj):
     return str(obj)
     
 @router.get("/stream")
-async def compliance_notifications_stream(request: Request):
-    
-    
+async def compliance_notifications_stream(request: Request, current_user = Depends(require_user())):
+
+
     async def event_stream():
         client_queue = asyncio.Queue()
         

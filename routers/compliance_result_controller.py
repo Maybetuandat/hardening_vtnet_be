@@ -10,15 +10,17 @@ from schemas.compliance_result import (
 )
 from services.compilance_result_service import ComplianceResultService
 from services.scan_service import ScanService
+from utils.auth import require_admin, require_user
 
 
 router = APIRouter(prefix="/api/compliance", tags=["Compliance"])
 
 
-def get_compliance_service(db: Session = Depends(get_db)) -> ComplianceResultService:
+def get_compliance_service(db: Session = Depends(get_db),
+                           current_user = Depends(require_user())) -> ComplianceResultService:
     return ComplianceResultService(db)
 
-def get_scan_service(db: Session = Depends(get_db)) -> ScanService:
+def get_scan_service(db: Session = Depends(get_db), current_user = Depends(require_user())) -> ScanService:
     return ScanService(db)
 
 @router.get("/", response_model=ComplianceResultListResponse)
@@ -30,6 +32,7 @@ def get_compliance_results(
     page: int = Query(1, ge=1, description="Số trang"),
     page_size: int = Query(10, ge=1, le=100, description="Số lượng item mỗi trang"),
     compliance_service: ComplianceResultService = Depends(get_compliance_service),
+    current_user = Depends(require_user())
     
 ):
    
@@ -53,7 +56,8 @@ def get_compliance_results(
 @router.get("/{compliance_id}", response_model=ComplianceResultResponse)
 def get_compliance_result_detail(
     compliance_id: int,
-    compliance_service: ComplianceResultService = Depends(get_compliance_service)
+    compliance_service: ComplianceResultService = Depends(get_compliance_service),
+    current_user = Depends(require_user())
 ):
    
     try:
@@ -70,7 +74,8 @@ def get_compliance_result_detail(
 @router.post("/scan", response_model=ComplianceScanResponse)
 def start_compliance_scan(
     scan_request: ComplianceScanRequest,
-    scan_service: ScanService = Depends(get_scan_service)
+    scan_service: ScanService = Depends(get_scan_service),
+    current_user = Depends(require_user())
 ):
    
     try:
@@ -101,7 +106,8 @@ def start_compliance_scan(
 @router.delete("/{compliance_id}")
 def delete_compliance_result(
     compliance_id: int,
-    compliance_service: ComplianceResultService = Depends(get_compliance_service)
+    compliance_service: ComplianceResultService = Depends(get_compliance_service),
+    current_user = Depends(require_admin())
 ):
    
     try:

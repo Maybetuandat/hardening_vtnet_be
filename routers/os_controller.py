@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from config.config_database import get_db
 from schemas.os import OsCreate, OsListResponse, OsResponse, OsSearchParams, OsUpdate
 from services.os_service import OsService
+from utils.auth import require_admin, require_user
 
 
 router = APIRouter(prefix="/api/os_version", tags=["OS Version"])
@@ -21,7 +22,8 @@ def get_os_versions(
     keyword: str = Query(None, max_length=255, description="Tên hệ điều hành để tìm kiếm"),
     page: int = Query(1, ge=1, description="Trang hiện tại"),
     page_size: int = Query(10, ge=1, le=100, description="Số mục trên mỗi trang"),
-    os_service: OsService = Depends(get_os_service)
+    os_service: OsService = Depends(get_os_service),
+    current_user = Depends(require_user())
 ):
     try:
         search_params = OsSearchParams(
@@ -38,7 +40,8 @@ def get_os_versions(
 @router.get("/{os_id}", response_model=OsResponse)
 def get_os_by_id(
     os_id: int,
-    os_service: OsService = Depends(get_os_service)
+    os_service: OsService = Depends(get_os_service),
+    current_user = Depends(require_user())
 ):
     try:
         os = os_service.get_by_id(os_id)
@@ -50,7 +53,8 @@ def get_os_by_id(
 @router.post("/", response_model=OsResponse)
 def create_os(
     os_create: OsCreate,
-    os_service: OsService = Depends(get_os_service)
+    os_service: OsService = Depends(get_os_service),
+    current_user = Depends(require_admin())
 ):
     try:
         return os_service.create(os_create)
@@ -60,7 +64,8 @@ def create_os(
 def update_os(
     os_id: int,
     os_update: OsUpdate,
-    os_service: OsService = Depends(get_os_service)
+    os_service: OsService = Depends(get_os_service),
+    current_user = Depends(require_admin())
 ):
     try:
         updated_os = os_service.update(os_update, os_id)
@@ -72,7 +77,8 @@ def update_os(
 @router.delete("/{os_id}", response_model=dict)
 def delete_os(
     os_id: int,
-    os_service: OsService = Depends(get_os_service)
+    os_service: OsService = Depends(get_os_service),
+    current_user = Depends(require_admin())
 ):
     try:
         success = os_service.delete(os_id)
