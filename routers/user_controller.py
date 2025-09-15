@@ -18,7 +18,7 @@ router = APIRouter(prefix="/api/users", tags=["Users"])
 def get_user_service(db: Session = Depends(get_db)) -> UserService:
     return UserService(db)
 
-@router.get("", response_model=UserListResponse)
+@router.get("/", response_model=UserListResponse)
 async def search_users(
     keyword: Optional[str] = Query(None, description="Search keyword"),
     role: Optional[str] = Query(None, description="Role filter (admin/user)"),
@@ -71,7 +71,7 @@ async def get_user_by_id(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.post("", response_model=UserResponse)
+@router.post("/", response_model=UserResponse)
 async def create_user(
     user_data: UserCreate,
     user_service: UserService = Depends(get_user_service),

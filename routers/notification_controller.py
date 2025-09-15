@@ -1,4 +1,4 @@
-# notifications.py - KHÔNG CẦN THAY ĐỔI
+
 import asyncio
 from datetime import datetime
 import json
@@ -20,7 +20,7 @@ def custom_json_serializer(obj):
     
 @router.get("/stream")
 async def compliance_notifications_stream(request: Request, current_user = Depends(require_user())):
-    # ... phần còn lại của code không thay đổi ...
+    
     print("Debug Log: User connected to SSE stream", current_user.username, "at", datetime.utcnow())
     async def event_stream():
         client_queue = asyncio.Queue()

@@ -11,8 +11,6 @@ services:
       MYSQL_USER: ${DB_USER}
       MYSQL_PASSWORD: ${DB_PASSWORD}
       TZ: Asia/Ho_Chi_Minh
-    ports:
-      - "${DB_PORT}:3306"
     env_file:
       - .env
     volumes:
