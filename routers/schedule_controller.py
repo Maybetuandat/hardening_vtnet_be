@@ -32,7 +32,7 @@ def get_scan_schedule(
 def update_scan_schedule(
     request: ScanScheduleRequest,
     scheduler_service = Depends(get_scheduler_service),
-    current_user = Depends(require_admin())
+    current_user = Depends(require_user())
 ):
     """
     Cập nhật lịch scan tự động
@@ -94,7 +94,7 @@ def get_scheduler_status(
 @router.delete("/")
 def disable_scan_schedule(
     scheduler_service = Depends(get_scheduler_service),
-    current_user = Depends(require_admin())
+    current_user = Depends(require_user())
 ):
     """Tắt hoàn toàn lịch scan tự động"""
     try:

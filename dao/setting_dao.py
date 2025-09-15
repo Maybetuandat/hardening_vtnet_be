@@ -15,9 +15,10 @@ class SettingsDAO:
 
     def create_or_update(self, key: str, value: str, description: Optional[str] = None) -> Settings:
         setting = self.get_by_key(key)
-        setting.updated_at = datetime.now()
+        
         if setting:
             setting.value = value
+            setting.updated_at = datetime.now()
             if description is not None:
                 setting.description = description
         else:

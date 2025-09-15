@@ -7,7 +7,10 @@ from apscheduler.triggers.cron import CronTrigger
 from sqlalchemy.orm import Session
 
 from dao.setting_dao import SettingsDAO
+from schemas.compliance_result import ComplianceScanRequest
 from schemas.setting import ScanScheduleRequest, ScanScheduleResponse
+from services import scan_service
+from services.scan_service import ScanService
 
 
 
@@ -19,6 +22,7 @@ class SchedulerService:
         self.settings_dao = SettingsDAO(db)
         self.scheduler = BackgroundScheduler()
         self.scan_job_id = "daily_hardening_scan"
+        self.scan_service = ScanService(db)
         
     def start_scheduler(self):
         try:
@@ -118,23 +122,16 @@ class SchedulerService:
         try:
             logging.info(" Starting scheduled hardening scan...")
             
+            scan_request = ComplianceScanRequest(batch_size=10)
             
-            response = requests.post(
-                "http://localhost:8000/api/compliance/scan",
-                json={"batch_size": 100},
-                headers={"Content-Type": "application/json"},
-                timeout=30
-            )
+            self.scan_service.start_compliance_scan(scan_request)
             
-            if response.status_code == 200:
-                result = response.json()
-                logging.info(f" Scheduled scan completed successfully: {result.get('message', 'Unknown result')}")
+           
                 
                 
-                self._save_last_run_time()
+            self._save_last_run_time()
                 
-            else:
-                logging.error(f" Scheduled scan failed with status {response.status_code}: {response.text}")
+            
                 
         except requests.exceptions.RequestException as e:
             logging.error(f" Network error during scheduled scan: {str(e)}")
