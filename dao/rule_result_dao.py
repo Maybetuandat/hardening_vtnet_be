@@ -4,6 +4,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy import and_, or_, func
 from typing import Optional, List, Tuple
 from models.compliance_result import ComplianceResult
+from models.rule import Rule
 from models.rule_result import RuleResult
 
 
@@ -12,21 +13,39 @@ class RuleResultDAO:
         self.db = db
 
     def get_by_compliance_id(
-            self, 
-            compliance_id: int,
-            skip: int = 0, 
-            limit: int = 10, 
-            keyword: Optional[str] = None, 
-            status: Optional[str] = None) -> List[RuleResult]:
+    self, 
+    compliance_id: int,
+    skip: int = 0, 
+    limit: int = 10, 
+    keyword: Optional[str] = None, 
+    status: Optional[str] = None
+) -> Tuple[int, List[RuleResult]]:
+    
         
-        query = self.db.query(RuleResult).filter(RuleResult.compliance_result_id == compliance_id)
+        query = self.db.query(RuleResult).filter(
+            RuleResult.compliance_result_id == compliance_id
+        )
         
+       
         if keyword:
-            query = query.filter(RuleResult.rule_name.ilike(f"%{keyword}%"))
+            query = query.join(Rule, RuleResult.rule_id == Rule.id).filter(
+               or_( 
+                Rule.name.ilike(f"%{keyword}%"),
+                Rule.command.ilike(f"%{keyword}%")
+               )
+            )
+        
+     
         if status:
             query = query.filter(RuleResult.status == status)
-
-        return query.offset(skip).limit(limit).all()
+        
+        
+        total = query.count()
+        
+      
+        results = query.offset(skip).limit(limit).all()
+        
+        return total, results
 
     def get_by_id(self, rule_result_id: int) -> Optional[RuleResult]:
         return self.db.query(RuleResult).filter(RuleResult.id == rule_result_id).first()
@@ -44,15 +63,7 @@ class RuleResultDAO:
             RuleResult.compliance_result_id == compliance_id
         ).scalar()
     
-    def count_filtered(self, compliance_id: int, keyword: Optional[str] = None, status: Optional[str] = None) -> int:
-        query = self.db.query(func.count(RuleResult.id)).filter(RuleResult.compliance_result_id == compliance_id)
-        
-        if keyword:
-            query = query.filter(RuleResult.rule_name.ilike(f"%{keyword}%"))
-        if status:
-            query = query.filter(RuleResult.status == status)
-            
-        return query.scalar()
+   
     
     def create(self, rule_result: RuleResult) -> RuleResult:
         try:

@@ -31,8 +31,8 @@ class RuleResultService:
         page_size = max(1, min(100, page_size))
         skip = (page - 1) * page_size
         
-        total = self.dao.count_filtered(compliance_id, keyword=keyword, status=status)
-        paginated_results = self.dao.get_by_compliance_id(
+       
+        total, paginated_results = self.dao.get_by_compliance_id(
             compliance_id, 
             skip=skip, 
             limit=page_size, 

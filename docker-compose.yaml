@@ -13,6 +13,8 @@ services:
       TZ: Asia/Ho_Chi_Minh
     env_file:
       - .env
+    ports:
+      - "3306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
 
