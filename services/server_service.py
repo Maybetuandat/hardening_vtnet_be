@@ -233,7 +233,8 @@ class ServerService:
               workload_id=server.workload_id,
             ssh_password=getattr(server, 'ssh_password', None),
             created_at=server.created_at,
-            updated_at=server.updated_at
+            updated_at=server.updated_at,
+            username=server.user.username if server.user else None
         )
 
     def _validate_server_data(self, server_data: ServerCreate) -> None:

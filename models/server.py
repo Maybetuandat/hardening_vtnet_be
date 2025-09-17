@@ -14,7 +14,7 @@ class Server(Base):
     
     # # Workload relationship
     workload_id = Column(Integer, ForeignKey("work_loads.id"), nullable=False, index=True)
- 
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
   
     os_version = Column(String(50), nullable=True)
     
@@ -34,3 +34,4 @@ class Server(Base):
     workload = relationship("WorkLoad", back_populates="servers")
    
     compliance_results = relationship("ComplianceResult", back_populates="server", cascade="all, delete-orphan")
+    user = relationship("User", back_populates="servers")

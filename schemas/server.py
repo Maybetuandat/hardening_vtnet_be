@@ -3,6 +3,8 @@ from pydantic import BaseModel, Field, validator
 from datetime import datetime
 import re
 
+from models import user
+
 
 class ServerBase(BaseModel):
     ip_address: str = Field(..., description="Địa chỉ IP của server")
@@ -12,7 +14,7 @@ class ServerBase(BaseModel):
     ssh_user: str = Field(..., max_length=100, description="Tên người dùng SSH")
     ssh_password: str = Field(..., description="Mật khẩu SSH của server")
     status: Optional[bool] = Field(None, description="Trạng thái của server")
-
+    user_id: int = Field(..., description="ID của người dùng sở hữu server")
     @validator('ip_address')
     def validate_ip_address(cls, v):
         import ipaddress
@@ -32,7 +34,8 @@ class ServerUpdate(BaseModel):
     ssh_port: Optional[int] = Field(None, description="Cổng SSH của server")
     ssh_user: Optional[str] = Field(None, max_length=100, description="Tên người dùng SSH")
     ssh_password: Optional[str] = Field(None, description="Mật khẩu SSH của server")
-    workload_id: Optional[int] = Field(None, description="ID của workload")  # Thêm field này
+    workload_id: Optional[int] = Field(None, description="ID của workload") 
+    user_id: Optional[int] = Field(None, description="ID của người dùng sở hữu server")
 
     @validator('ip_address')
     def validate_ip_address(cls, v):
@@ -58,9 +61,7 @@ class ServerResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     status: Optional[bool] = None
-
-    class Config:
-        from_attributes = True
+    username: Optional[str] = None
 class ServerListResponse(BaseModel):
     servers: list[ServerResponse]
     total_servers: int
