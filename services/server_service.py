@@ -1,3 +1,4 @@
+from re import search
 from typing import List, Optional
 from venv import create
 from sqlalchemy import Boolean
@@ -5,6 +6,7 @@ from sqlalchemy.orm import Session
 from dao.server_dao import ServerDAO
 from dao.workload_dao import WorkLoadDAO
 from models.server import Server
+from models.user import User
 from schemas.server import (
     ServerCreate, 
     ServerUpdate, 
@@ -33,7 +35,14 @@ class ServerService:
             return self._convert_to_response(server)
         return None
    
+    def get_server_by_id_and_user(self, server_id: int, user_id: int) -> Optional[ServerResponse]:
+        if server_id <= 0 or user_id <= 0:
+            return None
 
+        server = self.dao.get_by_id_server_and_id_user(server_id, user_id)
+        if server:
+            return self._convert_to_response(server)
+        return None
     def search_servers(self, search_params: ServerSearchParams) -> ServerListResponse:
         page = max(1, search_params.page)
         page_size = max(1, min(100, search_params.size))  
@@ -45,7 +54,8 @@ class ServerService:
             workload_id=search_params.workload_id,
             status=search_params.status,
             skip=skip,
-            limit=page_size
+            limit=page_size, 
+            user_id = search_params.user_id
         )
         
         total_pages = math.ceil(total / page_size) if total > 0 else 0
@@ -84,20 +94,19 @@ class ServerService:
             self.dao.db.rollback()
             raise e
 
-    def create(self, server_data: ServerCreate) -> ServerResponse:
+    def create(self, server_data: ServerCreate, current_user_id : int) -> ServerResponse:
         try:
             
-            self._validate_server_data(server_data)
+            self._validate_server_data(server_data, current_user_id)
             
             
             if self.dao.check_hostname_exists(server_data.hostname):
-                raise ValueError("Hostname đã tồn tại")
+                raise ValueError("Hostname exists")
             
             
             if self.dao.check_ip_exists(server_data.ip_address):
-                raise ValueError("IP address đã tồn tại")
-            
-            
+                raise ValueError("IP address exists")
+
             server_dict = server_data.dict()
             server_model = Server(**server_dict)
             
@@ -111,29 +120,36 @@ class ServerService:
         except Exception as e:
             raise Exception(f"Lỗi khi tạo server: {str(e)}")
 
-    def update(self, server_id: int, server_data: ServerUpdate) -> Optional[ServerResponse]:
+    def update(self, server_id: int, server_data: ServerUpdate, current_user: User) -> Optional[ServerResponse]:
         try:
             if server_id <= 0:
                 return None
                 
-            
+            # get server and check user has permission to update
+            # current user is get from token
             existing_server = self.dao.get_by_id(server_id)
             if not existing_server:
-                return None
-                
+                raise ValueError("Server is not found")
+
+            # if other user has role user can't update server of another user 
+            if existing_server.user_id != current_user.id and current_user.role == 'user':
+                raise ValueError("You do not have permission to update this server")
             
+            if server_data.user_id is not None:
+                if current_user.role=='user':
+                    raise ValueError("You can't update another user for this server")            
             if server_data.hostname or server_data.ip_address:
                 self._validate_update_data(server_data)
-            
-            # kiem tra xem hostname co ton tai chua ? 
+
+            # check hostname exists
             if server_data.hostname and server_data.hostname != existing_server.hostname:
                 if self.dao.check_hostname_exists(server_data.hostname, exclude_id=server_id):
-                    raise ValueError("Hostname đã tồn tại")
+                    raise ValueError("Hostname exists")
             
-            # kiem tra xem ip co ton tai chua 
+            # check ip exists
             if server_data.ip_address and server_data.ip_address != existing_server.ip_address:
                 if self.dao.check_ip_exists(server_data.ip_address, exclude_id=server_id):
-                    raise ValueError("IP address đã tồn tại")
+                    raise ValueError("IP address exists")
             
             
             update_data = server_data.dict(exclude_unset=True)
@@ -151,20 +167,21 @@ class ServerService:
         except Exception as e:
             raise Exception(f"Lỗi khi cập nhật server: {str(e)}")
 
-    def delete(self, server_id: int) -> bool:
+    def delete(self, server_id: int, current_user_id : int) -> bool:
         try:
             if server_id <= 0:
                 return False
                 
             
-            existing_server = self.dao.get_by_id(server_id)
+            existing_server = self.dao.get_by_id_server_and_id_user(server_id, current_user_id)
             if not existing_server:
-                return False
+                raise ValueError("Server is not found or you do not have permission to delete this server")
+                
 
             return self.dao.delete(existing_server)
             
         except Exception as e:
-            raise Exception(f"Lỗi khi xóa server: {str(e)}")
+            raise Exception(f"Failed to delete  server: {str(e)}")
 
     def check_server_exists(self, server_id: int) -> bool:
         if server_id <= 0:
@@ -189,16 +206,16 @@ class ServerService:
 
 
 
-    def create_batch(self, servers: List[ServerCreate]) -> List[ServerResponse]:
+    def create_batch(self, servers: List[ServerCreate], current_user_id: int) -> List[ServerResponse]:
         server_model_list = []
         for server_data in servers:
-            self._validate_server_data(server_data)
+            self._validate_server_data(server_data, current_user_id)
                 
             if self.dao.check_hostname_exists(server_data.hostname):
-                raise ValueError(f"Hostname '{server_data.hostname}' đã tồn tại")
+                raise ValueError(f"Hostname '{server_data.hostname}'  already exists")
                 
             if self.dao.check_ip_exists(server_data.ip_address):
-                raise ValueError(f"IP address '{server_data.ip_address}' đã tồn tại")
+                raise ValueError(f"IP address '{server_data.ip_address}' already exists")
             server_dict = server_data.dict()
             server_model_list.append(Server(**server_dict))
         try:
@@ -210,11 +227,11 @@ class ServerService:
         except IntegrityError as e:
             self.dao.db.rollback()
             if "hostname" in str(e.orig):
-                raise ValueError("Hostname đã tồn tại")
+                raise ValueError("Hostname exsisted")
             elif "ip_address" in str(e.orig):
-                raise ValueError("IP address đã tồn tại")
+                raise ValueError("IP address exsisted")
             else:
-                raise ValueError("Dữ liệu không hợp lệ")
+                raise ValueError("Input is not valid")
         except Exception as e:
             self.dao.db.rollback()
             raise e
@@ -234,37 +251,38 @@ class ServerService:
             ssh_password=getattr(server, 'ssh_password', None),
             created_at=server.created_at,
             updated_at=server.updated_at,
-            username=server.user.username if server.user else None
+            nameofmanager=server.user.username if server.user else None
         )
 
-    def _validate_server_data(self, server_data: ServerCreate) -> None:
+    def _validate_server_data(self, server_data: ServerCreate, current_user_id : int) -> None:
         if not server_data.hostname or not server_data.hostname.strip():
-            raise ValueError("Hostname không được để trống")
-            
+            raise ValueError("Hostname is not empty")
+        
         if not server_data.ip_address or not server_data.ip_address.strip():
-            raise ValueError("IP address không được để trống")
-            
+            raise ValueError("IP address is not empty")
+        if server_data.user_id != current_user_id: 
+            raise ValueError("User ID is not valid")
         if not server_data.ssh_user or not server_data.ssh_user.strip():
-            raise ValueError("SSH user không được để trống")
-            
+            raise ValueError("SSH user is not empty")
+
         if not server_data.ssh_password or not server_data.ssh_password.strip():
-            raise ValueError("SSH password không được để trống")
-            
+            raise ValueError("SSH password is not empty")
+
         # Validate SSH port
         if server_data.ssh_port <= 0 or server_data.ssh_port > 65535:
-            raise ValueError("SSH port phải trong khoảng 1-65535")
+            raise ValueError("SSH port must be between 1 and 65535")
 
     def _validate_update_data(self, server_data: ServerUpdate) -> None:
         if server_data.hostname is not None and not server_data.hostname.strip():
-            raise ValueError("Hostname không được để trống")
-            
+            raise ValueError("Hostname is not empty")
+
         if server_data.ip_address is not None and not server_data.ip_address.strip():
-            raise ValueError("IP address không được để trống")
-            
+            raise ValueError("IP address is not empty")
+
         if server_data.ssh_user is not None and not server_data.ssh_user.strip():
-            raise ValueError("SSH user không được để trống")
-            
-        # Validate SSH port nếu có
+            raise ValueError("SSH user is not empty")
+
+        # Validate SSH port if present
         if server_data.ssh_port is not None:
             if server_data.ssh_port <= 0 or server_data.ssh_port > 65535:
-                raise ValueError("SSH port phải trong khoảng 1-65535")
+                raise ValueError("SSH port must be between 1 and 65535")

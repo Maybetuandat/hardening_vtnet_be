@@ -23,14 +23,16 @@ class ServerDAO:
     def get_by_id(self, server_id: int) -> Optional[Server]:
         return self.db.query(Server).filter(Server.id == server_id).first()
 
-
+    def get_by_id_server_and_id_user(self, server_id: int, user_id: int) -> Optional[Server]:
+        return self.db.query(Server).filter(and_(Server.id == server_id, Server.user_id == user_id)).first()
     def search_servers(
         self,
         keyword: Optional[str] = None,
         workload_id: Optional[int] = None,
         status: Optional[bool] = None,
         skip: int = 0,
-        limit: int = 10
+        limit: int = 10,
+        user_id: Optional[int] = None
     ) -> Tuple[List[Server], int]:
         query = self.db.query(Server)
         
@@ -42,7 +44,8 @@ class ServerDAO:
                 )
             )
         
-        
+        if user_id is not None:
+            query = query.filter(Server.user_id == user_id)
         if status is not None:
             query = query.filter(Server.status == status)
         

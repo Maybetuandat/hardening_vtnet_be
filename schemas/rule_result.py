@@ -3,22 +3,21 @@ from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, Field, validator
 
 class RuleResultBase(BaseModel):
-    
-    status: str = Field(..., description="Trạng thái rule: passed, failed, skipped, error")
-    message: Optional[str] = Field(None, description="Thông báo kết quả")
-    details_error: Optional[str] = Field(None, description="Chi tiết kết quả")
-    output: Optional[Dict[str, Any]] = Field(None, description="Parsed output từ rule execution")
+    status: str = Field(..., description="Rule status: passed, failed, skipped, error")
+    message: Optional[str] = Field(None, description="Result message")
+    details_error: Optional[str] = Field(None, description="Result details")
+    output: Optional[Dict[str, Any]] = Field(None, description="Parsed output from rule execution")
 
 class RuleResultCreate(RuleResultBase):
-    compliance_result_id: int = Field(..., description="ID của compliance result")
-    rule_id: int = Field(..., description="ID của rule")
+    compliance_result_id: int = Field(..., description="Compliance result ID")
+    rule_id: int = Field(..., description="Rule ID")
 
 class RuleResultUpdate(BaseModel):
-    status: Optional[str] = Field(None, description="Trạng thái rule")
-    message: Optional[str] = Field(None, description="Thông báo kết quả")
-    details: Optional[str] = Field(None, description="Chi tiết kết quả")
-    execution_time: Optional[int] = Field(None, description="Thời gian thực thi")
-    output: Optional[Dict[str, Any]] = Field(None, description="Parsed output từ rule execution")
+    status: Optional[str] = Field(None, description="Rule status")
+    message: Optional[str] = Field(None, description="Result message")
+    details: Optional[str] = Field(None, description="Result details")
+    execution_time: Optional[int] = Field(None, description="Execution time")
+    output: Optional[Dict[str, Any]] = Field(None, description="Parsed output from rule execution")
 
 class RuleResultResponse(RuleResultBase):
     id: int
@@ -26,18 +25,18 @@ class RuleResultResponse(RuleResultBase):
     rule_name: Optional[str] = None
     created_at: datetime
     updated_at: datetime
-    parameters: Optional[Dict[str, Any]] = Field(None, description="parameter in rule")
+    parameters: Optional[Dict[str, Any]] = Field(None, description="Parameter in rule")
 
 
     class Config:
         from_attributes = True
 
 class RuleResultListResponse(BaseModel):
-    results: List[RuleResultResponse] = Field(..., description="Danh sách rule results")
-    total: int = Field(..., description="Tổng số rule results")
-    page: int = Field(..., description="Trang hiện tại")
-    page_size: int = Field(..., description="Số mục trên mỗi trang")
-    total_pages: int = Field(..., description="Tổng số trang")
+    results: List[RuleResultResponse] = Field(..., description="List of rule results")
+    total: int = Field(..., description="Total number of rule results")
+    page: int = Field(..., description="Current page")
+    page_size: int = Field(..., description="Number of items per page")
+    total_pages: int = Field(..., description="Total number of pages")
 
     class Config:
         from_attributes = True

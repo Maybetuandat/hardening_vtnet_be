@@ -1,3 +1,4 @@
+from http import server
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import Optional, List
@@ -27,23 +28,34 @@ def get_connection_service() -> ConnectionService:
 
 @router.get("/", response_model=ServerListResponse)
 def get_servers(
-    keyword: Optional[str] = Query(None, description="Từ khóa tìm kiếm (để trống để lấy tất cả)"),
+    keyword: Optional[str] = Query(None, description="keyword"),
     workload_id: Optional[int] = Query(None, description="ID workload"),
-    status: Optional[bool] = Query(None, description="Trạng thái server"),
-    page: int = Query(1, ge=1, description="Số trang"),
-    page_size: int = Query(10, ge=1, le=100, description="Số lượng item mỗi trang"),
+    status: Optional[bool] = Query(None, description="server search status"),
+    page: int = Query(1, ge=1, description="Page"),
+    page_size: int = Query(10, ge=1, le=100, description="Page size"),
     server_service: ServerService = Depends(get_server_service),
     current_user = Depends(require_user())
 ):
     
     try:
-        search_params = ServerSearchParams(
-            keyword=keyword,
-            workload_id=workload_id,
-            status=status,
-            page=page,
-            size=page_size
-        )
+        if(current_user.role == 'admin'):
+            search_params = ServerSearchParams(
+                keyword=keyword,
+                workload_id=workload_id,
+                status=status,
+                page=page,
+                size=page_size
+            )
+        else:
+
+            search_params = ServerSearchParams(
+                keyword=keyword,
+                workload_id=workload_id,
+                status=status,
+                page=page,
+                size=page_size,
+                user_id= current_user.id
+            )
         return server_service.search_servers(search_params)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -57,7 +69,10 @@ def get_server_by_id(
 ):
     
     try:
-        server = server_service.get_server_by_id(server_id)
+        if current_user.role == 'admin':
+            server = server_service.get_server_by_id(server_id)
+        else:
+            server = server_service.get_server_by_id_and_user(server_id, current_user.id)
         if not server:
             raise HTTPException(status_code=404, detail="Server not found")
         return server
@@ -71,11 +86,14 @@ def get_server_by_id(
 def create_server(
     server_data: ServerCreate,
     server_service: ServerService = Depends(get_server_service),
-    current_user = Depends(require_admin())
+    current_user = Depends(require_user())
 ):
     
+    
+    if current_user.id != server_data.user_id:
+        raise HTTPException(status_code=403, detail="You do not have permission to create server for this user")
     try:
-        return server_service.create(server_data)
+        return server_service.create(server_data, current_user.id)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
@@ -86,18 +104,15 @@ def create_server(
 def create_servers_batch(
     servers: List[ServerCreate],  
     server_service: ServerService = Depends(get_server_service),
-    current_user = Depends(require_admin())
+    current_user = Depends(require_user())
 ):
-    """
     
-    Sẽ convert workload_name thành workload_id trong service layer
-    """
     try:
         if not servers:
-            raise HTTPException(status_code=400, detail="Danh sách server không được rỗng")
+            raise HTTPException(status_code=400, detail="List server is not empty")
         
         print(f"Received {len(servers)} servers to create")
-        return server_service.create_batch(servers)
+        return server_service.create_batch(servers, current_user.id)
         
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -105,38 +120,17 @@ def create_servers_batch(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.delete("/{server_id}")
-def delete_server(
-    server_id: int,
-    server_service: ServerService = Depends(get_server_service),
-    current_user = Depends(require_admin())
-):
-    
-    try:
-        success = server_service.delete(server_id)
-        
-        if not success:
-            raise HTTPException(status_code=404, detail="Server not found")
-
-        return {"message": "Server deleted successfully"}
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
 
 @router.post("/test-connection", response_model=TestConnectionResponse)
 def test_connections(
     request: TestConnectionRequest,
     connection_service: ConnectionService = Depends(get_connection_service),
-    current_user = Depends(require_admin())
+    current_user = Depends(require_user())
 ):
     
     try:
         if not request.servers:
-            raise HTTPException(status_code=400, detail="Danh sách server không được rỗng")
-        if len(request.servers) > 50:  # Giới hạn số lượng server test cùng lúc
-            raise HTTPException(status_code=400, detail="Số lượng server tối đa là 50")
+            raise HTTPException(status_code=400, detail="List server is not empty")
         result = connection_service.test_multiple_connections(request)
         return result
     except HTTPException:
@@ -149,7 +143,7 @@ def test_connections(
 def test_single_connection(
     server: ServerConnectionInfo, 
     connection_service: ConnectionService = Depends(get_connection_service),
-    current_user = Depends(require_admin())
+    current_user = Depends(require_user())
 ):
     
     try:
@@ -166,13 +160,11 @@ def update_server(
     server_id: int,
     server_data: ServerUpdate,
     server_service: ServerService = Depends(get_server_service),
-    current_user = Depends(require_admin())
+    current_user = Depends(require_user())
 ):
-    """
-    Cập nhật thông tin server bao gồm workload
-    """
+   
     try:
-        updated_server = server_service.update(server_id, server_data)
+        updated_server = server_service.update(server_id, server_data, current_user)
         if not updated_server:
             raise HTTPException(status_code=404, detail="Server not found")
         return updated_server
@@ -188,16 +180,15 @@ def validate_hostname(
     hostname: str,
     server_id: Optional[int] = Query(None, description="ID server để exclude (dành cho update)"),
     server_service: ServerService = Depends(get_server_service),
-    current_user = Depends(require_admin())
+    current_user = Depends(require_user())
 ):
-    """Kiểm tra hostname đã tồn tại hay chưa"""
     try:
         exists = server_service.check_hostname_exists(hostname, exclude_id=server_id)
         return {
             "hostname": hostname,
             "exists": exists,
             "valid": not exists,
-            "message": "Hostname đã tồn tại" if exists else "Hostname có thể sử dụng"
+            "message": "Hostname exists" if exists else "Hostname is available"
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -208,9 +199,8 @@ def validate_ip_address(
     ip_address: str,
     server_id: Optional[int] = Query(None, description="ID server để exclude (dành cho update)"),
     server_service: ServerService = Depends(get_server_service),
-    current_user = Depends(require_admin())
+    current_user = Depends(require_user())
 ):
-    """Kiểm tra IP address đã tồn tại hay chưa"""
     try:
         exists = server_service.check_ip_exists(ip_address, exclude_id=server_id)
         return {
@@ -222,3 +212,22 @@ def validate_ip_address(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
+@router.delete("/{server_id}")
+def delete_server(
+    server_id: int,
+    server_service: ServerService = Depends(get_server_service),
+    current_user = Depends(require_user())
+):
+    try:
+        
+        success = server_service.delete(server_id, current_user.id)
+        
+        if not success:
+            raise HTTPException(status_code=404, detail="Server not found")
+
+        return {"message": "Server deleted successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

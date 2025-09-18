@@ -8,18 +8,17 @@ from schemas.rule_result import RuleResultResponse
 
 
 class ComplianceResultBase(BaseModel):
-    server_id: int = Field(..., description="ID của server được scan")
-    name: Optional[str] = Field(None, description="Tên của bản scan")
-    status: str = Field(..., description="Trạng thái scan: pending, running, completed, failed")
-    total_rules: int = Field(0, description="Tổng số rules của workload")
-    passed_rules: int = Field(0, description="Số rules passed")
-    failed_rules: int = Field(0, description="Số rules failed")
-    score: float = Field(0, ge=0, le=100, description="Điểm compliance (0-100)")
-    detail_error: Optional[str] = Field(None, description="Chi tiết lỗi nếu có")
+    server_id: int = Field(..., description="ID of the server being scanned")
+    name: Optional[str] = Field(None, description="Name of the scan")
+    status: str = Field(..., description="Scan status: pending, running, completed, failed")
+    total_rules: int = Field(0, description="Total number of workload rules")
+    passed_rules: int = Field(0, description="Number of passed rules")
+    failed_rules: int = Field(0, description="Number of failed rules")
+    score: float = Field(0, ge=0, le=100, description="Compliance score (0-100)")
+    detail_error: Optional[str] = Field(None, description="Error details if any")
 
     @validator('score', pre=True)
     def convert_decimal_to_float(cls, v):
-        
         if isinstance(v, Decimal):
             return float(v)
         return v
@@ -29,52 +28,45 @@ class ComplianceResultCreate(ComplianceResultBase):
     pass
 
 
-
-
 class ComplianceResultResponse(ComplianceResultBase):
     id: int
-    server_ip: Optional[str] = Field(None, description="IP của server được scan")
+    server_ip: Optional[str] = Field(None, description="IP address of the scanned server")
     scan_date: datetime
     updated_at: datetime
-    server_ip: Optional[str] = Field(None, description="IP của server được scan")
-    workload_name: Optional[str] = Field(None, description="Tên workload")
-    server_hostname: Optional[str] = Field(None, description="Hostname của server")
+    server_ip: Optional[str] = Field(None, description="IP address of the scanned server")
+    workload_name: Optional[str] = Field(None, description="Workload name")
+    server_hostname: Optional[str] = Field(None, description="Server hostname")
+    
     class Config:
         from_attributes = True
 
 
-
-
-
 class ComplianceResultListResponse(BaseModel):
-    results: List[ComplianceResultResponse]
-    total: int
-    page: int
-    page_size: int
-    total_pages: int
+    results: List[ComplianceResultResponse] = Field(..., description="List of compliance results")
+    total: int = Field(..., description="Total number of results")
+    page: int = Field(..., description="Current page")
+    page_size: int = Field(..., description="Number of items per page")
+    total_pages: int = Field(..., description="Total number of pages")
 
     class Config:
         from_attributes = True
 
 
 class ComplianceScanRequest(BaseModel):
-    server_ids: Optional[List[int]] = Field(None, description="Danh sách server IDs cụ thể cần scan (None = scan all servers)")
-    batch_size: int = Field(10, ge=1, le=50, description="Số server mỗi batch")
-
- 
+    server_ids: Optional[List[int]] = Field(None, description="List of specific server IDs to scan (None = scan all servers)")
+    batch_size: int = Field(10, ge=1, le=50, description="Number of servers per batch")
 
 
 class ComplianceScanResponse(BaseModel):
-    message: str = Field(..., description="Thông báo kết quả")
-    total_servers: int = Field(..., description="Tổng số servers sẽ scan")
-    started_scans: List[int] = Field(..., description="Danh sách compliance_result IDs được tạo")
+    message: str = Field(..., description="Result message")
+    total_servers: int = Field(..., description="Total number of servers to scan")
+    started_scans: List[int] = Field(..., description="List of created compliance_result IDs")
 
 
 class ComplianceSearchParams(BaseModel):
-    today: Optional[str] = Field(None, description="Lọc kết quả của hôm nay")
-    list_workload_id: Optional[List[int]] = Field(None, description="ID của workload")
-    keyword: Optional[str] = Field(None, description="Từ khóa tìm kiếm theo ip server")
-    status: Optional[str] = Field(None, description="Filter theo trạng thái")
-    page: int = Field(1, ge=1)
-    page_size: int = Field(10, ge=1, le=100)
-    
+    today: Optional[str] = Field(None, description="Filter results for today")
+    list_workload_id: Optional[List[int]] = Field(None, description="Workload IDs")
+    keyword: Optional[str] = Field(None, description="Search keyword by server IP")
+    status: Optional[str] = Field(None, description="Filter by status")
+    page: int = Field(1, ge=1, description="Page number")
+    page_size: int = Field(10, ge=1, le=100, description="Number of items per page")

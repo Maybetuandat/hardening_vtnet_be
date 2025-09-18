@@ -3,10 +3,10 @@ from pydantic import BaseModel, Field, validator
 import ipaddress
 
 class ServerConnectionInfo(BaseModel):
-    ip: str = Field(..., description="Địa chỉ IP của server")
-    ssh_user: str = Field(..., description="Tên người dùng SSH")
-    ssh_password: str = Field(..., description="Mật khẩu SSH")
-    ssh_port: int = Field(22, description="Cổng SSH (mặc định 22)")
+    ip: str = Field(..., description="Server IP address")
+    ssh_user: str = Field(..., description="SSH username")
+    ssh_password: str = Field(..., description="SSH password")
+    ssh_port: int = Field(22, description="SSH port (default 22)")
     
     @validator('ip')
     def validate_ip_address(cls, v):
@@ -14,23 +14,23 @@ class ServerConnectionInfo(BaseModel):
             ipaddress.ip_address(v)
             return v
         except ValueError:
-            raise ValueError('Địa chỉ IP không hợp lệ')
+            raise ValueError('Invalid IP address')
 
 class TestConnectionRequest(BaseModel):
-    servers: List[ServerConnectionInfo] = Field(..., description="Danh sách server cần test connection")
+    servers: List[ServerConnectionInfo] = Field(..., description="List of servers to test connection")
 
 class ServerConnectionResult(BaseModel):
-    ip: str
-    ssh_user: str
-    ssh_port: int
-    status: str  # success, failed
-    message: str
-    hostname: Optional[str] = None
-    os_version: Optional[str] = None
-    error_details: Optional[str] = None
+    ip: str = Field(..., description="Server IP address")
+    ssh_user: str = Field(..., description="SSH username")
+    ssh_port: int = Field(..., description="SSH port")
+    status: str = Field(..., description="Connection status: success, failed")
+    message: str = Field(..., description="Connection result message")
+    hostname: Optional[str] = Field(None, description="Server hostname")
+    os_version: Optional[str] = Field(None, description="Operating system version")
+    error_details: Optional[str] = Field(None, description="Error details if connection failed")
 
 class TestConnectionResponse(BaseModel):
-    total_servers: int
-    successful_connections: int
-    failed_connections: int
-    results: List[ServerConnectionResult]
+    total_servers: int = Field(..., description="Total number of servers tested")
+    successful_connections: int = Field(..., description="Number of successful connections")
+    failed_connections: int = Field(..., description="Number of failed connections")
+    results: List[ServerConnectionResult] = Field(..., description="Detailed connection results")

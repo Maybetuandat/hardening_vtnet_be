@@ -4,12 +4,12 @@ from click import command
 from pydantic import BaseModel, Field, validator
 
 class RuleBase(BaseModel):
-    name: str = Field(..., max_length=100, description="Tên của rule")
-    description: Optional[str] = Field(None, description="Mô tả về rule")
-    workload_id: Optional[int] = Field(None, description="ID của workload")
-    parameters: Optional[Any] = Field(None, description="Tham số của rule dưới dạng JSON")
-    is_active: bool = Field(True, description="Trạng thái hoạt động của rule")
-    command: str = Field(..., description="Lệnh shell hoặc script để kiểm tra rule")
+    name: str = Field(..., max_length=100, description="Rule name")
+    description: Optional[str] = Field(None, description="Rule description")
+    workload_id: Optional[int] = Field(None, description="Workload ID")
+    parameters: Optional[Any] = Field(None, description="Rule parameters in JSON format")
+    is_active: bool = Field(True, description="Rule active status")
+    command: str = Field(..., description="Shell command or script to check rule")
 
   
 
@@ -17,12 +17,12 @@ class RuleCreate(RuleBase):
     pass
 
 class RuleUpdate(BaseModel):
-    name: Optional[str] = Field(None, max_length=100, description="Tên của rule")
-    description: Optional[str] = Field(None, description="Mô tả về rule")
-    workload_id: Optional[int] = Field(None, description="ID của workload")
-    parameters: Optional[Any] = Field(None, description="Tham số của rule dưới dạng JSON")
-    is_active: Optional[bool] = Field(None, description="Trạng thái hoạt động của rule")
-    command: Optional[str] = Field(None, description="Lệnh shell hoặc script để kiểm tra rule")
+    name: Optional[str] = Field(None, max_length=100, description="Rule name")
+    description: Optional[str] = Field(None, description="Rule description")
+    workload_id: Optional[int] = Field(None, description="Workload ID")
+    parameters: Optional[Any] = Field(None, description="Rule parameters in JSON format")
+    is_active: Optional[bool] = Field(None, description="Rule active status")
+    command: Optional[str] = Field(None, description="Shell command or script to check rule")
 
     
 
@@ -53,14 +53,14 @@ class RuleSearchParams(BaseModel):
 
 class RuleCheckResult(BaseModel):
     
-    name: str = Field(..., description="Tên rule")
-    description: Optional[str] = Field(None, description="Mô tả rule")
-    workload_id: int = Field(..., description="ID workload")
+    name: str = Field(..., description="Rule name")
+    description: Optional[str] = Field(None, description="Rule description")
+    workload_id: int = Field(..., description="Workload ID")
     parameters: Optional[Dict[str, Any]] = Field(None, description="Parameters JSON key-value")
-    is_active: bool = Field(..., description="Trạng thái active")
-    is_duplicate: bool = Field(..., description="Rule có trùng lặp không")
-    duplicate_reason: Optional[Literal['name', 'parameter_hash']] = Field(None, description="Lý do trùng lặp")
-    command: str = Field(..., description="Lệnh shell hoặc script để kiểm tra rule")
+    is_active: bool = Field(..., description="Active status")
+    is_duplicate: bool = Field(..., description="Whether rule is duplicate")
+    duplicate_reason: Optional[Literal['name', 'parameter_hash']] = Field(None, description="Reason for duplication")
+    command: str = Field(..., description="Shell command or script to check rule")
 
     class Config:
         from_attributes = True
