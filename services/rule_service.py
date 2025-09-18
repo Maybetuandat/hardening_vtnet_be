@@ -1,5 +1,6 @@
 from datetime import datetime
 import json
+from numpy import sort
 from sqlalchemy.orm import Session
 from typing import Dict, Optional, List
 from dao.rule_dao import RuleDAO
@@ -141,18 +142,18 @@ class RuleService:
     
     def _validate_rule_create_data(self, rule_data: RuleCreate) -> None:
         if not rule_data.name or not rule_data.name.strip():
-            raise ValueError("Tên rule không được để trống")
+            raise ValueError("Rule name is not allowed to be empty")
             
        
         if rule_data.workload_id and rule_data.workload_id <= 0:
-            raise ValueError("Workload ID phải lớn hơn 0")
+            raise ValueError("Workload ID must be greater than 0")
     
     def _validate_rule_update_data(self, rule_data: RuleUpdate) -> None:
         if rule_data.name is not None and (not rule_data.name or not rule_data.name.strip()):
-            raise ValueError("Tên rule không được để trống")
+            raise ValueError("Rule name is not allowed to be empty")
              
         if rule_data.workload_id is not None and rule_data.workload_id <= 0:
-            raise ValueError("Workload ID phải lớn hơn 0")
+            raise ValueError("Workload ID must be greater than 0")
    
 
     def check_rules_existence_in_workload(self, workload_id: int, rules_to_check: List[RuleCreate]) -> List[RuleCheckResult]:
@@ -160,7 +161,7 @@ class RuleService:
         try:
             
             if workload_id <= 0:
-                raise ValueError("Workload ID phải lớn hơn 0")
+                raise ValueError("Workload ID must be greater than 0")
             
             if not rules_to_check or len(rules_to_check) == 0:
                 return []

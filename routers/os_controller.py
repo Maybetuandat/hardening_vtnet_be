@@ -19,9 +19,9 @@ def get_os_service(db : Session = Depends(get_db)) -> OsService:
 
 @router.get("/", response_model=OsListResponse)
 def get_os_versions(
-    keyword: str = Query(None, max_length=255, description="Tên hệ điều hành để tìm kiếm"),
-    page: int = Query(1, ge=1, description="Trang hiện tại"),
-    page_size: int = Query(10, ge=1, le=100, description="Số mục trên mỗi trang"),
+    keyword: str = Query(None, max_length=255, description="version of os"),
+    page: int = Query(1, ge=1, description="current page"),
+    page_size: int = Query(10, ge=1, le=100, description="page size"),
     os_service: OsService = Depends(get_os_service),
     current_user = Depends(require_user())
 ):
@@ -46,7 +46,7 @@ def get_os_by_id(
     try:
         os = os_service.get_by_id(os_id)
         if not os:
-            raise HTTPException(status_code=404, detail="Hệ điều hành không tìm thấy")
+            raise HTTPException(status_code=404, detail="OS not found")
         return os
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -70,7 +70,7 @@ def update_os(
     try:
         updated_os = os_service.update(os_update, os_id)
         if not updated_os:
-            raise HTTPException(status_code=404, detail="Hệ điều hành không tìm thấy")
+            raise HTTPException(status_code=404, detail="Os not found")
         return updated_os
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -83,7 +83,7 @@ def delete_os(
     try:
         success = os_service.delete(os_id)
         if not success:
-            raise HTTPException(status_code=404, detail="Hệ điều hành không tìm thấy")
-        return {"detail": "Xóa hệ điều hành thành công"}
+            raise HTTPException(status_code=404, detail="Os not found")
+        return {"detail": "Delete OS successfully"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

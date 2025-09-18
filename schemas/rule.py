@@ -8,7 +8,7 @@ class RuleBase(BaseModel):
     description: Optional[str] = Field(None, description="Rule description")
     workload_id: Optional[int] = Field(None, description="Workload ID")
     parameters: Optional[Any] = Field(None, description="Rule parameters in JSON format")
-    is_active: bool = Field(True, description="Rule active status")
+    is_active: str = Field("active", description="Rule active status")
     command: str = Field(..., description="Shell command or script to check rule")
 
   
@@ -21,7 +21,7 @@ class RuleUpdate(BaseModel):
     description: Optional[str] = Field(None, description="Rule description")
     workload_id: Optional[int] = Field(None, description="Workload ID")
     parameters: Optional[Any] = Field(None, description="Rule parameters in JSON format")
-    is_active: Optional[bool] = Field(None, description="Rule active status")
+    is_active: Optional[str] = Field(None, description="Rule active status")
     command: Optional[str] = Field(None, description="Shell command or script to check rule")
 
     
@@ -57,7 +57,7 @@ class RuleCheckResult(BaseModel):
     description: Optional[str] = Field(None, description="Rule description")
     workload_id: int = Field(..., description="Workload ID")
     parameters: Optional[Dict[str, Any]] = Field(None, description="Parameters JSON key-value")
-    is_active: bool = Field(..., description="Active status")
+    is_active: str = Field(None, description="Active status")
     is_duplicate: bool = Field(..., description="Whether rule is duplicate")
     duplicate_reason: Optional[Literal['name', 'parameter_hash']] = Field(None, description="Reason for duplication")
     command: str = Field(..., description="Shell command or script to check rule")

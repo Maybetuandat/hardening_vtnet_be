@@ -13,9 +13,9 @@ def get_rule_service(db : Session = Depends(get_db)) -> RuleService:
     
 @router.get("/", response_model = RuleListResponse)
 async def get_rules(
-        keyword: Optional[str] = Query(None, description="Từ khóa tìm kiếm (để trống để lấy tất cả)"),
-        page: int = Query(1, ge=1, description="Số trang"),
-        page_size: int = Query(10, ge=1, le=100, description="Số lượng item mỗi trang"),
+        keyword: Optional[str] = Query(None, description="keyword to search in rule names"),
+        page: int = Query(1, ge=1, description="page number"),
+        page_size: int = Query(10, ge=1, le=100, description="page size"),
         workload_id: Optional[int] = Query(None, description="ID workload"),
         rule_service: RuleService = Depends(get_rule_service),
         current_user = Depends(require_user())
@@ -43,7 +43,7 @@ async def get_rule_by_id(
     try:
         rule = rule_service.get_rule_by_id(rule_id)
         if not rule:
-            raise HTTPException(status_code=404, detail="Rule không tìm thấy")
+            raise HTTPException(status_code=404, detail="Rule not found")
         return rule
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -70,15 +70,25 @@ async def create_rules_bulk(
 @router.put("/{rule_id}", response_model=RuleResponse)
 async def update_rule(
     rule_id: int, rule: RuleCreate, rule_service: RuleService = Depends(get_rule_service),
-    current_user = Depends(require_admin())
-) -> RuleResponse:
-    try:
-        updated_rule = rule_service.update(rule_id, rule)
-        if not updated_rule:
-            raise HTTPException(status_code=404, detail="Rule không tìm thấy")
-        return updated_rule
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    current_user = Depends(require_user())) -> RuleResponse:
+    if current_user.role == 'admin':
+        try:
+            updated_rule = rule_service.update(rule_id, rule)
+            if not updated_rule:
+                raise HTTPException(status_code=404, detail="Rule not found")
+            return updated_rule
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+    else:
+        try:
+           
+           rule.is_active = "pending"
+           create_rule_pending=rule_service.create(rule)
+           if not create_rule_pending:
+               raise HTTPException(status_code=404, detail="Can't create pending rule")
+           return create_rule_pending
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
 @router.delete("/{rule_id}", response_model=dict)
 async def delete_rule(
     rule_id: int, rule_service: RuleService = Depends(get_rule_service),

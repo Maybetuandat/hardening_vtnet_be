@@ -9,7 +9,7 @@ class Os(Base):
     
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     version = Column(String(100), nullable=False, unique=True, index=True)
-    create_at = Column(DateTime, default=func.now(), nullable=False)
+    created_at = Column(DateTime, default=func.now(), nullable=False)
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
     
     
