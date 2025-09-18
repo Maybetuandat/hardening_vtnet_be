@@ -78,11 +78,11 @@ class ServerDAO:
         except IntegrityError as e:
             self.db.rollback()
             if "hostname" in str(e.orig):
-                raise ValueError("Hostname đã tồn tại")
+                raise ValueError("Hostname exists")
             elif "ip_address" in str(e.orig):
-                raise ValueError("IP address đã tồn tại")
+                raise ValueError("IP address exists")
             else:
-                raise ValueError("Dữ liệu không hợp lệ")
+                raise ValueError("Invalid data")
         except Exception as e:
             self.db.rollback()
             raise e

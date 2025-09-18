@@ -89,11 +89,9 @@ def create_server(
     current_user = Depends(require_user())
 ):
     
-    
-    if current_user.id != server_data.user_id:
-        raise HTTPException(status_code=403, detail="You do not have permission to create server for this user")
     try:
-        return server_service.create(server_data, current_user.id)
+        server_data.user_id = current_user.id
+        return server_service.create(server_data)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
@@ -112,7 +110,7 @@ def create_servers_batch(
             raise HTTPException(status_code=400, detail="List server is not empty")
         
         print(f"Received {len(servers)} servers to create")
-        return server_service.create_batch(servers, current_user.id)
+        return server_service.create_batch(servers, current_user)
         
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

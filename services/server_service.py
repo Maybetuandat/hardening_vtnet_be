@@ -62,9 +62,7 @@ class ServerService:
         
         server_responses = []
         for server in servers:
-            workload = self.workload_dao.get_by_id(server.workload_id)
-            workload_name = workload.name if workload else "Unknown"
-            server_responses.append(self._convert_to_response(server, workload_name=workload_name))
+            server_responses.append(self._convert_to_response(server))
         
         return ServerListResponse(
             servers=server_responses,
@@ -94,10 +92,10 @@ class ServerService:
             self.dao.db.rollback()
             raise e
 
-    def create(self, server_data: ServerCreate, current_user_id : int) -> ServerResponse:
+    def create(self, server_data: ServerCreate) -> ServerResponse:
         try:
             
-            self._validate_server_data(server_data, current_user_id)
+            self._validate_server_data(server_data)
             
             
             if self.dao.check_hostname_exists(server_data.hostname):
@@ -131,13 +129,12 @@ class ServerService:
             if not existing_server:
                 raise ValueError("Server is not found")
 
-            # if other user has role user can't update server of another user 
-            if existing_server.user_id != current_user.id and current_user.role == 'user':
-                raise ValueError("You do not have permission to update this server")
-            
-            if server_data.user_id is not None:
-                if current_user.role=='user':
-                    raise ValueError("You can't update another user for this server")            
+            if current_user.role == 'user':
+                if existing_server.user_id != current_user.id:
+                    raise ValueError("You do not have permission to update this server")  # user want to update server of another user 
+                # case user want to change user_id
+                if existing_server.user_id != server_data.user_id and server_data.user_id is not None:
+                    raise ValueError("You do not have permission to change the user of this server") #user want to change user_id to another user 
             if server_data.hostname or server_data.ip_address:
                 self._validate_update_data(server_data)
 
@@ -206,10 +203,11 @@ class ServerService:
 
 
 
-    def create_batch(self, servers: List[ServerCreate], current_user_id: int) -> List[ServerResponse]:
+    def create_batch(self, servers: List[ServerCreate], current_user: User) -> List[ServerResponse]:
         server_model_list = []
         for server_data in servers:
-            self._validate_server_data(server_data, current_user_id)
+            server_data.user_id = current_user.id
+            self._validate_server_data(server_data)
                 
             if self.dao.check_hostname_exists(server_data.hostname):
                 raise ValueError(f"Hostname '{server_data.hostname}'  already exists")
@@ -237,31 +235,30 @@ class ServerService:
             raise e
         
 
-    def _convert_to_response(self, server: Server, workload_name: Optional[str] = None) -> ServerResponse:
+    def _convert_to_response(self, server: Server) -> ServerResponse:
+        workload = self.workload_dao.get_by_id(server.workload_id)
         return ServerResponse(
             id=server.id,
             hostname=server.hostname,
             ip_address=server.ip_address,
             os_version=server.os_version,
             status=server.status,
-            workload_name=workload_name,
+            workload_name=workload.name,
             ssh_port=server.ssh_port,
             ssh_user=server.ssh_user,
-              workload_id=server.workload_id,
+            workload_id=server.workload_id,
             ssh_password=getattr(server, 'ssh_password', None),
             created_at=server.created_at,
             updated_at=server.updated_at,
             nameofmanager=server.user.username if server.user else None
         )
 
-    def _validate_server_data(self, server_data: ServerCreate, current_user_id : int) -> None:
+    def _validate_server_data(self, server_data: ServerCreate) -> None:
         if not server_data.hostname or not server_data.hostname.strip():
             raise ValueError("Hostname is not empty")
         
         if not server_data.ip_address or not server_data.ip_address.strip():
             raise ValueError("IP address is not empty")
-        if server_data.user_id != current_user_id: 
-            raise ValueError("User ID is not valid")
         if not server_data.ssh_user or not server_data.ssh_user.strip():
             raise ValueError("SSH user is not empty")
 

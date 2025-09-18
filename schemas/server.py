@@ -14,7 +14,7 @@ class ServerBase(BaseModel):
     ssh_user: str = Field(..., max_length=100, description="Ssh User ")
     ssh_password: str = Field(..., description="Ssh password")
     status: Optional[bool] = Field(None, description="Server status")
-    user_id: int = Field(..., description="Id user manage server")
+    user_id: Optional[int] = Field(None, description="Id user manage server")
     @validator('ip_address')
     def validate_ip_address(cls, v):
         import ipaddress
@@ -22,7 +22,7 @@ class ServerBase(BaseModel):
             ipaddress.ip_address(v)
             return v
         except ValueError:
-            raise ValueError('Địa chỉ IP không hợp lệ')
+            raise ValueError('Ip address is not valid')
 
 class ServerCreate(ServerBase):
     workload_id: int = Field(..., description="ID của workload")
