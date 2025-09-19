@@ -6,7 +6,7 @@ import logging
 from decimal import Decimal
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import StreamingResponse
-from services.notification_service import notification_service
+from services.sse_notification import notification_service
 from utils.auth import require_user # Vẫn sử dụng require_user cũ
 
 router = APIRouter(prefix="/api/notifications", tags=["Notifications"])

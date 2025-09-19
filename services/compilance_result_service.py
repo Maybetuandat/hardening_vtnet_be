@@ -22,7 +22,7 @@ from schemas.compliance_result import (
      ComplianceResultListResponse,
     ComplianceSearchParams, RuleResultResponse
 )
-from services.notification_service import notification_service
+from services.sse_notification import notification_service
 
 from services.rule_result_service import RuleResultService
 
