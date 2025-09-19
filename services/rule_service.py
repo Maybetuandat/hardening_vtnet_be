@@ -94,25 +94,41 @@ class RuleService:
                 return None
                 
             existing_rule = self.rule_dao.get_by_id(rule_id)
+
             if not existing_rule:
                 return None
-                
-            self._validate_rule_update_data(rule_data)
-            
-            update_data = rule_data.dict(exclude_unset=True)
-            for field, value in update_data.items():
-                if hasattr(existing_rule, field) and value is not None:
-                    setattr(existing_rule, field, value)
-            
-            updated_rule = self.rule_dao.update(existing_rule)
-            return self._convert_to_response(updated_rule)
-            
+
+            if existing_rule.copied_from_id is not None:
+                # this model is copied from anywhere and must update 
+                rule_to_update = self.rule_dao.get_by_id(existing_rule.copied_from_id)
+                rule_to_update.name = existing_rule.name
+                rule_to_update.description = existing_rule.description
+                rule_to_update.command = existing_rule.command
+                rule_to_update.workload_id = existing_rule.workload_id
+                rule_to_update.parameters = existing_rule.parameters
+                rule_to_update.is_active = "active"
+                rule_to_update.role_can_request_edit = "admin"
+                rule_to_update.copied_from_id = None
+                rule_to_update.can_be_copied = True
+                updated_rule = self.rule_dao.update(rule_to_update)
+                self.rule_dao.delete(existing_rule)
+                return self._convert_to_response(updated_rule)
+            else:
+                self._validate_rule_update_data(rule_data)
+                update_data = rule_data.dict(exclude_unset=True)
+                for field, value in update_data.items():
+                    if hasattr(existing_rule, field) and value is not None:
+                        setattr(existing_rule, field, value)
+                updated_rule = self.rule_dao.update(existing_rule)
+                return self._convert_to_response(updated_rule)
+
         except ValueError as e:
             raise ValueError(str(e))
         except Exception as e:
             raise Exception(f"Lỗi khi cập nhật rule: {str(e)}")
     
-
+    #service use for map when admin accept the change of user 
+    
     def update_with_role_user(self, rule_id: int, rule_data: RuleUpdate) -> Optional[RuleResponse]:
         try:
             if rule_id <= 0: 
