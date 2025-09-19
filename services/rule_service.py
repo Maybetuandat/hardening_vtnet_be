@@ -88,7 +88,7 @@ class RuleService:
             raise ValueError(str(e))
         except Exception as e:
             raise Exception(f"Lỗi khi tạo bulk rules: {str(e)}")
-    def update(self, rule_id: int, rule_data: RuleUpdate) -> Optional[RuleResponse]:
+    def update_with_role_admin(self, rule_id: int, rule_data: RuleUpdate) -> Optional[RuleResponse]:
         try:
             if rule_id <= 0:
                 return None
@@ -112,6 +112,44 @@ class RuleService:
         except Exception as e:
             raise Exception(f"Lỗi khi cập nhật rule: {str(e)}")
     
+
+    def update_with_role_user(self, rule_id: int, rule_data: RuleUpdate) -> Optional[RuleResponse]:
+        try:
+            if rule_id <= 0: 
+                return None 
+            existing_rule = self.rule_dao.get_by_id(rule_id)
+            if not existing_rule:
+                return None
+            if existing_rule.role_can_request_edit == 'admin':
+                # create a copy of rule 
+                if existing_rule.can_be_copied:
+                    copyrule = Rule(
+                    name=rule_data.name if rule_data.name is not None else existing_rule.name,
+                    description=rule_data.description if rule_data.description is not None else existing_rule.description,
+                    command=rule_data.command if rule_data.command is not None else existing_rule.command,
+                    workload_id=rule_data.workload_id if rule_data.workload_id is not None else existing_rule.workload_id,
+                    parameters=rule_data.parameters if rule_data.parameters is not None else existing_rule.parameters,
+                    is_active="pending",
+                    role_can_request_edit='user',
+                    copied_from_id=existing_rule.id
+                    )
+                    created_rule = self.rule_dao.create(copyrule)
+                    existing_rule.can_be_copied = False
+                    self.rule_dao.update(existing_rule)
+                    return self._convert_to_response(created_rule)
+                else:
+                    raise ValueError("Please wait for admin to update this rule")
+            else:
+                self._validate_rule_update_data(rule_data)
+                update_data = rule_data.dict(exclude_unset=True)
+                for field, value in update_data.items():
+                    if hasattr(existing_rule, field) and value is not None:
+                        setattr(existing_rule, field, value)
+                existing_rule.is_active = "pending"
+                updated_rule = self.rule_dao.update(existing_rule)
+                return self._convert_to_response(updated_rule)
+        except ValueError as e:
+            raise ValueError(str(e))
     def delete(self, rule_id: int) -> bool:
         try:
             if rule_id <= 0:
@@ -137,7 +175,8 @@ class RuleService:
             parameters=rule.parameters,
             is_active=rule.is_active,
             created_at=rule.created_at,
-            updated_at=rule.updated_at
+            updated_at=rule.updated_at,
+            can_be_copied=rule.can_be_copied
         )
     
     def _validate_rule_create_data(self, rule_data: RuleCreate) -> None:

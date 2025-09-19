@@ -22,7 +22,7 @@ class RuleDAO:
         except Exception as e:
             self.db.rollback()
             raise e
-
+    
     def search_rules(
             self, 
             keyword: Optional[str] = None,

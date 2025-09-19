@@ -30,6 +30,7 @@ class RuleResponse(RuleBase):
     id: int
     created_at: datetime
     updated_at: datetime
+    can_be_copied: Optional[bool] = Field(None)
     class Config:
         from_attributes = True
 

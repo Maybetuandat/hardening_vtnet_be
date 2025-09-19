@@ -2,7 +2,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from config.config_database import get_db
-from schemas.rule import RuleCheckResult, RuleCreate, RuleExistenceCheckRequest, RuleListResponse, RuleResponse, RuleSearchParams
+from schemas.rule import RuleCheckResult, RuleCreate, RuleExistenceCheckRequest, RuleListResponse, RuleResponse, RuleSearchParams, RuleUpdate
 from services.rule_service import RuleService
 from utils.auth import require_admin, require_user
 
@@ -69,11 +69,11 @@ async def create_rules_bulk(
         raise HTTPException(status_code=500, detail=str(e))
 @router.put("/{rule_id}", response_model=RuleResponse)
 async def update_rule(
-    rule_id: int, rule: RuleCreate, rule_service: RuleService = Depends(get_rule_service),
+    rule_id: int, rule: RuleUpdate, rule_service: RuleService = Depends(get_rule_service),
     current_user = Depends(require_user())) -> RuleResponse:
     if current_user.role == 'admin':
         try:
-            updated_rule = rule_service.update(rule_id, rule)
+            updated_rule = rule_service.update_with_role_admin(rule_id, rule)
             if not updated_rule:
                 raise HTTPException(status_code=404, detail="Rule not found")
             return updated_rule
@@ -81,12 +81,10 @@ async def update_rule(
             raise HTTPException(status_code=500, detail=str(e))
     else:
         try:
-           
-           rule.is_active = "pending"
-           create_rule_pending=rule_service.create(rule)
-           if not create_rule_pending:
-               raise HTTPException(status_code=404, detail="Can't create pending rule")
-           return create_rule_pending
+           update_rule = rule_service.update_with_role_user(rule_id, rule)
+           if not update_rule:
+               raise HTTPException(status_code=404, detail="You don't have permission for update this rule")
+           return update_rule
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
 @router.delete("/{rule_id}", response_model=dict)

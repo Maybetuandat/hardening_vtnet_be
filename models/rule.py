@@ -1,5 +1,5 @@
 from click import command
-from sqlalchemy import Boolean, Column, DateTime, Integer, String, Text, func, ForeignKey, JSON
+from sqlalchemy import Boolean, Column, DateTime, Integer, String, Text, func, ForeignKey, JSON, true
 from config.config_database import Base
 from sqlalchemy.orm import relationship
 
@@ -17,6 +17,9 @@ class Rule(Base):
     
     parameters = Column(JSON, nullable=True)  
     
+    role_can_request_edit = Column(String(100), nullable=False, default="admin")
+    copied_from_id = Column(Integer, nullable=True)
+    can_be_copied= Column(Boolean, nullable=True, default=True)
     is_active = Column(String(100), nullable=False, default="active")
     created_at = Column(DateTime, default=func.now(), nullable=False) 
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
