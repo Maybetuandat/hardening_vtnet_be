@@ -10,7 +10,7 @@ class RuleBase(BaseModel):
     parameters: Optional[Any] = Field(None, description="Rule parameters in JSON format")
     is_active: str = Field("active", description="Rule active status")
     command: str = Field(..., description="Shell command or script to check rule")
-
+    suggested_fix: Optional[str] = Field(None, description="Suggested fix for the rule")
   
 
 class RuleCreate(RuleBase):
@@ -23,6 +23,7 @@ class RuleUpdate(BaseModel):
     parameters: Optional[Any] = Field(None, description="Rule parameters in JSON format")
     is_active: Optional[str] = Field(None, description="Rule active status")
     command: Optional[str] = Field(None, description="Shell command or script to check rule")
+    suggested_fix: Optional[str] = Field(None, description="Suggested fix for the rule")
 
     
 

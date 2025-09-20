@@ -192,7 +192,8 @@ class RuleService:
             is_active=rule.is_active,
             created_at=rule.created_at,
             updated_at=rule.updated_at,
-            can_be_copied=rule.can_be_copied
+            can_be_copied=rule.can_be_copied, 
+            suggested_fix=rule.suggested_fix
         )
     
     def _validate_rule_create_data(self, rule_data: RuleCreate) -> None:

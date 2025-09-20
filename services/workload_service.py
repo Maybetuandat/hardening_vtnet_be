@@ -149,7 +149,8 @@ class WorkloadService:
                     is_active=rule_created.is_active,
                     created_at=rule_created.created_at,
                     updated_at=rule_created.updated_at,
-                    command=rule_created.command
+                    command=rule_created.command,
+                    suggested_fix=rule_created.suggested_fix,
                 )
                 created_rules.append(rule_response)
             

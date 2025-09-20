@@ -393,9 +393,10 @@ class ScanService:
             # 2. Thử phân tích dưới dạng các giá trị phân tách bằng dấu cách
             values = clean_output.split()
             if len(values) > 1:
-                parsed_data["all_values"] = " ".join(values)
+                
                 for i, val in enumerate(values):
                     parsed_data[f"value_{i}"] = val
+                
                 return parsed_data
             
             # 3. Coi là một giá trị duy nhất

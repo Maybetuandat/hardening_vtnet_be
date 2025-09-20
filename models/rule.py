@@ -14,6 +14,8 @@ class Rule(Base):
     workload_id = Column(Integer, ForeignKey("work_loads.id"), nullable=False)
 
     command=Column(Text, nullable=False)
+
+    suggested_fix=Column(Text, nullable=True)
     
     parameters = Column(JSON, nullable=True)  
     
