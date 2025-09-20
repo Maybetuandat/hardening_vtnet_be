@@ -1,4 +1,5 @@
 from ast import parse
+from collections import Counter
 import json
 import time 
 import logging
@@ -358,11 +359,12 @@ class ScanService:
         try:
             parsed_output = self._parse_output_values(command_output)
 
-            # is_passed là true nếu giá trị khớp, failed nếu giá trị sai 
+            
+            # is_passed là true nếu giá trị khớp, failed nếu giá trị sai
             is_passed = self._compare_with_parameters(rule.parameters, parsed_output)
-            
-            return is_passed, parsed_output  
-            
+
+            return is_passed, parsed_output
+
         except Exception as e:
             logging.error(f"Error evaluating rule {rule.name}: {str(e)}")
             return False, {"error": str(e)}
@@ -407,42 +409,27 @@ class ScanService:
             parsed_data["parse_error"] = str(e)
             return parsed_data
 
-    def _compare_with_parameters(self, parameters: Dict, parsed_output: Dict[str, Any]) -> bool:
-      
+    def _compare_with_parameters(self, parameters: Dict[str, Any], parsed_output: Dict[str, Any]) -> bool:
         print("DEBUG - Rule Parameters:", parameters)
         print("DEBUG - Parsed Output for Comparison:", parsed_output)
 
+        # Remove excluded keys
         params_to_check = {k: v for k, v in parameters.items() if k not in ["docs", "note", "description"]}
-        
         if not params_to_check:
             return True
-            
-        print("DEBUG - Parameters to Check:", params_to_check)
-        
-        expected_values = list(params_to_check.values())
+
+        expected_values = [str(v).strip() for v in params_to_check.values()]
+        actual_values = [str(v).strip() for v in parsed_output.values()]
+
         print("DEBUG - Expected Values:", expected_values)
-        
-        actual_values = []
-        for key in parsed_output:
-            actual_values.append(parsed_output[key])
         print("DEBUG - Actual Values:", actual_values)
 
-        # Kiểm tra số lượng phần tử
-        if len(actual_values) < len(expected_values):
+        # Compare as multisets (ignore order, allow duplicates)
+        if sorted(expected_values) != sorted(actual_values[:len(expected_values)]):
             logging.debug(
-                f"Value count mismatch: Not enough values in output. "
-                f"Expected at least {len(expected_values)}, Got {len(actual_values)}"
+                f"Value mismatch: Expected {expected_values}, Got {actual_values}"
             )
             return False
-            
-        # So sánh từng phần tử theo thứ tự
-        for i in range(len(expected_values)):
-            if str(actual_values[i]).strip() != str(expected_values[i]).strip():
-                logging.debug(
-                    f"Value mismatch at index {i}: "
-                    f"Expected '{expected_values[i]}', Got '{actual_values[i]}'"
-                )
-                return False
-                
-        logging.debug("All values matched in order. PASSED.")
+
+        logging.debug("All values matched (ignoring keys & order). PASSED.")
         return True

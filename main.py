@@ -14,6 +14,7 @@ from routers import (
     compliance_result_controller, 
     dashboard_controller,
     export_controller,
+    fix_controller,
     notification_controller,
     os_controller,
     
@@ -117,7 +118,7 @@ app.include_router(notification_controller.router)
 app.include_router(os_controller.router)
 app.include_router(auth_controller.router)
 app.include_router(user_controller.router)
-
+app.include_router(fix_controller.router) 
 
 
 if __name__ == "__main__":
