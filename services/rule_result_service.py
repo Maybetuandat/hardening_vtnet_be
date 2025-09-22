@@ -87,5 +87,6 @@ class RuleResultService:
             created_at=rule_result.created_at,
             updated_at=rule_result.updated_at, 
             output=rule_result.output,
-            parameters=rule.parameters if rule else None
+            parameters=rule.parameters if rule else None,
+            rule_id=rule_result.rule_id
         )

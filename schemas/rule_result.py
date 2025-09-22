@@ -23,6 +23,7 @@ class RuleResultResponse(RuleResultBase):
     id: int
     compliance_result_id: int
     rule_name: Optional[str] = None
+    rule_id: int
     created_at: datetime
     updated_at: datetime
     parameters: Optional[Dict[str, Any]] = Field(None, description="Parameter in rule")
