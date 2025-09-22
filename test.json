@@ -1,0 +1,38 @@
+ ({
+                "rule_result_id": rule_result_id,
+                "rule_result": rule_result,
+                "rule": rule,
+                "task_name": f"Fix rule {rule.name} (ID: {rule_result_id})",
+                "fix_command": rule.suggested_fix.strip()
+            })
+            
+
+              fix_details.append(SingleRuleFixResult(
+                    rule_result_id=rule_result_id,
+                    rule_name="Unknown",
+                    fix_command=None,
+                    status="skipped",
+                    message="Rule result does not belong to specified server",
+                    execution_output=None,
+                    error_details=None
+                ))
+
+
+                 task_results[task_name] = {
+                                "success": event['event'] == 'runner_on_ok' and task_result.get('rc', 1) == 0,
+                                "stdout": task_result.get('stdout', ''),
+                                "stderr": task_result.get('stderr', ''),
+                                "rc": task_result.get('rc', 1),
+                                "failed": task_result.get('failed', False),
+                                "changed": task_result.get('changed', False)
+                            }
+
+                            print(f"Task '{task_name}' executed with result: {task_results[task_name]}")
+                
+                return {
+                    "overall_success": runner.status == 'successful',
+                    "task_results": task_results,
+                    "runner_status": runner.status,
+                    "runner_rc": runner.rc
+                }
+                
