@@ -11,20 +11,27 @@ from dao.rule_dao import RuleDAO
 from dao.rule_result_dao import RuleResultDAO
 from dao.server_dao import ServerDAO
 from dao.compliance_result_dao import ComplianceDAO
+from dao.fix_action_log_dao import FixActionLogDAO
+from models.fix_action_log import FixActionLog
 from schemas.fix_execution import ServerFixRequest, ServerFixResponse, SingleRuleFixResult
 from services.compilance_result_service import ComplianceResultService
 
-
-
 class FixService:
-    def __init__(self, db: Session):
+    def __init__(self, db: Session, user_id: int = None, username: str = None, ip_address: str = None, user_agent: str = None):
         self.db = db
         self.rule_result_dao = RuleResultDAO(db)
         self.rule_dao = RuleDAO(db)
         self.server_dao = ServerDAO(db)
         self.compliance_dao = ComplianceDAO(db)
+        self.fix_log_dao = FixActionLogDAO(db)
         self.ansible_timeout = 30
         self.compliance_result_service = ComplianceResultService(db)
+        
+        # User context for logging
+        self.user_id = user_id
+        self.username = username
+        self.ip_address = ip_address
+        self.user_agent = user_agent
         
     def execute_server_fixes(self, request: ServerFixRequest) -> ServerFixResponse:
         try:
@@ -47,11 +54,7 @@ class FixService:
                     fix_details=fix_data["fix_details"]
                 )
             
-            
-            
             execution_result = self._execute_grouped_fixes(server, fix_data["valid_fixes"])
-            
-            
             
             fix_details = self._update_rule_results_from_execution(
                 fix_data["valid_fixes"], 
@@ -152,7 +155,6 @@ class FixService:
                 ))
                 continue
             
-            
             valid_fixes.append({
                 "rule_result_id": rule_result_id,
                 "compliance_result_id": compliance_result.id if compliance_result else None,
@@ -161,7 +163,6 @@ class FixService:
                 "task_name": f"Fix rule {rule.name} (ID: {rule_result_id})",
                 "fix_command": rule.suggested_fix.strip()
             })
-            
             
             fix_details.append({
                 "rule_result_id": rule_result_id,
@@ -178,7 +179,6 @@ class FixService:
             "fix_details": fix_details
         }
     
-   
     def _execute_grouped_fixes(self, server, valid_fixes: List[Dict]) -> Dict[str, Any]:
         try:
             with tempfile.TemporaryDirectory() as private_data_dir:
@@ -231,21 +231,15 @@ class FixService:
                 
                 print(f"Executing {len(valid_fixes)} grouped fixes on {server.ip_address}")
                 
-                
                 runner = ansible_runner.run(
                     private_data_dir=private_data_dir,
                     playbook=playbook_path,
                     inventory=inventory_path,
                     quiet=True,
-                    
                     cmdline=f'--timeout {self.ansible_timeout} --forks 1'
-                    
                 )
                 
-                
                 task_results = {}
-                
-             
                 
                 for event in runner.events:
                     if event['event'] in ('runner_on_ok', 'runner_on_failed'):
@@ -281,11 +275,9 @@ class FixService:
     def _update_rule_results_from_execution(self, valid_fixes: List[Dict], fix_details: List[Dict], execution_result: Dict) -> List[Dict]:
         task_results = execution_result.get("task_results", {})
         
-        # print("Debug: Task results from execution:", task_results)
         for i, detail in enumerate(fix_details):
             if detail["status"] != "pending":
                 continue 
-            
             
             # Find corresponding valid_fix with fix_detail 
             valid_fix = None
@@ -307,22 +299,41 @@ class FixService:
                     "message": "No execution result found for this fix",
                     "error_details": "Task may not have executed"
                 })
+                
+                # Log failed fix
+                self._log_fix_action(
+                    valid_fix, 
+                    "failed", 
+                    "failed", 
+                    error_message="No execution result found for this fix"
+                )
                 continue
             
             if task_result["success"]:
                 # Fix was successful - update rule result in database
                 rule_result = valid_fix["rule_result"]
+                old_status = rule_result.status  # Lưu trạng thái cũ
+                
                 rule_result.status = "passed"
                 rule_result.message = "Fixed successfully"
                 rule_result.output = self._parse_output_values(task_result["stdout"])
                 rule_result.details_error = None
                 self.rule_result_dao.update(rule_result)
                 self.compliance_result_service.calculate_score(valid_fix["compliance_result_id"])
+                
                 fix_details[i].update({
                     "status": "success",
                     "message": "Fix executed successfully and rule result updated to passed",
                     "execution_output": task_result["stdout"]
                 })
+                
+                # Log successful fix
+                self._log_fix_action(
+                    valid_fix, 
+                    old_status, 
+                    "passed",
+                    execution_output=task_result["stdout"]
+                )
                 
             else:
                 # Fix failed
@@ -333,10 +344,60 @@ class FixService:
                     "execution_output": task_result["stdout"],
                     "error_details": error_details
                 })
+                
+                # Log failed fix
+                self._log_fix_action(
+                    valid_fix, 
+                    valid_fix["rule_result"].status, 
+                    valid_fix["rule_result"].status,  # Status không thay đổi vì fix thất bại
+                    execution_output=task_result["stdout"],
+                    error_message=error_details,
+                    is_success=False
+                )
         
         return fix_details
+    
+    def _log_fix_action(
+        self, 
+        valid_fix: Dict, 
+        old_status: str, 
+        new_status: str, 
+        execution_output: Optional[str] = None,
+        error_message: Optional[str] = None,
+        is_success: bool = True
+    ):
+        
+        try:
+            if not self.user_id or not self.username:
+                logging.warning("Cannot create fix log: User information not available")
+                return
+            
+
+            print("Debug create fix action log with user")
+            log_entry = FixActionLog(
+                user_id=self.user_id,
+                username=self.username,
+                rule_result_id=valid_fix["rule_result_id"],
+                compliance_result_id=valid_fix["compliance_result_id"],
+                rule_name=valid_fix["rule"].name,
+                old_status=old_status,
+                new_status=new_status,
+                command=valid_fix["fix_command"],
+                execution_output=execution_output,
+                error_message=error_message,
+                is_success=is_success,
+                ip_address=self.ip_address,
+                user_agent=self.user_agent
+            )
+
+            print("Debug create fix action log with user", log_entry)
+            self.fix_log_dao.create(log_entry)
+            print(f"Fix action logged: {self.username} updated rule {valid_fix['rule_result_id']} from {old_status} to {new_status}")
+            
+        except Exception as log_error:
+            logging.warning(f"Failed to create fix action log: {str(log_error)}")
+    
     def _parse_output_values(self, output: str) -> Dict[str, Any]:
-      
         parsed_data = {}
         print(f"DEBUG - Raw command output: '{output}'")
         clean_output = output.strip()
@@ -361,10 +422,8 @@ class FixService:
             # 2. Thử phân tích dưới dạng các giá trị phân tách bằng dấu cách
             values = clean_output.split()
             if len(values) > 1:
-                
                 for i, val in enumerate(values):
                     parsed_data[f"value_{i}"] = val
-                
                 return parsed_data
             
             # 3. Coi là một giá trị duy nhất
