@@ -22,10 +22,7 @@ class Server(Base):
     # Status
     status = Column(Boolean, index=True, default=True, nullable=False) 
     # SSH
-    ssh_port = Column(Integer, default=22)
-    ssh_user = Column(String(50), nullable=True)
-    ssh_password = Column(String(255), nullable=True)
-
+    ssh_port = Column(Integer, default=22, nullable=False)
     
     created_at = Column(DateTime, default=func.now(), nullable=False)
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)

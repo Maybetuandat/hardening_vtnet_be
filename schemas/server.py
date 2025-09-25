@@ -10,9 +10,7 @@ class ServerBase(BaseModel):
     ip_address: str = Field(..., description="Ip server")
     hostname: str = Field(..., max_length=255, description="Hostname of server")
     os_version: str = Field(..., max_length=50, description="Os version of server")
-    ssh_port: int = Field(..., description="Ssh port of server")
-    ssh_user: str = Field(..., max_length=100, description="Ssh User ")
-    ssh_password: str = Field(..., description="Ssh password")
+   
     status: Optional[bool] = Field(None, description="Server status")
     user_id: Optional[int] = Field(None, description="Id user manage server")
     @validator('ip_address')
@@ -32,8 +30,7 @@ class ServerUpdate(BaseModel):
     ip_address: Optional[str] = Field(None, description="Ip server")
     os_version: Optional[str] = Field(None, max_length=50, description="Os version of server")
     ssh_port: Optional[int] = Field(None, description="Ssh port")
-    ssh_user: Optional[str] = Field(None, max_length=100, description="Ssh user")
-    ssh_password: Optional[str] = Field(None, description="Ssh password")
+   
     workload_id: Optional[int] = Field(None, description="Workload id") 
     user_id:Optional[int] = Field(None, description="update user id ")
 
@@ -54,8 +51,7 @@ class ServerResponse(BaseModel):
     ip_address: str
     os_version: Optional[str]
     ssh_port: int
-    ssh_user: Optional[str]
-    ssh_password: Optional[str] = None  
+
     workload_id: int  
     workload_name: Optional[str] = None  
     created_at: datetime

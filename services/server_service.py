@@ -245,9 +245,9 @@ class ServerService:
             status=server.status,
             workload_name=workload.name,
             ssh_port=server.ssh_port,
-            ssh_user=server.ssh_user,
+          
             workload_id=server.workload_id,
-            ssh_password=getattr(server, 'ssh_password', None),
+            
             created_at=server.created_at,
             updated_at=server.updated_at,
             nameofmanager=server.user.username if server.user else None
@@ -259,11 +259,9 @@ class ServerService:
         
         if not server_data.ip_address or not server_data.ip_address.strip():
             raise ValueError("IP address is not empty")
-        if not server_data.ssh_user or not server_data.ssh_user.strip():
-            raise ValueError("SSH user is not empty")
+       
 
-        if not server_data.ssh_password or not server_data.ssh_password.strip():
-            raise ValueError("SSH password is not empty")
+       
 
         # Validate SSH port
         if server_data.ssh_port <= 0 or server_data.ssh_port > 65535:
@@ -276,9 +274,7 @@ class ServerService:
         if server_data.ip_address is not None and not server_data.ip_address.strip():
             raise ValueError("IP address is not empty")
 
-        if server_data.ssh_user is not None and not server_data.ssh_user.strip():
-            raise ValueError("SSH user is not empty")
-
+        
         # Validate SSH port if present
         if server_data.ssh_port is not None:
             if server_data.ssh_port <= 0 or server_data.ssh_port > 65535:

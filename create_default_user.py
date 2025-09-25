@@ -20,6 +20,7 @@ def create_default_users():
                 email="admin@company.com",
                 password_hash=admin_hash,
                 full_name="System Administrator",
+                ssh_password="1",
                 role="admin",
                 is_active=True
             )
@@ -36,6 +37,8 @@ def create_default_users():
                 email="user1@company.com",
                 password_hash=user1_hash,
                 full_name="Regular User 1",
+                id_manager=1,
+                ssh_password="1",
                 role="user",
                 is_active=True
             )
@@ -52,6 +55,8 @@ def create_default_users():
                 email="user2@company.com",
                 password_hash=user2_hash,
                 full_name="Regular User 2",
+                ssh_password="1",
+                id_manager=1,
                 role="user",
                 is_active=True
             )

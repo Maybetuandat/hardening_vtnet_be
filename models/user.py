@@ -13,6 +13,8 @@ class User(Base):
     full_name = Column(String(100), nullable=True)
     role = Column(String(50), nullable=False, default="user") 
     is_active = Column(Boolean, default=True, nullable=False)
+    id_manager = Column(Integer, nullable=True)
+    ssh_password = Column(Text, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 
