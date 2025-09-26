@@ -82,12 +82,10 @@ class ServerService:
             return update_server
         except IntegrityError as e:
             self.dao.db.rollback()
-            if "hostname" in str(e.orig):
-                raise ValueError("Hostname đã tồn tại")
-            elif "ip_address" in str(e.orig):
-                raise ValueError("IP address đã tồn tại")
+            if "name" in str(e.orig):
+                raise ValueError("Name already exists")
             else:
-                raise ValueError("Dữ liệu không hợp lệ")
+                raise ValueError("Invalid data")
         except Exception as e:
             self.dao.db.rollback()
             raise e
@@ -96,14 +94,12 @@ class ServerService:
         try:
             
             self._validate_server_data(server_data)
-            
-            
-            if self.dao.check_hostname_exists(server_data.hostname):
-                raise ValueError("Hostname exists")
-            
-            
-            if self.dao.check_ip_exists(server_data.ip_address):
-                raise ValueError("IP address exists")
+
+
+            if self.dao.check_name_exists(server_data.name):
+                raise ValueError("Name exists")
+
+
 
             server_dict = server_data.dict()
             server_model = Server(**server_dict)
@@ -135,18 +131,14 @@ class ServerService:
                 # case user want to change user_id
                 if existing_server.user_id != server_data.user_id and server_data.user_id is not None:
                     raise ValueError("You do not have permission to change the user of this server") #user want to change user_id to another user 
-            if server_data.hostname or server_data.ip_address:
+            if server_data.name:
                 self._validate_update_data(server_data)
 
-            # check hostname exists
-            if server_data.hostname and server_data.hostname != existing_server.hostname:
-                if self.dao.check_hostname_exists(server_data.hostname, exclude_id=server_id):
-                    raise ValueError("Hostname exists")
-            
-            # check ip exists
-            if server_data.ip_address and server_data.ip_address != existing_server.ip_address:
-                if self.dao.check_ip_exists(server_data.ip_address, exclude_id=server_id):
-                    raise ValueError("IP address exists")
+            # check name exists
+            if server_data.name and server_data.name != existing_server.name:
+                if self.dao.check_name_exists(server_data.name, exclude_id=server_id):
+                    raise ValueError("Name exists")
+
             
             
             update_data = server_data.dict(exclude_unset=True)
@@ -179,29 +171,6 @@ class ServerService:
             
         except Exception as e:
             raise Exception(f"Failed to delete  server: {str(e)}")
-
-    def check_server_exists(self, server_id: int) -> bool:
-        if server_id <= 0:
-            return False
-        return self.dao.get_by_id(server_id) is not None
-
-    def check_hostname_exists(self, hostname: str, exclude_id: Optional[int] = None) -> bool:
-        if not hostname or not hostname.strip():
-            return False
-        return self.dao.check_hostname_exists(hostname.strip(), exclude_id)
-
-    def check_ip_exists(self, ip_address: str, exclude_id: Optional[int] = None) -> bool:
-        if not ip_address or not ip_address.strip():
-            return False
-        return self.dao.check_ip_exists(ip_address.strip(), exclude_id)
-
-   
-
-
-
-
-
-
 
     def create_batch(self, servers: List[ServerCreate], current_user: User) -> List[ServerResponse]:
         server_model_list = []
@@ -239,40 +208,30 @@ class ServerService:
         workload = self.workload_dao.get_by_id(server.workload_id)
         return ServerResponse(
             id=server.id,
-            hostname=server.hostname,
-            ip_address=server.ip_address,
-            os_version=server.os_version,
+            name=server.name,
             status=server.status,
             workload_name=workload.name,
             ssh_port=server.ssh_port,
-          
             workload_id=server.workload_id,
-            
             created_at=server.created_at,
             updated_at=server.updated_at,
             nameofmanager=server.user.username if server.user else None
         )
 
     def _validate_server_data(self, server_data: ServerCreate) -> None:
-        if not server_data.hostname or not server_data.hostname.strip():
-            raise ValueError("Hostname is not empty")
-        
-        if not server_data.ip_address or not server_data.ip_address.strip():
-            raise ValueError("IP address is not empty")
-       
+        if not server_data.name or not server_data.name.strip():
+            raise ValueError("Name is not empty")
 
-       
 
         # Validate SSH port
         if server_data.ssh_port <= 0 or server_data.ssh_port > 65535:
             raise ValueError("SSH port must be between 1 and 65535")
 
     def _validate_update_data(self, server_data: ServerUpdate) -> None:
-        if server_data.hostname is not None and not server_data.hostname.strip():
-            raise ValueError("Hostname is not empty")
+        if server_data.name is not None and not server_data.name.strip():
+            raise ValueError("Name is not empty")
 
-        if server_data.ip_address is not None and not server_data.ip_address.strip():
-            raise ValueError("IP address is not empty")
+        
 
         
         # Validate SSH port if present

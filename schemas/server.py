@@ -7,13 +7,10 @@ from models import user
 
 
 class ServerBase(BaseModel):
-    ip_address: str = Field(..., description="Ip server")
-    hostname: str = Field(..., max_length=255, description="Hostname of server")
-    os_version: str = Field(..., max_length=50, description="Os version of server")
-   
+    name: str = Field(..., max_length=255, description="Ip server")   
     status: Optional[bool] = Field(None, description="Server status")
     user_id: Optional[int] = Field(None, description="Id user manage server")
-    @validator('ip_address')
+    @validator('name')
     def validate_ip_address(cls, v):
         import ipaddress
         try:
@@ -23,18 +20,16 @@ class ServerBase(BaseModel):
             raise ValueError('Ip address is not valid')
 
 class ServerCreate(ServerBase):
-    workload_id: int = Field(..., description="ID của workload")
+    workload_id: int = Field(..., description="Workload Id ")
 
 class ServerUpdate(BaseModel):
-    hostname: Optional[str] = Field(None, max_length=255, description="Hostname of server") 
-    ip_address: Optional[str] = Field(None, description="Ip server")
-    os_version: Optional[str] = Field(None, max_length=50, description="Os version of server")
+    name: Optional[str] = Field(None, max_length=255, description="Ip server") 
     ssh_port: Optional[int] = Field(None, description="Ssh port")
    
     workload_id: Optional[int] = Field(None, description="Workload id") 
     user_id:Optional[int] = Field(None, description="update user id ")
 
-    @validator('ip_address')
+    @validator('name')
     def validate_ip_address(cls, v):
         if v is not None:
             import ipaddress
@@ -47,9 +42,7 @@ class ServerUpdate(BaseModel):
 
 class ServerResponse(BaseModel):
     id: int
-    hostname: str
-    ip_address: str
-    os_version: Optional[str]
+    name: str
     ssh_port: int
 
     workload_id: int  

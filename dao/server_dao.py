@@ -103,24 +103,16 @@ class ServerDAO:
             raise e
 
     
-    def check_hostname_exists(self, hostname: str, exclude_id: Optional[int] = None) -> bool:
-        query = self.db.query(Server).filter(Server.hostname == hostname)
-        
+    def check_name_exists(self, name: str, exclude_id: Optional[int] = None) -> bool:
+        query = self.db.query(Server).filter(Server.name == name)
+
         if exclude_id:
             query = query.filter(Server.id != exclude_id)
             
         return query.first() is not None
 
     
-    def check_ip_exists(self, ip_address: str, exclude_id: Optional[int] = None) -> bool:
-        query = self.db.query(Server).filter(Server.ip_address == ip_address)
-        
-        if exclude_id:
-            query = query.filter(Server.id != exclude_id)
-            
-        return query.first() is not None
     
-
 
 
     
