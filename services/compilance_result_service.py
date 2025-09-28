@@ -12,7 +12,7 @@ from dao.compliance_result_dao import ComplianceDAO
 
 from dao.rule_dao import RuleDAO
 from dao.rule_result_dao import RuleResultDAO
-from dao.server_dao import ServerDAO
+from dao.instance_dao import ServerDAO
 from dao.workload_dao import WorkLoadDAO
 from models import workload
 from models.compliance_result import ComplianceResult
@@ -26,7 +26,7 @@ from services.sse_notification import notification_service
 
 from services.rule_result_service import RuleResultService
 
-from services.server_service import ServerService
+from services.instance_service import ServerService
 from services.workload_service import WorkloadService
 
 

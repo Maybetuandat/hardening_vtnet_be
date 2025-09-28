@@ -7,7 +7,7 @@ from typing import Any, Dict, List
 from schemas.connection import ServerConnectionInfo, ServerConnectionResult, TestConnectionRequest, TestConnectionResponse
 import time
 
-from services.server_service import ServerService
+from services.instance_service import ServerService
 
 class ConnectionService:
     def __init__(self):

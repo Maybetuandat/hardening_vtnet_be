@@ -7,10 +7,11 @@ class Os(Base):
     __tablename__ = "os"
 
     
-    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    version = Column(String(100), nullable=False, unique=True, index=True)
-    created_at = Column(DateTime, default=func.now(), nullable=False)
-    updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
-    
-    
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(100), nullable=False, unique=True, index=True)
+    type = Column(String(50), nullable=False)
+    display = Column(String(50), nullable=False)
+
+    #orm relationship
+    instances = relationship("Instance", back_populates="os")
     workloads = relationship("WorkLoad", back_populates="os")

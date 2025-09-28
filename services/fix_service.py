@@ -9,7 +9,7 @@ from typing import Dict, List, Optional, Any
 from sqlalchemy.orm import Session
 from dao.rule_dao import RuleDAO
 from dao.rule_result_dao import RuleResultDAO
-from dao.server_dao import ServerDAO
+from dao.instance_dao import ServerDAO
 from dao.compliance_result_dao import ComplianceDAO
 from dao.fix_action_log_dao import FixActionLogDAO
 from models.fix_action_log import FixActionLog

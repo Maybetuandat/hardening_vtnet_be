@@ -4,7 +4,7 @@ from sqlalchemy import and_, or_, func, desc, distinct
 from sqlalchemy.sql import text
 from typing import Optional, List, Tuple
 from models.compliance_result import ComplianceResult
-from models.server import Server
+from models.instance import Server
 from models.workload import WorkLoad
 from datetime import datetime, timedelta
 

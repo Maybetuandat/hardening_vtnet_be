@@ -3,9 +3,9 @@ from typing import List, Optional
 from venv import create
 from sqlalchemy import Boolean
 from sqlalchemy.orm import Session
-from dao.server_dao import ServerDAO
+from dao.instance_dao import ServerDAO
 from dao.workload_dao import WorkLoadDAO
-from models.server import Server
+from models.instance import Server
 from models.user import User
 from schemas.server import (
     ServerCreate, 

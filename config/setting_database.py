@@ -9,11 +9,7 @@ class SettingDatabase(BaseSettings):
     db_user: str 
     db_password: str 
 
-    redis_host: str 
-    redis_port: int 
-    redis_password: Optional[str] 
-    redis_db: int 
-    dcim_api_url: str
+   
 
     app_name: str = "Hardening VTNet BE"
     app_version: str = "1.0.0"

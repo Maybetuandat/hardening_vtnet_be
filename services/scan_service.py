@@ -13,16 +13,16 @@ import threading
 
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy import create_engine
-from dao.server_dao import ServerDAO
+from dao.instance_dao import ServerDAO
 from models.rule import Rule
 from models.rule_result import RuleResult
-from models.server import Server
+from models.instance import Server
 
 from schemas.compliance_result import ComplianceScanRequest, ComplianceScanResponse
 
 from services.compilance_result_service import ComplianceResultService
 from services.rule_service import RuleService
-from services.server_service import ServerService
+from services.instance_service import ServerService
 from services.workload_service import WorkloadService
 
 class ScanService: 

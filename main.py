@@ -15,13 +15,13 @@ from routers import (
     dashboard_controller,
     export_controller,
     fix_controller,
+    instance_controller,
     notification_controller,
     os_controller,
     
     rule_controller, 
     rule_result_controller, 
     schedule_controller,
-    server_controller,
     user_controller, 
     workload_controller
 )
@@ -105,7 +105,7 @@ PORT = int(os.getenv("SERVER_PORT", 8000))
 RELOAD = os.getenv("SERVER_RELOAD", "False").lower() == "true"
 
 # Include routers
-app.include_router(server_controller.router)
+app.include_router(instance_controller.router)
 app.include_router(workload_controller.router)
 app.include_router(rule_controller.router)
 

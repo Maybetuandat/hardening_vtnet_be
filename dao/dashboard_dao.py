@@ -2,7 +2,7 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 from sqlalchemy import func, desc
 from typing import Dict, Any, Optional
-from models.server import Server
+from models.instance import Server
 from models.compliance_result import ComplianceResult
 from models.rule_result import RuleResult
 import logging

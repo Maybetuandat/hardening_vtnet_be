@@ -5,7 +5,7 @@ from typing import Optional, List
 from config.config_database import get_db
 from schemas.connection import ServerConnectionInfo, ServerConnectionResult, TestConnectionRequest, TestConnectionResponse
 from services.connection_service import ConnectionService
-from services.server_service import ServerService
+from services.instance_service import ServerService
 from schemas.server import (
     ServerCreate,
     ServerUpdate,
