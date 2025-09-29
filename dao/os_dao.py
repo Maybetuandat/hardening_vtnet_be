@@ -21,6 +21,8 @@ class OsDao:
             raise e
     def get_by_id(self, os_id: int) -> Optional[Os]:
         return self.db.query(Os).filter(Os.id == os_id).first()
+    def get_by_name(self, name: str) -> Optional[Os]:
+        return self.db.query(Os).filter(Os.name == name).first()
     def search(self, 
     
             keyword: Optional[str] = None, 
@@ -30,7 +32,7 @@ class OsDao:
         query = self.db.query(Os)
        
         if keyword:
-            query = query.filter(Os.version.ilike(f"%{keyword}%"))
+            query = query.filter(Os.name.ilike(f"%{keyword}%"))
         try:
             total = query.count()
             return query.offset(offset).limit(limit).all(), total

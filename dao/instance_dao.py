@@ -1,5 +1,6 @@
 from datetime import datetime
 import logging
+from fastapi import logger
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import and_, or_, func
@@ -18,7 +19,12 @@ class InstanceDAO:
 
 
 
- 
+    def get_all_instances(self) -> List[Instance]:
+        try:
+            return self.db.query(Instance).all()
+        except Exception as e:
+            logger.error(f"Error getting all instances: {str(e)}")
+            return []
 
     def get_by_id(self, instance_id: int) -> Optional[Instance]:
         return self.db.query(Instance).filter(Instance.id == instance_id).first()

@@ -39,9 +39,9 @@ class OsService:
         exist_os = self.dao.get_by_id(os_id)
         if not exist_os:
             return None
-        if os_update.version is not None:
-            exist_os.version = os_update.version
-        
+        if os_update.name is not None:
+            exist_os.name = os_update.name
+
         update_os = self.dao.update(exist_os)
         return OsResponse.from_orm(update_os)
     def delete(self, os_id: int) -> bool:

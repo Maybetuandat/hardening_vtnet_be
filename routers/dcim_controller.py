@@ -1,15 +1,16 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from typing import Optional
 
-
+from sqlalchemy.orm import Session
+from config.config_database import get_db
 from schemas.instance import  InstanceListResponseFromDcim
 from services.dcim_service import DCIMService
 
 router = APIRouter(prefix="/api/dcim", tags=["DCIM"])
 
 
-def get_dcim_service() -> DCIMService:
-    return DCIMService()
+def get_dcim_service(db: Session = Depends(get_db)) -> DCIMService:
+    return DCIMService(db)
 
 
 @router.get("/instances")
@@ -23,7 +24,7 @@ def get_instances(
     try:
         
         
-        result = dcim_service.sync_data_from_dcim()
+        result = dcim_service.cache_data_from_backend_and_dcim()
         
         if result is None:
             raise HTTPException(

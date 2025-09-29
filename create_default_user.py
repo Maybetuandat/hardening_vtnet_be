@@ -8,72 +8,102 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 def create_default_users():
     db = SessionLocal()
     try:
-        existing_admin = db.query(User).filter(User.username == "admin").first()
-        existing_user1 = db.query(User).filter(User.username == "user1").first()
-        existing_user2 = db.query(User).filter(User.username == "user2").first()
+        # Danh sách user cần tạo
+        users_data = [
+            {
+                "username": "admin",
+                "email": "admin@company.com",
+                "password": "admin123",
+                "first_name": "System",
+                "last_name": "Administrator",
+                "role": "admin",
+                "id_manager": None
+            },
+            {
+                "username": "user1",
+                "email": "john.doe@example.com",
+                "password": "user123",
+                "first_name": "John",
+                "last_name": "Doe",
+                "role": "user",
+                "id_manager": 1
+            },
+            {
+                "username": "user2",
+                "email": "bob.wilson@example.com",
+                "password": "user123",
+                "first_name": "Bob",
+                "last_name": "Wilson",
+                "role": "user",
+                "id_manager": 1
+            },
+            {
+                "username": "user3",
+                "email": "emma.brown@example.com",
+                "password": "user123",
+                "first_name": "Emma",
+                "last_name": "Brown",
+                "role": "user",
+                "id_manager": 1
+            },
+            {
+                "username": "user4",
+                "email": "jane.smith@example.com",
+                "password": "user123",
+                "first_name": "Jane",
+                "last_name": "Smith",
+                "role": "user",
+                "id_manager": 1
+            },
+            {
+                "username": "user5",
+                "email": "alice.jones@example.com",
+                "password": "user123",
+                "first_name": "Alice",
+                "last_name": "Jones",
+                "role": "user",
+                "id_manager": 1
+            }
+        ]
         
+        created_count = 0
+        existing_count = 0
         
-        if not existing_admin:
-            admin_hash = pwd_context.hash("admin123")
-            admin_user = User(
-                username="admin",
-                email="admin@company.com",
-                password_hash=admin_hash,
-                first_name="System",
-                last_name="Administrator",
-                ssh_password="1",
-                role="admin",
-                is_active=True
-            )
-            db.add(admin_user)
-            print("✅ Created admin user: admin / admin123")
-        else:
-            print("⚠️ Admin user already exists")
-        
-        
-        if not existing_user1:
-            user1_hash = pwd_context.hash("user123")
-            user1 = User(
-                username="user1",
-                email="user1@company.com",
-                password_hash=user1_hash,
-                first_name="Regular",
-                last_name="User 1",
-                id_manager=1,
-                ssh_password="1",
-                role="user",
-                is_active=True
-            )
-            db.add(user1)
-            print("✅ Created user1: user1 / user123")
-        else:
-            print("⚠️ User1 already exists")
-        
-        
-        if not existing_user2:
-            user2_hash = pwd_context.hash("user123")
-            user2 = User(
-                username="user2",
-                email="user2@company.com",
-                password_hash=user2_hash,
-                first_name="Regular",
-                last_name="User2",
-                ssh_password="1",
-                id_manager=1,
-                role="user",
-                is_active=True
-            )
-            db.add(user2)
-            print(" Created user2: user2 / user123")
-        else:
-            print(" User2 already exists")
+        for user_data in users_data:
+            existing_user = db.query(User).filter(User.username == user_data["username"]).first()
+            
+            if not existing_user:
+                password_hash = pwd_context.hash(user_data["password"])
+                new_user = User(
+                    username=user_data["username"],
+                    email=user_data["email"],
+                    password_hash=password_hash,
+                    first_name=user_data["first_name"],
+                    last_name=user_data["last_name"],
+                    ssh_password="1",
+                    role=user_data["role"],
+                    id_manager=user_data["id_manager"],
+                    is_active=True
+                )
+                db.add(new_user)
+                created_count += 1
+                print(f"✅ Created {user_data['username']}: {user_data['username']} / {user_data['password']}")
+            else:
+                existing_count += 1
+                print(f"⚠️ {user_data['username']} already exists")
         
         db.commit()
-        print("\n🎉 Default users created successfully!")
-        print("Login credentials:")
+        
+        print(f"\n🎉 Process completed!")
+        print(f"Created: {created_count} users")
+        print(f"Already existed: {existing_count} users")
+        print("\n📋 Login credentials:")
         print("- Admin: admin / admin123")
-        print("- User1: user1 / user123")
-        print("- User2: user2 / user123")
+        print("- User1: user1 / user123 (John Doe)")
+        print("- User2: user2 / user123 (Bob Wilson)")
+        print("- User3: user3 / user123 (Emma Brown)")
+        print("- User4: user4 / user123 (Jane Smith)")
+        print("- User5: user5 / user123 (Alice Jones)")
         
     except Exception as e:
         db.rollback()

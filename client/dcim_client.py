@@ -16,7 +16,7 @@ class DCIMClient:
         self.base_url = dcim_settings.DCIM_BASE_URL
         self.timeout = dcim_settings.DCIM_TIMEOUT
         self.cache = CacheManager()
-        self.cache_key = "dcim:all:instances"  
+        self.cache_key = redis_settings.CACHE_DCIM_KEY
         
     
     def _get_from_cache(self, cache_key: str) -> Optional[List[Dict]]:

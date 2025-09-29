@@ -1,133 +1,55 @@
+"""
+File 1: dcim_service.py
+Main service orchestrating DCIM operations
+"""
 import logging
 from typing import Any, Dict, List, Optional
-
+from sqlalchemy.orm import Session
 from client.dcim_client import dcim_client
 from config.setting_redis import get_redis_settings
+
+from services.backend_cache_service import BackendCacheService
+from services.dcim_sync_service import DCIMSyncService
+from services.dcim_cache_service import DCIMCacheService
 
 redis_settings = get_redis_settings()
 logger = logging.getLogger(__name__)
 
 
 class DCIMService:
-   
-    def __init__(self):
+    """Main service for DCIM operations"""
+
+    def __init__(self, db: Session):
         self.client = dcim_client
-    
+        self.db = db
+        self.backend_cache_service = BackendCacheService(db)
+        self.cache_service = DCIMCacheService(dcim_client)
+        self.sync_service = DCIMSyncService(db)
+
     def cache_all_instances_incrementally(
         self,
         page_size: int = 100,
         cache_ttl: Optional[int] = None
     ) -> Dict[str, Any]:
-       
-        try:
-            logger.info("🗑️ Clearing old cache...")
-            self.client.clear_cache()
-            
-            page = 1
-            total_cached = 0
-            total_from_api = 0
-            
-            endpoint = "/api/v1/instances/"
-            params = {
-                "page": page,
-                "page_size": page_size
-            }
-            
-            while True:
-                raw_data = self.client.get_single_page(
-                    endpoint=endpoint,
-                    params=params
-                )
-                
-                if raw_data is None:
-                    logger.error(f"❌ Failed to fetch page {page}, stopping...")
-                    break
-                
-                # Lấy thông tin từ response
-                instances = raw_data.get("instances", [])
-                total_from_api = raw_data.get("total", 0)
-                current_page = raw_data.get("page", page)
-                total_pages = raw_data.get("total_pages", 0)
-                
-                logger.info(
-                    f"✅ Page {current_page}/{total_pages}: "
-                    f"fetched {len(instances)} instances"
-                )
-                
-                # Kiểm tra xem có data không
-                if not instances:
-                    logger.info("ℹ️ No more instances, stopping...")
-                    break
-                
-                # Append instances vào cache ngay lập tức
-                success = self.client.append_to_cache(
-                    new_instances=instances,
-                    cache_ttl=cache_ttl
-                )
-                
-                if not success:
-                    logger.error(f"❌ Failed to cache page {page}")
-                
-                total_cached += len(instances)
-                
-                logger.info(
-                    f"💾 Cached progress: {total_cached}/{total_from_api} instances"
-                )
-                
-                # Kiểm tra xem đã hết chưa
-                if current_page >= total_pages:
-                    logger.info("✅ Reached last page, stopping...")
-                    break
-                
-                # Tăng page number
-                page += 1
-                params["page"] = page
-            
-            return {
-                "success": True,
-                "total_cached": total_cached,
-                "total_from_api": total_from_api,
-                "pages_fetched": page,
-                "cache_key": self.client.cache_key
-            }
-            
-        except Exception as e:
-            logger.error(f"❌ Error in incremental cache: {str(e)}")
-            import traceback
-            logger.error(traceback.format_exc())
-            
-            return {
-                "success": False,
-                "error": str(e),
-                "total_cached": total_cached if 'total_cached' in locals() else 0
-            }
+        """Cache all instances from DCIM incrementally"""
+        return self.cache_service.cache_all_instances_incrementally(
+            page_size=page_size,
+            cache_ttl=cache_ttl
+        )
     
     def get_cached_instances(self) -> Optional[List[Dict]]:
-        """Lấy instances từ cache"""
-        try:
-            cached_data = self.client.get_cached_data()
-            
-            if cached_data is None:
-                print("❌ No cached instances found")
-                return None
-            
-           
-            
-            
-            
-            return cached_data
-            
-        except Exception as e:
-            logger.error(f"❌ Error getting cached instances: {e}")
-            import traceback
-            logger.error(traceback.format_exc())
-            return None
+        """Get instances from cache"""
+        return self.cache_service.get_cached_instances()
 
-    def sync_data_from_dcim(self):
-        """Đồng bộ dữ liệu từ DCIM vào cache"""
+    def cache_data_from_backend_and_dcim(self):
+        """
+        Main sync logic between DCIM and Backend
+        Handles both initial bulk import and normal sync
+        """
         try:
             print("🔄 Starting DCIM sync...")
             
+            # STEP 1: Cache DCIM data
             result = self.cache_all_instances_incrementally(
                 page_size=100,
                 cache_ttl=redis_settings.CACHE_TTL_DCIM_INSTANCES
@@ -137,25 +59,42 @@ class DCIMService:
                 logger.error("❌ Failed to sync data from DCIM")
                 return None
             
-            print(f"✅ Sync completed: {result}")
+            print(f"✅ DCIM sync completed: {result}")
             
-            # Logic thực hiện so sánh với cache của backend server
-            cached_data = self.get_cached_instances()
-            
-            if cached_data is None:
+            # STEP 2: Get cached DCIM instances
+            cached_instance_data_from_dcim = self.get_cached_instances()
+
+            if cached_instance_data_from_dcim is None:
                 logger.error("❌ Failed to retrieve cached data after sync")
                 return None
-            
-            print(f"✅ Processing {len(cached_data)} instances...")
-            
-            
-            i = 0
-            for instance in cached_data:
-                # Xử lý từng instance
-                i += 1
-                print(i, " ")
 
-            return result
+            print(f"✅ Processing {len(cached_instance_data_from_dcim)} instances from DCIM...")
+
+            # STEP 3: Cache backend data
+            backend_cache_result = self.backend_cache_service.cache_instances_to_redis()
+              
+            if not backend_cache_result.get("success", False):
+                logger.error("❌ Failed to cache backend instances")
+                return None
+            
+            # STEP 4: Get cached backend instances
+            cached_backend_instances = self.backend_cache_service.get_cached_instances()
+           
+            # STEP 5: Handle NULL/EMPTY backend cache - Initial bulk import
+            if cached_backend_instances is None or len(cached_backend_instances) == 0:
+                print("\n" + "="*60)
+                print("📦 Backend cache is EMPTY - Performing initial bulk import")
+                print("="*60)
+                
+                return self.sync_service.bulk_import_from_dcim(
+                    dcim_instances=cached_instance_data_from_dcim
+                )
+            
+            # STEP 6: Normal sync (both caches exist)
+            return self.sync_service.sync_instances_between_dcim_and_backend(
+                dcim_instances=cached_instance_data_from_dcim,
+                backend_instances=cached_backend_instances
+            )
             
         except Exception as e:
             logger.error(f"❌ Error syncing data from DCIM: {e}")
