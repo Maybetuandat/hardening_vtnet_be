@@ -33,7 +33,7 @@ class UserDAO:
             search_filter = or_(
                 User.username.ilike(f"%{keyword}%"),
                 User.email.ilike(f"%{keyword}%"),
-                User.full_name.ilike(f"%{keyword}%")
+                
             )
             filters.append(search_filter)
         

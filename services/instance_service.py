@@ -149,7 +149,7 @@ class InstanceService:
             id=instance.id,
             name=instance.name,
             status=instance.status,
-            workload_name=workload.name,
+            workload_name=workload.name if workload else None,
             ssh_port=instance.ssh_port,
             workload_id=instance.workload_id,
             created_at=instance.created_at,
