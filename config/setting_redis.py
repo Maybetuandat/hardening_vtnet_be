@@ -11,7 +11,7 @@ class RedisSettings(BaseSettings):
     REDIS_DECODE_RESPONSES: bool = True
     
     
-    CACHE_TTL_DCIM_INSTANCES: int = 1000  
+    CACHE_TTL_DCIM_INSTANCES: int 
     
     
     class Config:

@@ -23,7 +23,7 @@ def get_instances(
     try:
         
         
-        result = dcim_service.cache_all_instances()
+        result = dcim_service.cache_all_instances_incrementally()
         
         if result is None:
             raise HTTPException(
