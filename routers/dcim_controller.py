@@ -23,7 +23,7 @@ def get_instances(
     try:
         
         
-        result = dcim_service.cache_all_instances_incrementally()
+        result = dcim_service.sync_data_from_dcim()
         
         if result is None:
             raise HTTPException(

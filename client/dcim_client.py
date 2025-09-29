@@ -19,25 +19,22 @@ class DCIMClient:
         self.cache_key = "dcim:all:instances"  
         
     
-    def _get_from_cache(self, cache_key: str) -> Optional[Dict[str, Any]]:
+    def _get_from_cache(self, cache_key: str) -> Optional[List[Dict]]:
         
         try:
-            data = self.cache.get(cache_key)
-            if data is not None:
-                logger.info(f"🎯 Cache HIT: {cache_key}")
-                return data
+            return self.cache.get(cache_key)
             
-            logger.info(f"❌ Cache MISS: {cache_key}")
-            return None
         except Exception as e:
             logger.error(f"Error reading cache: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
             return None
     
     def _set_to_cache(self, cache_key: str, data: Any, ttl: int) -> bool:
-        """Lưu dữ liệu vào cache"""
+        
         try:
             if self.cache.set(cache_key, data, ttl):
-                logger.info(f"💾 Cached: {cache_key} (TTL: {ttl}s)")
+                logger.info(f"💾 Cached: {cache_key} (TTL: {ttl}s, {len(data)} items)")
                 return True
             return False
         except Exception as e:
@@ -98,44 +95,21 @@ class DCIMClient:
         new_instances: List[Dict],
         cache_ttl: Optional[int] = None
     ) -> bool:
-        """
-        Append thêm instances vào cache hiện có (incremental update)
-        
-        Args:
-            new_instances: List instances mới cần thêm vào
-            cache_ttl: TTL cho cache (seconds)
-            
-        Returns:
-            True nếu append thành công
-        """
+        """Thêm instances mới vào cache"""
         try:
-            # Lấy data hiện tại từ cache
+            # Lấy cached data hiện tại
             cached_data = self._get_from_cache(self.cache_key)
             
             if cached_data is None:
-                # Chưa có cache -> tạo mới
                 all_instances = new_instances
-                total = len(new_instances)
                 logger.info(f"📝 Creating new cache with {len(new_instances)} instances")
-            else:
-                # Đã có cache -> append thêm
-                existing_instances = cached_data.get("instances", [])
-                all_instances = existing_instances + new_instances
-                total = cached_data.get("total", len(all_instances))
-                logger.info(
-                    f"➕ Appending {len(new_instances)} instances "
-                    f"(total: {len(all_instances)})"
-                )
+            else: 
+                all_instances = cached_data + new_instances
+                logger.info(f"➕ Appending {len(new_instances)} instances to existing {len(cached_data)}")
             
-            # Cập nhật cache với data mới
-            cache_data = {
-                "instances": all_instances,
-                "total": total,
-                "total_records": len(all_instances)
-            }
-            
+            # Lưu lại vào cache
             ttl = cache_ttl or redis_settings.CACHE_TTL_DCIM_INSTANCES
-            success = self._set_to_cache(self.cache_key, cache_data, ttl)
+            success = self._set_to_cache(self.cache_key, all_instances, ttl)
             
             if success:
                 logger.info(
@@ -149,56 +123,16 @@ class DCIMClient:
             
         except Exception as e:
             logger.error(f"Error appending to cache: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
             return False
     
-    def update_cache_total(
-        self,
-        total: int,
-        cache_ttl: Optional[int] = None
-    ) -> bool:
-        """
-        Cập nhật field 'total' trong cache (gọi sau khi fetch xong tất cả)
-        
-        Args:
-            total: Tổng số instances thực tế từ API
-            cache_ttl: TTL cho cache (seconds)
-            
-        Returns:
-            True nếu update thành công
-        """
-        try:
-            cached_data = self._get_from_cache(self.cache_key)
-            
-            if cached_data is None:
-                logger.warning("No cache to update")
-                return False
-            
-            # Cập nhật total
-            cached_data["total"] = total
-            
-            ttl = cache_ttl or redis_settings.CACHE_TTL_DCIM_INSTANCES
-            success = self._set_to_cache(self.cache_key, cached_data, ttl)
-            
-            if success:
-                logger.info(f"✅ Updated cache total: {total}")
-            
-            return success
-            
-        except Exception as e:
-            logger.error(f"Error updating cache total: {e}")
-            return False
-    
-    def get_cached_data(self) -> Optional[Dict[str, Any]]:
-        """
-        Lấy toàn bộ cached data
-        
-        Returns:
-            Cached data hoặc None nếu không có cache
-        """
+    def get_cached_data(self) -> Optional[List[Dict]]:
+       
         return self._get_from_cache(self.cache_key)
     
     def clear_cache(self, pattern: str = None) -> int:
-      
+        """Xóa cache"""
         try:
             if pattern is None:
                 # Mặc định: Xóa CHỈ cache key instances
