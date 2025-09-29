@@ -15,8 +15,7 @@ class OsUpdate(OsBase):
 
 class OsResponse(OsBase):
     id: int = Field(..., description="Operating system ID")
-    created_at: datetime = Field(..., description="Creation time")
-    updated_at: datetime = Field(..., description="Update time")
+   
     
     class Config:
         from_attributes = True
