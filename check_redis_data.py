@@ -11,6 +11,18 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
+def print_data_with_limit(data_str, max_chars=5000):
+    """In dữ liệu với giới hạn ký tự, hiển thị thông báo nếu quá dài"""
+    if len(data_str) <= max_chars:
+        print(data_str)
+    else:
+        print(data_str[:max_chars])
+        print("\n" + "." * 80)
+        print(f"⚠️  DATA TOO LONG! Showing first {max_chars} chars")
+        print(f"📏 Total length: {len(data_str)} chars")
+        print(f"💡 To see full data, increase max_chars or save to file")
+        print("." * 80)
+
 def main():
     # Get Redis config từ environment variables
     REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
@@ -51,53 +63,120 @@ def main():
         print(f"  Password: {'***' if REDIS_PASSWORD else 'None'}")
         return
     
-    # Get all DCIM keys
-    dcim_keys = r.keys("dcim:*")
+    # Get ALL keys (không chỉ dcim:*)
+    all_keys = r.keys("*")
     
-    print(f"📊 Total DCIM cache keys: {len(dcim_keys)}\n")
+    print(f"📊 Total cache keys: {len(all_keys)}\n")
     
-    if not dcim_keys:
-        print("⚠️  No DCIM cache found!")
-        print("\nTips:")
-        print("  1. Call API: GET /api/dcim/instances?use_cache=true")
-        print("  2. Run this script again")
+    if not all_keys:
+        print("⚠️  No cache found!")
         return
     
-    # Show all keys with TTL
-    print("📋 Cache Keys:")
-    print("-" * 80)
+    # Nhóm keys theo pattern
+    dcim_keys = [k for k in all_keys if k.startswith("dcim")]
+    other_keys = [k for k in all_keys if not k.startswith("dcim")]
     
-    for i, key in enumerate(dcim_keys, 1):
+    print(f"🔑 DCIM keys: {len(dcim_keys)}")
+    print(f"🔑 Other keys: {len(other_keys)}\n")
+    
+    # In toàn bộ dữ liệu của từng key
+    for i, key in enumerate(all_keys, 1):
+        print("=" * 80)
+        print(f"🔑 KEY #{i}: {key}")
+        print("=" * 80)
+        
+        # Get TTL
         ttl = r.ttl(key)
-        ttl_human = f"{ttl}s" if ttl > 0 else "expired" if ttl == -2 else "no expiry"
+        ttl_human = f"{ttl}s ({ttl//60}m {ttl%60}s)" if ttl > 0 else "expired" if ttl == -2 else "no expiry"
+        print(f"⏱️  TTL: {ttl_human}")
         
-        print(f"{i}. Key: {key}")
-        print(f"   TTL: {ttl_human}")
-        print()
-    
-    # Inspect first key in detail
-    if dcim_keys:
-        print("=" * 80)
-        print(f"🔍 Inspecting first key: {dcim_keys[0]}")
-        print("=" * 80)
+        # Get data type
+        key_type = r.type(key)
+        print(f"📝 Type: {key_type}")
         
-        data = r.get(dcim_keys[0])
-        if data:
-            try:
-                parsed_data = json.loads(data)
-                print(json.dumps(parsed_data, indent=2, ensure_ascii=False))
-            except:
-                print(data)
+        # Get size
+        if key_type == "string":
+            size = r.memory_usage(key) or 0
+            print(f"💾 Memory: {size} bytes ({size/1024:.2f} KB)")
+        
+        # Get data
+        print(f"\n📦 DATA:")
+        print("-" * 80)
+        
+        try:
+            if key_type == "string":
+                data = r.get(key)
+                if data:
+                    try:
+                        # Try parse JSON
+                        parsed_data = json.loads(data)
+                        formatted_json = json.dumps(parsed_data, indent=2, ensure_ascii=False)
+                        
+                        # In toàn bộ hoặc giới hạn nếu quá dài
+                        print_data_with_limit(formatted_json, max_chars=10000)
+                        
+                        # Thống kê nếu là list/dict
+                        if isinstance(parsed_data, list):
+                            print(f"\n📊 Array length: {len(parsed_data)} items")
+                        elif isinstance(parsed_data, dict):
+                            print(f"\n📊 Object keys: {list(parsed_data.keys())}")
+                            if 'data' in parsed_data and isinstance(parsed_data['data'], list):
+                                print(f"   └─ data: {len(parsed_data['data'])} items")
+                        
+                    except json.JSONDecodeError:
+                        # Not JSON, print as is
+                        print_data_with_limit(data, max_chars=10000)
+                else:
+                    print("(empty)")
+            
+            elif key_type == "list":
+                data = r.lrange(key, 0, -1)
+                print(f"List length: {len(data)}")
+                for idx, item in enumerate(data[:100]):  # Giới hạn 100 items
+                    print(f"[{idx}] {item}")
+                if len(data) > 100:
+                    print(f"... and {len(data) - 100} more items")
+            
+            elif key_type == "set":
+                data = r.smembers(key)
+                print(f"Set size: {len(data)}")
+                for item in list(data)[:100]:
+                    print(f"  - {item}")
+                if len(data) > 100:
+                    print(f"... and {len(data) - 100} more items")
+            
+            elif key_type == "zset":
+                data = r.zrange(key, 0, -1, withscores=True)
+                print(f"Sorted set size: {len(data)}")
+                for item, score in data[:100]:
+                    print(f"  {score}: {item}")
+                if len(data) > 100:
+                    print(f"... and {len(data) - 100} more items")
+            
+            elif key_type == "hash":
+                data = r.hgetall(key)
+                print(json.dumps(data, indent=2, ensure_ascii=False))
+            
+            else:
+                print(f"Unknown type: {key_type}")
+        
+        except Exception as e:
+            print(f"❌ Error reading key: {e}")
+        
+        print("\n")
     
     # Redis info
-    print("\n" + "=" * 80)
-    print("📈 Redis Info:")
+    print("=" * 80)
+    print("📈 REDIS INFO")
     print("=" * 80)
     info = r.info("keyspace")
-    print(f"Database: {info}")
+    print(f"Keyspace: {info}")
     
     memory_info = r.info("memory")
-    print(f"Used Memory: {memory_info.get('used_memory_human', 'N/A')}")
+    print(f"\nMemory:")
+    print(f"  Used: {memory_info.get('used_memory_human', 'N/A')}")
+    print(f"  Peak: {memory_info.get('used_memory_peak_human', 'N/A')}")
+    print(f"  Fragmentation: {memory_info.get('mem_fragmentation_ratio', 'N/A')}")
 
 if __name__ == "__main__":
     main()

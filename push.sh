@@ -1,3 +1,3 @@
     git add .
-    git commit -m "update api and logic for  recommend fix"
+    git commit -m "update logic for cache data from dcim"
     git push origin main 

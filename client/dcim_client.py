@@ -4,44 +4,22 @@ import requests
 
 from config.dcim_config import  get_dcim_settings
 
+from config.setting_redis import get_redis_settings
 from utils.redis_client import CacheManager
 
 logger = logging.getLogger(__name__)
 dcim_settings = get_dcim_settings()
-
+redis_settings = get_redis_settings()
 class DCIMClient:
-    """
-    HTTP Client để gọi DCIM API
-    Trách nhiệm: 
-    - Thực hiện HTTP requests
-    - Quản lý cache (get/set/delete)
-    - Xử lý lỗi network/timeout
-    """
-    
+   
     def __init__(self):
         self.base_url = dcim_settings.DCIM_BASE_URL
         self.timeout = dcim_settings.DCIM_TIMEOUT
         self.cache = CacheManager()
-        
+        self.key="dcim-cache-all-instances"
         logger.info(f"🔧 DCIM Client initialized: {self.base_url}")
     
-    def _create_cache_key(self, endpoint: str, params: Optional[Dict] = None) -> str:
-        """
-        Tạo cache key duy nhất
-        
-        Examples:
-            - dcim:api:instances:page=1&page_size=10
-            - dcim:api:instances:3
-        """
-        key = f"dcim:{endpoint.strip('/').replace('/', ':')}"
-        
-        if params:
-            sorted_params = sorted(params.items())
-            params_str = "&".join([f"{k}={v}" for k, v in sorted_params if v is not None])
-            if params_str:
-                key += f":{params_str}"
-        
-        return key
+   
     
     def _get_from_cache(self, cache_key: str) -> Optional[Dict[str, Any]]:
         """Lấy dữ liệu từ cache"""
@@ -74,17 +52,7 @@ class DCIMClient:
         endpoint: str,
         params: Optional[Dict] = None
     ) -> Optional[Dict[str, Any]]:
-        """
-        Thực hiện HTTP request thuần túy (không cache)
-        
-        Args:
-            method: HTTP method (GET, POST, etc.)
-            endpoint: API endpoint
-            params: Query parameters
-            
-        Returns:
-            Response data hoặc None nếu lỗi
-        """
+       
         try:
             url = f"{self.base_url}{endpoint}"
             
@@ -126,24 +94,13 @@ class DCIMClient:
         use_cache: bool = True,
         cache_ttl: Optional[int] = None
     ) -> Optional[Dict[str, Any]]:
-        """
-        GET request với cache support
         
-        Args:
-            endpoint: API endpoint (vd: /api/instances/)
-            params: Query parameters
-            use_cache: Có sử dụng cache không
-            cache_ttl: TTL cho cache (seconds), None = dùng default
-            
-        Returns:
-            Response data hoặc None nếu lỗi
-        """
         # Tạo cache key
-        cache_key = self._create_cache_key(endpoint, params)
+     
         
         # Thử lấy từ cache trước
         if use_cache:
-            cached_data = self._get_from_cache(cache_key)
+            cached_data = self._get_from_cache(self.key)
             if cached_data is not None:
                 return cached_data
         
@@ -155,8 +112,8 @@ class DCIMClient:
         
         # Lưu vào cache
         if use_cache:
-            ttl = cache_ttl or redis_settings.CACHE_TTL_DCIM_SERVERS
-            self._set_to_cache(cache_key, data, ttl)
+            ttl = cache_ttl or redis_settings.CACHE_TTL_DCIM_INSTANCES
+            self._set_to_cache(self.key, data, ttl)
         
         return data
     
