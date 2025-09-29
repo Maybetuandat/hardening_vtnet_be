@@ -21,4 +21,4 @@ class User(Base):
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 
     #relationship
-    servers = relationship("Server", back_populates="user", cascade="all, delete-orphan")
+    instances = relationship("Instance", back_populates="user", cascade="all, delete-orphan")

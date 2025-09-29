@@ -13,16 +13,16 @@ import threading
 
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy import create_engine
-from dao.instance_dao import ServerDAO
+from dao.instance_dao import InstanceDAO
 from models.rule import Rule
 from models.rule_result import RuleResult
-from models.instance import Server
+from models.instance import Instance
 
 from schemas.compliance_result import ComplianceScanRequest, ComplianceScanResponse
 
 from services.compilance_result_service import ComplianceResultService
 from services.rule_service import RuleService
-from services.instance_service import ServerService
+from services.instance_service import InstanceService
 from services.workload_service import WorkloadService
 
 class ScanService: 
@@ -67,7 +67,7 @@ class ScanService:
             raise e
 
     def _scan_servers_by_batch(self, scan_request: ComplianceScanRequest, specific_ids: Optional[List[int]] = None) -> ComplianceScanResponse:
-            server_dao = ServerDAO(self.db)
+            server_dao = InstanceDAO(self.db)
             
             print("DEBUG - Scan request batch size:", specific_ids)
             started_scans_count = 0 
@@ -130,7 +130,7 @@ class ScanService:
     def convert_server_dict_to_model(self, data: Dict[str, Any]):
         if not data:
             return None
-        return Server(**data)
+        return Instance(**data)
 
     def convert_server_model_to_dict(self, server) -> Dict[str, Any]:
         if not server:
@@ -161,9 +161,9 @@ class ScanService:
             try:
                 future.result() 
                 successful_scans_in_batch += 1
-                logging.info(f"Server {server_data['hostname']} scan completed successfully within batch.")
+                logging.info(f"Instance {server_data['hostname']} scan completed successfully within batch.")
             except Exception as e:
-                logging.error(f"Server {server_data['hostname']} scan failed within batch: {str(e)}")
+                logging.error(f"Instance {server_data['hostname']} scan failed within batch: {str(e)}")
         
         return successful_scans_in_batch
     def _scan_single_server_threaded(self, server_data: Dict[str, Any]):
@@ -182,7 +182,7 @@ class ScanService:
             compliance_result_service = ComplianceResultService(thread_session)
             workload_service = WorkloadService(thread_session)
             rule_service = RuleService(thread_session)
-            server_service = ServerService(thread_session)
+            server_service = InstanceService(thread_session)
 
             # tạo ra compliance result khi bắt đầu scan
             compliance_result = compliance_result_service.create_pending_result(server_data['id'], server_data['workload_id'])
@@ -195,7 +195,7 @@ class ScanService:
             # thực hiện lấy workload 
             workload = workload_service.get_workload_by_id(server_data['workload_id'])
             if not workload:
-                logging.warning(f"Thread {thread_id}: Server {server_data['hostname']} không có workload")
+                logging.warning(f"Thread {thread_id}: Instance {server_data['hostname']} không có workload")
                 compliance_result_service.update_status(compliance_result_id, "failed", detail_error="Không có workload")
                 thread_session.commit()
                 return
@@ -223,7 +223,7 @@ class ScanService:
             compliance_result_service.complete_result(compliance_result_id, rule_results, len(rules))
             thread_session.commit()
             
-            logging.info(f"Thread {thread_id}: Server {server_data['hostname']} scan completed successfully")
+            logging.info(f"Thread {thread_id}: Instance {server_data['hostname']} scan completed successfully")
             
 
         except Exception as e:

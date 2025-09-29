@@ -3,17 +3,10 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import Optional, List
 from config.config_database import get_db
-from schemas.connection import ServerConnectionInfo, ServerConnectionResult, TestConnectionRequest, TestConnectionResponse
-from services.connection_service import ConnectionService
-from services.instance_service import InstanceService, ServerService
-from schemas.instance import (
-    InstanceResponse,
-    ServerCreate,
-    ServerUpdate,
-    ServerResponse,
-    ServerListResponse,
-    ServerSearchParams
-)
+
+from schemas.instance import InstanceCreate, InstanceListResponse, InstanceResponse, InstanceSearchParams
+
+from services.instance_service import InstanceService
 from utils.auth import require_admin, require_user
 
 router = APIRouter(prefix="/api/servers", tags=["Servers"])
@@ -23,12 +16,9 @@ def get_instance_service(db: Session = Depends(get_db)) -> InstanceService:
     return InstanceService(db)
 
 
-def get_connection_service() -> ConnectionService:
-    return ConnectionService()
 
-
-@router.get("/", response_model=ServerListResponse)
-def get_servers(
+@router.get("/", response_model=InstanceListResponse)
+def get_instances(
     keyword: Optional[str] = Query(None, description="keyword"),
     workload_id: Optional[int] = Query(None, description="ID workload"),
     status: Optional[bool] = Query(None, description="server search status"),
@@ -40,7 +30,7 @@ def get_servers(
     
     try:
         if(current_user.role == 'admin'):
-            search_params = ServerSearchParams(
+            search_params = InstanceSearchParams(
                 keyword=keyword,
                 workload_id=workload_id,
                 status=status,
@@ -49,7 +39,7 @@ def get_servers(
             )
         else:
 
-            search_params = ServerSearchParams(
+            search_params = InstanceSearchParams(
                 keyword=keyword,
                 workload_id=workload_id,
                 status=status,
@@ -83,7 +73,7 @@ def get_instance_by_id(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/", response_model=ServerResponse)
+@router.post("/", response_model=InstanceResponse)
 def create_instance(
     instance_data: InstanceCreate,
     instance_service: InstanceService = Depends(get_instance_service),
@@ -99,7 +89,7 @@ def create_instance(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/batch", response_model=List[ServerResponse])
+@router.post("/batch", response_model=List[InstanceResponse])
 def create_instances_batch(
     instances: List[InstanceCreate],  
     instance_service: InstanceService = Depends(get_instance_service),
@@ -119,36 +109,3 @@ def create_instances_batch(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-
-@router.post("/test-connection", response_model=TestConnectionResponse)
-def test_connections(
-    request: TestConnectionRequest,
-    connection_service: ConnectionService = Depends(get_connection_service),
-    current_user = Depends(require_user())
-):
-    
-    try:
-        if not request.servers:
-            raise HTTPException(status_code=400, detail="List server is not empty")
-        result = connection_service.test_multiple_connections(request)
-        return result
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-    
-
-@router.post("/test-single-connection", response_model=ServerConnectionResult)
-def test_single_connection(
-    server: ServerConnectionInfo, 
-    connection_service: ConnectionService = Depends(get_connection_service),
-    current_user = Depends(require_user())
-):
-    
-    try:
-        result = connection_service.test_single_connection(server)
-        return result
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))

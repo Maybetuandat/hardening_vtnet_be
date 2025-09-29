@@ -74,15 +74,24 @@ class InstanceSearchParams(BaseModel):
 class InstanceResponseFromDcim(BaseModel):
     id : int 
     name : str
-    user: UserResponseFromDcim
+    manager: UserResponseFromDcim
     os: OsResponseFromDcim
+    class Config:
+        from_attributes = True
+        extra = "ignore" 
 class InstanceListResponseFromDcim(BaseModel):
     instances: list[InstanceResponseFromDcim]
     total_instances: int
     page: int
     page_size: int
-    total: int
+    total: int  
     total_pages: int
     
     class Config:
         from_attributes = True
+        extra = "ignore" 
+class InstanceListRequest(BaseModel):
+    
+    page: int = 1
+    page_size: int = 10
+    use_cache: bool = True

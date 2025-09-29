@@ -9,7 +9,7 @@ from typing import Dict, List, Optional, Any
 from sqlalchemy.orm import Session
 from dao.rule_dao import RuleDAO
 from dao.rule_result_dao import RuleResultDAO
-from dao.instance_dao import ServerDAO
+from dao.instance_dao import InstanceDAO
 from dao.compliance_result_dao import ComplianceDAO
 from dao.fix_action_log_dao import FixActionLogDAO
 from models.fix_action_log import FixActionLog
@@ -21,7 +21,7 @@ class FixService:
         self.db = db
         self.rule_result_dao = RuleResultDAO(db)
         self.rule_dao = RuleDAO(db)
-        self.server_dao = ServerDAO(db)
+        self.instance_dao = InstanceDAO(db)
         self.compliance_dao = ComplianceDAO(db)
         self.fix_log_dao = FixActionLogDAO(db)
         self.ansible_timeout = 30

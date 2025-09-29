@@ -7,7 +7,7 @@ class ComplianceResult(Base):
     __tablename__ = "compliance_results"
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    server_id = Column(Integer, ForeignKey("servers.id"), nullable=False)
+    instance_id = Column(Integer, ForeignKey("instances.id"), nullable=False)
     name=Column(String(255), nullable=True)
     status = Column(String(20), nullable=False, default="pending") 
     total_rules = Column(Integer, default=0)
@@ -22,6 +22,6 @@ class ComplianceResult(Base):
     
     detail_error = Column(Text, nullable=True)
     # # Relationships
-    server = relationship("Server", back_populates="compliance_results")
-    
+    instance = relationship("Instance", back_populates="compliance_results")
+
     rule_results = relationship("RuleResult", back_populates="compliance_result", cascade="all, delete-orphan")

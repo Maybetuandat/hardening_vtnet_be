@@ -3,7 +3,7 @@ from typing import Optional, Dict, Any
 import requests
 
 from config.dcim_config import  get_dcim_settings
-from config.redis_config import redis_settings
+
 from utils.redis_client import CacheManager
 
 logger = logging.getLogger(__name__)

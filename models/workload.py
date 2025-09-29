@@ -22,5 +22,5 @@ class WorkLoad(Base):
     os = relationship("Os", back_populates="workloads")
     
     rules = relationship("Rule", back_populates="workload", cascade="all, delete-orphan")
-    servers = relationship("Server", back_populates="workload", cascade="all, delete-orphan")
-    
+    instances = relationship("Instance", back_populates="workload")
+

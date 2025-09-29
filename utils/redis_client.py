@@ -2,11 +2,13 @@ import redis
 from typing import Optional, Any
 import json
 import logging
-from config.redis_config import redis_settings
+
+from config.setting_redis import get_redis_settings
+
 
 logger = logging.getLogger(__name__)
 
-
+redis_settings= get_redis_settings()
 class RedisClient:
   
     _instance: Optional[redis.Redis] = None

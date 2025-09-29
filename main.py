@@ -13,6 +13,7 @@ from routers import (
     auth_controller,
     compliance_result_controller, 
     dashboard_controller,
+    dcim_controller,
     export_controller,
     fix_controller,
     instance_controller,
@@ -119,7 +120,7 @@ app.include_router(os_controller.router)
 app.include_router(auth_controller.router)
 app.include_router(user_controller.router)
 app.include_router(fix_controller.router) 
-
+app.include_router(dcim_controller.router)
 
 if __name__ == "__main__":
     import uvicorn
