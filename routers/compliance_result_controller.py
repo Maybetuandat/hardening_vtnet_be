@@ -87,7 +87,7 @@ def start_compliance_scan(
             )
             
    
-        return scan_service.start_compliance_scan(scan_request)
+        return scan_service.start_compliance_scan(scan_request, current_user)
         
         
         

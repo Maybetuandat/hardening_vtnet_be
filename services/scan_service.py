@@ -18,6 +18,7 @@ from models.rule import Rule
 from models.rule_result import RuleResult
 from models.instance import Instance
 
+from models.user import User
 from schemas.compliance_result import ComplianceScanRequest, ComplianceScanResponse
 
 from services.compilance_result_service import ComplianceResultService
@@ -49,7 +50,7 @@ class ScanService:
             future.result()
         
         logging.info(f"Thread pool warmed up with {self.max_workers} threads")
-    def start_compliance_scan(self, scan_request : ComplianceScanRequest) -> ComplianceScanResponse:
+    def start_compliance_scan(self, scan_request : ComplianceScanRequest, current_user : User) -> ComplianceScanResponse:
         """
         co hai loai chinh: 
         1. quet toan bo server trong he thong
@@ -58,15 +59,15 @@ class ScanService:
         try:
             if scan_request.server_ids :
                 print("DEBUG - Scanning specific servers:", scan_request.server_ids)
-                return self._scan_servers_by_batch(scan_request, specific_ids=scan_request.server_ids)
+                return self._scan_servers_by_batch(scan_request, specific_ids=scan_request.server_ids, current_user=current_user)
             else: 
                 print("DEBUG - Scanning all active servers")
-                return self._scan_servers_by_batch(scan_request)
+                return self._scan_servers_by_batch(scan_request, current_user=current_user)
         except Exception as e:
             logging.error(f"Error starting compliance scan: {str(e)}")
             raise e
 
-    def _scan_servers_by_batch(self, scan_request: ComplianceScanRequest, specific_ids: Optional[List[int]] = None) -> ComplianceScanResponse:
+    def _scan_servers_by_batch(self, scan_request: ComplianceScanRequest, specific_ids: Optional[List[int]] = None, current_user: Optional[User] = None) -> ComplianceScanResponse:
             server_dao = InstanceDAO(self.db)
             
             print("DEBUG - Scan request batch size:", specific_ids)
@@ -99,7 +100,7 @@ class ScanService:
                 
                 current_batch_data = []
                 for server in servers_in_batch_objects:
-                    server_dict = self.convert_server_model_to_dict(server)
+                    server_dict = self.convert_server_model_to_dict(server, current_user)
                     current_batch_data.append(server_dict)
                 
                 print("Debug scan server", current_batch_data)
@@ -132,15 +133,15 @@ class ScanService:
             return None
         return Instance(**data)
 
-    def convert_server_model_to_dict(self, server) -> Dict[str, Any]:
+    def convert_server_model_to_dict(self, server, current_user: Optional[User] = None) -> Dict[str, Any]:
         if not server:
             return {}
         return {
             "id": server.id,
-            "hostname": server.hostname,
-            "ip_address": server.ip_address,
-            "ssh_user": server.ssh_user,
-            "ssh_password": server.ssh_password,
+            
+            "name": server.name,
+            "ssh_user": current_user.username if current_user else "",
+            "ssh_password": current_user.ssh_password if current_user else "",
             "ssh_port": server.ssh_port,
             "workload_id": server.workload_id,
             "status": server.status,
@@ -153,7 +154,7 @@ class ScanService:
         for server_data in batch_server_data:
             future = self._thread_pool.submit(self._scan_single_server_threaded, server_data)
             future_to_server_data[future] = server_data
-            logging.info(f"IMMEDIATE - Submitted task for {server_data['hostname']} to pre-warmed thread")
+            logging.info(f"IMMEDIATE - Submitted task for {server_data['name']} to pre-warmed thread")
         
         
         for future in as_completed(future_to_server_data):
@@ -161,16 +162,16 @@ class ScanService:
             try:
                 future.result() 
                 successful_scans_in_batch += 1
-                logging.info(f"Instance {server_data['hostname']} scan completed successfully within batch.")
+                logging.info(f"Instance {server_data['name']} scan completed successfully within batch.")
             except Exception as e:
-                logging.error(f"Instance {server_data['hostname']} scan failed within batch: {str(e)}")
+                logging.error(f"Instance {server_data['name']} scan failed within batch: {str(e)}")
         
         return successful_scans_in_batch
     def _scan_single_server_threaded(self, server_data: Dict[str, Any]):
         
         thread_id = threading.current_thread().ident
         start_time = time.time()
-        logging.info(f" THREAD {thread_id} STARTED IMMEDIATELY for {server_data['hostname']} at {start_time}")
+        logging.info(f" THREAD {thread_id} STARTED IMMEDIATELY for {server_data['name']} at {start_time}")
         thread_session = self.session_maker()
         
         compliance_result_id = None 
@@ -195,7 +196,7 @@ class ScanService:
             # thực hiện lấy workload 
             workload = workload_service.get_workload_by_id(server_data['workload_id'])
             if not workload:
-                logging.warning(f"Thread {thread_id}: Instance {server_data['hostname']} không có workload")
+                logging.warning(f"Thread {thread_id}: Instance {server_data['name']} không có workload")
                 compliance_result_service.update_status(compliance_result_id, "failed", detail_error="Không có workload")
                 thread_session.commit()
                 return
@@ -223,7 +224,7 @@ class ScanService:
             compliance_result_service.complete_result(compliance_result_id, rule_results, len(rules))
             thread_session.commit()
             
-            logging.info(f"Thread {thread_id}: Instance {server_data['hostname']} scan completed successfully")
+            logging.info(f"Thread {thread_id}: Instance {server_data['name']} scan completed successfully")
             
 
         except Exception as e:
@@ -251,7 +252,7 @@ class ScanService:
         rules_to_run = {}
         playbook_tasks = []
 
-        logging.info(f"Thread {thread_id}: Preparing {len(rules)} rules for server {server_data['hostname']}")
+        logging.info(f"Thread {thread_id}: Preparing {len(rules)} rules for server {server_data['name']}")
 
         # Chuẩn bị playbook tasks
         for rule in rules:
@@ -270,7 +271,7 @@ class ScanService:
 
         # thực hiện gen ra file playbook để thực hiện với ansible 
         with tempfile.TemporaryDirectory() as private_data_dir:
-            inventory = { 'all': { 'hosts': { server_data['ip_address']: {
+            inventory = { 'all': { 'hosts': { server_data['name']: {
                 'ansible_user': server_data['ssh_user'], 'ansible_password': server_data['ssh_password'],
                 'ansible_port': server_data['ssh_port'],
                 'ansible_ssh_common_args': '-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
@@ -284,7 +285,7 @@ class ScanService:
             with open(playbook_path, 'w') as f: 
                 yaml.dump(playbook, f)
 
-            logging.info(f"Thread {thread_id}: Running ansible-runner for {len(playbook_tasks)} rules on {server_data['hostname']}")
+            logging.info(f"Thread {thread_id}: Running ansible-runner for {len(playbook_tasks)} rules on {server_data['name']}")
             runner = ansible_runner.run(
                 private_data_dir=private_data_dir, 
                 playbook=playbook_path, 
@@ -297,7 +298,7 @@ class ScanService:
             
             if runner.status in ('failed', 'unreachable') or (runner.rc != 0 and not all_events):
                 error_output = runner.stdout.read()
-                full_error = f"Thread {thread_id}: Ansible run failed for {server_data['hostname']}. Status: {runner.status}, RC: {runner.rc}. Output: {error_output}"
+                full_error = f"Thread {thread_id}: Ansible run failed for {server_data['name']}. Status: {runner.status}, RC: {runner.rc}. Output: {error_output}"
                 logging.error(full_error)
                 return [], f"Ansible connection failed: {error_output[:500] or 'Check logs for details'}"
         

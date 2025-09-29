@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 from dao.dashboard_dao import DashboardDAO
 from schemas.dashboard import DashboardStatsResponse
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 import logging
 
 
@@ -9,8 +9,8 @@ class DashboardService:
     def __init__(self, db: Session):
         self.dao = DashboardDAO(db)
         self.db = db
-    
-    def get_dashboard_statistics(self) -> DashboardStatsResponse:
+
+    def get_dashboard_statistics(self, current_user_id: Optional[int]) -> DashboardStatsResponse:
         """
         Lấy thống kê dashboard bao gồm:
         - Total nodes (server đang hoạt động)
@@ -19,8 +19,7 @@ class DashboardService:
         - Last audit (thời gian scan gần nhất)
         """
         try:
-            stats = self.dao.get_dashboard_statistics()
-            
+            stats = self.dao.get_dashboard_statistics(current_user_id)
             return DashboardStatsResponse(
                 total_nodes=stats["total_nodes"],
                 compliance_rate=stats["compliance_rate"],

@@ -26,8 +26,8 @@ class WorkLoadResponse(WorkLoadBase):
     id: int
     created_at: datetime
     updated_at: datetime
-    os_version: Optional[str] = Field(None, description="Operating system version")
-    
+    os_name: Optional[str] = Field(None, description="Operating system name")
+
     class Config:
         from_attributes = True
 

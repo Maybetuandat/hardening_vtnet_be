@@ -271,7 +271,14 @@ class InstanceOperations:
         """
         try:
             backend_id = backend_inst.get("id")
-            instance_dao.delete(backend_id)
+            instance_delete = instance_dao.get_by_id(backend_id)
+            if not instance_delete:
+                return {
+                    "success": False,
+                    "error": "Instance not found in backend"
+                }   
+            
+            instance_dao.delete(instance_delete)
             
             return {"success": True}
             

@@ -73,39 +73,4 @@ def get_instance_by_id(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/", response_model=InstanceResponse)
-def create_instance(
-    instance_data: InstanceCreate,
-    instance_service: InstanceService = Depends(get_instance_service),
-    current_user = Depends(require_user())
-):
-    
-    try:
-        instance_data.user_id = current_user.id
-        return instance_service.create(instance_data)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.post("/batch", response_model=List[InstanceResponse])
-def create_instances_batch(
-    instances: List[InstanceCreate],  
-    instance_service: InstanceService = Depends(get_instance_service),
-    current_user = Depends(require_user())
-):
-    
-    try:
-        if not instances:
-            raise HTTPException(status_code=400, detail="List instance is not empty")
-
-        print(f"Received {len(instances)} instances to create")
-        return instance_service.create_batch(instances, current_user)
-
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
 

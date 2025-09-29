@@ -26,6 +26,6 @@ def get_dashboard_statistics(
     - Last audit: thời gian scan gần nhất
     """
     try:
-        return dashboard_service.get_dashboard_statistics()
+        return dashboard_service.get_dashboard_statistics(current_user.id)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Lỗi khi lấy thống kê dashboard: {str(e)}")

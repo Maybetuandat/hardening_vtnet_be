@@ -11,15 +11,18 @@ import logging
 class DashboardDAO:
     def __init__(self, db: Session):
         self.db = db
-    
-    def get_total_active_instances(self) -> int:
+
+    def get_total_active_instances(self, current_user_id: Optional[int]) -> int:
         try:
-            return self.db.query(Instance).filter(Instance.status == True).count()
+            query = self.db.query(Instance).filter(Instance.status == True)
+            if current_user_id:
+                query = query.filter(Instance.user_id == current_user_id)
+            return query.count()
         except Exception as e:
             logging.error(f"Error getting total active instances: {str(e)}")
             return 0
-    
-    def get_compliance_statistics(self) -> Dict[str, Any]:
+
+    def get_compliance_statistics(self, current_user_id: Optional[int]) -> Dict[str, Any]:
         try:
             today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
             today_end = datetime.now().replace(hour=23, minute=59, second=59, microsecond=999999)
@@ -88,11 +91,12 @@ class DashboardDAO:
             logging.error(f"Error getting last audit time: {str(e)}")
             return None
     
-    def get_dashboard_statistics(self) -> Dict[str, Any]:
+    def get_dashboard_statistics(self, current_user_id: Optional[int]) -> Dict[str, Any]:
         try:
-            total_nodes = self.get_total_active_instances()
-            compliance_stats = self.get_compliance_statistics()
-            last_audit = self.get_last_audit_time()
+            
+            total_nodes = self.get_total_active_instances(current_user_id)
+            compliance_stats = self.get_compliance_statistics(current_user_id)
+            last_audit = self.get_last_audit_time(current_user_id)
             
             return {
                 "total_nodes": total_nodes,

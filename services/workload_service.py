@@ -224,7 +224,7 @@ class WorkloadService:
             description=workload.description,
             created_at=workload.created_at,
             updated_at=workload.updated_at,
-            os_version=os_model.version if os_model else None,
+            os_name=os_model.name if os_model else None,
             os_id=workload.os_id
             
         )
