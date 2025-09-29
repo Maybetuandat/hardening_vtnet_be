@@ -3,53 +3,53 @@ from typing import List, Optional
 from venv import create
 from sqlalchemy import Boolean
 from sqlalchemy.orm import Session
-from dao.instance_dao import ServerDAO
+from dao.instance_dao import InstanceDAO
 from dao.workload_dao import WorkLoadDAO
-from models.instance import Server
+from models.instance import Instance
 from models.user import User
-from schemas.server import (
-    ServerCreate, 
-    ServerUpdate, 
-    ServerResponse, 
-    ServerListResponse, 
-    ServerSearchParams
+from schemas.instance import (
+    InstanceCreate, 
+    InstanceUpdate, 
+    InstanceResponse, 
+    InstanceListResponse, 
+    InstanceSearchParams
 )
 import math
 from sqlalchemy.exc import IntegrityError
 
 
 
-class ServerService:
+class InstanceService:
     def __init__(self, db: Session):
-        self.dao = ServerDAO(db)
+        self.dao = InstanceDAO(db)
         self.workload_dao = WorkLoadDAO(db)
 
   
 
-    def get_server_by_id(self, server_id: int) -> Optional[ServerResponse]:
-        if server_id <= 0:
+    def get_instance_by_id(self, instance_id: int) -> Optional[InstanceResponse]:
+        if instance_id <= 0:
             return None
             
-        server = self.dao.get_by_id(server_id)
-        if server:
-            return self._convert_to_response(server)
+        instance = self.dao.get_by_id(instance_id)
+        if instance:
+            return self._convert_to_response(instance)
         return None
-   
-    def get_server_by_id_and_user(self, server_id: int, user_id: int) -> Optional[ServerResponse]:
-        if server_id <= 0 or user_id <= 0:
+
+    def get_instance_by_id_and_user(self, instance_id: int, user_id: int) -> Optional[InstanceResponse]:
+        if instance_id <= 0 or user_id <= 0:
             return None
 
-        server = self.dao.get_by_id_server_and_id_user(server_id, user_id)
-        if server:
-            return self._convert_to_response(server)
+        instance = self.dao.get_by_id_instance_and_id_user(instance_id, user_id)
+        if instance:
+            return self._convert_to_response(instance)
         return None
-    def search_servers(self, search_params: ServerSearchParams) -> ServerListResponse:
+    def search_instances(self, search_params: InstanceSearchParams) -> InstanceListResponse:
         page = max(1, search_params.page)
         page_size = max(1, min(100, search_params.size))  
         
         skip = (page - 1) * page_size
-        
-        servers, total = self.dao.search_servers(
+
+        instances, total = self.dao.search_instances(
             keyword=search_params.keyword,
             workload_id=search_params.workload_id,
             status=search_params.status,
@@ -59,14 +59,14 @@ class ServerService:
         )
         
         total_pages = math.ceil(total / page_size) if total > 0 else 0
-        
-        server_responses = []
-        for server in servers:
-            server_responses.append(self._convert_to_response(server))
-        
-        return ServerListResponse(
-            servers=server_responses,
-            total_servers=total,
+
+        instance_responses = []
+        for instance in instances:
+            instance_responses.append(self._convert_to_response(instance))
+
+        return InstanceListResponse(
+            instances=instance_responses,
+            total_instances=total,
             page=page,
             page_size=page_size,
             total_pages=total_pages
@@ -74,167 +74,91 @@ class ServerService:
     
    
 
-    def update_status(self, id : int, status: Boolean):
-        try:
-            server = self.dao.get_by_id(id)
-            server.status = status
-            update_server = self.dao.update(server)
-            return update_server
-        except IntegrityError as e:
-            self.dao.db.rollback()
-            if "name" in str(e.orig):
-                raise ValueError("Name already exists")
-            else:
-                raise ValueError("Invalid data")
-        except Exception as e:
-            self.dao.db.rollback()
-            raise e
+    
 
-    def create(self, server_data: ServerCreate) -> ServerResponse:
+    def create(self, instance_data: InstanceCreate) -> InstanceResponse:
         try:
             
-            self._validate_server_data(server_data)
 
 
-            if self.dao.check_name_exists(server_data.name):
-                raise ValueError("Name exists")
+            if self.dao.check_ip_address_exists(instance_data.name):
+                raise ValueError("Ip address exists")
 
 
 
-            server_dict = server_data.dict()
-            server_model = Server(**server_dict)
+            instance_dict = instance_data.dict()
+            instance_model = Instance(**instance_dict)
             
             
-            created_server = self.dao.create(server_model)
+            created_instance = self.dao.create(instance_model)
             
-            return self._convert_to_response(created_server)
+            return self._convert_to_response(created_instance)
             
         except ValueError as e:
             raise ValueError(str(e))
         except Exception as e:
-            raise Exception(f"Lỗi khi tạo server: {str(e)}")
+            raise Exception(f"failed to create instance: {str(e)}")
 
-    def update(self, server_id: int, server_data: ServerUpdate, current_user: User) -> Optional[ServerResponse]:
+   
+   
+
+    def update(self, instance_data : InstanceUpdate, instance_id : int) -> InstanceResponse:
         try:
-            if server_id <= 0:
-                return None
+            if instance_id <= 0:
+                raise ValueError("Invalid instance id")
                 
-            # get server and check user has permission to update
-            # current user is get from token
-            existing_server = self.dao.get_by_id(server_id)
-            if not existing_server:
-                raise ValueError("Server is not found")
-
-            if current_user.role == 'user':
-                if existing_server.user_id != current_user.id:
-                    raise ValueError("You do not have permission to update this server")  # user want to update server of another user 
-                # case user want to change user_id
-                if existing_server.user_id != server_data.user_id and server_data.user_id is not None:
-                    raise ValueError("You do not have permission to change the user of this server") #user want to change user_id to another user 
-            if server_data.name:
-                self._validate_update_data(server_data)
-
-            # check name exists
-            if server_data.name and server_data.name != existing_server.name:
-                if self.dao.check_name_exists(server_data.name, exclude_id=server_id):
-                    raise ValueError("Name exists")
-
-            
-            
-            update_data = server_data.dict(exclude_unset=True)
-            for field, value in update_data.items():
-                if hasattr(existing_server, field) and value is not None:
-                    setattr(existing_server, field, value)
-            
-            
-            updated_server = self.dao.update(existing_server)
-            
-            return self._convert_to_response(updated_server)
+            existing_instance = self.dao.get_by_id(instance_id)
+            if not existing_instance:
+                raise ValueError("Instance is not found")
+                
+            if instance_data.name and self.dao.check_ip_address_exists(instance_data.name, exclude_id=instance_id):
+                raise ValueError("Ip address exists")
+                
+            for field, value in instance_data.dict(exclude_unset=True).items():
+                setattr(existing_instance, field, value)
+                
+            updated_instance = self.dao.update(existing_instance)
+            return self._convert_to_response(updated_instance)
             
         except ValueError as e:
             raise ValueError(str(e))
         except Exception as e:
-            raise Exception(f"Lỗi khi cập nhật server: {str(e)}")
-
-    def delete(self, server_id: int, current_user_id : int) -> bool:
+            raise Exception(f"Failed to update instance: {str(e)}")
+    def delete(self, instance_id: int) -> bool:
         try:
-            if server_id <= 0:
+            if instance_id <= 0:
                 return False
                 
             
-            existing_server = self.dao.get_by_id_server_and_id_user(server_id, current_user_id)
-            if not existing_server:
-                raise ValueError("Server is not found or you do not have permission to delete this server")
+            existing_instance = self.dao.get_by_id_instance_and_id_user(instance_id)
+            if not existing_instance:
+                raise ValueError("Instance is not found or you do not have permission to delete this instance")
                 
 
-            return self.dao.delete(existing_server)
+            return self.dao.delete(existing_instance)
             
         except Exception as e:
-            raise Exception(f"Failed to delete  server: {str(e)}")
+            raise Exception(f"Failed to delete  instance: {str(e)}")
 
-    def create_batch(self, servers: List[ServerCreate], current_user: User) -> List[ServerResponse]:
-        server_model_list = []
-        for server_data in servers:
-            server_data.user_id = current_user.id
-            self._validate_server_data(server_data)
-                
-            if self.dao.check_hostname_exists(server_data.hostname):
-                raise ValueError(f"Hostname '{server_data.hostname}'  already exists")
-                
-            if self.dao.check_ip_exists(server_data.ip_address):
-                raise ValueError(f"IP address '{server_data.ip_address}' already exists")
-            server_dict = server_data.dict()
-            server_model_list.append(Server(**server_dict))
-        try:
-            created_servers = self.dao.create_batch(server_model_list)
-            self.dao.db.commit()
-            for server in created_servers:
-                self.dao.db.refresh(server)
-            return [self._convert_to_response(server) for server in created_servers]
-        except IntegrityError as e:
-            self.dao.db.rollback()
-            if "hostname" in str(e.orig):
-                raise ValueError("Hostname exsisted")
-            elif "ip_address" in str(e.orig):
-                raise ValueError("IP address exsisted")
-            else:
-                raise ValueError("Input is not valid")
-        except Exception as e:
-            self.dao.db.rollback()
-            raise e
+   
         
 
-    def _convert_to_response(self, server: Server) -> ServerResponse:
-        workload = self.workload_dao.get_by_id(server.workload_id)
-        return ServerResponse(
-            id=server.id,
-            name=server.name,
-            status=server.status,
+    def _convert_to_response(self, instance: Instance) -> InstanceResponse:
+        workload = self.workload_dao.get_by_id(instance.workload_id)
+        return InstanceResponse(
+            id=instance.id,
+            name=instance.name,
+            status=instance.status,
             workload_name=workload.name,
-            ssh_port=server.ssh_port,
-            workload_id=server.workload_id,
-            created_at=server.created_at,
-            updated_at=server.updated_at,
-            nameofmanager=server.user.username if server.user else None
+            ssh_port=instance.ssh_port,
+            workload_id=instance.workload_id,
+            created_at=instance.created_at,
+            updated_at=instance.updated_at,
+            nameofmanager=instance.user.username if instance.user else None
         )
 
-    def _validate_server_data(self, server_data: ServerCreate) -> None:
-        if not server_data.name or not server_data.name.strip():
-            raise ValueError("Name is not empty")
 
-
-        # Validate SSH port
-        if server_data.ssh_port <= 0 or server_data.ssh_port > 65535:
-            raise ValueError("SSH port must be between 1 and 65535")
-
-    def _validate_update_data(self, server_data: ServerUpdate) -> None:
-        if server_data.name is not None and not server_data.name.strip():
-            raise ValueError("Name is not empty")
-
+  
         
 
-        
-        # Validate SSH port if present
-        if server_data.ssh_port is not None:
-            if server_data.ssh_port <= 0 or server_data.ssh_port > 65535:
-                raise ValueError("SSH port must be between 1 and 65535")
+  

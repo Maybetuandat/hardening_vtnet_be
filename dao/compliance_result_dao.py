@@ -4,7 +4,7 @@ from sqlalchemy import and_, or_, func, desc, distinct
 from sqlalchemy.sql import text
 from typing import Optional, List, Tuple
 from models.compliance_result import ComplianceResult
-from models.instance import Server
+from models.instance import Instance
 from models.workload import WorkLoad
 from datetime import datetime, timedelta
 
@@ -69,12 +69,12 @@ class ComplianceDAO:
                     ComplianceResult.id,
                     func.row_number()
                     .over(
-                        partition_by=Server.ip_address,
+                        partition_by=Instance.name,
                         order_by=desc(ComplianceResult.scan_date)
                     )
                     .label('rn')
                 )
-                .join(ComplianceResult.server)
+                .join(ComplianceResult.instance)
                 .filter(
                     and_(
                         ComplianceResult.scan_date >= today_start,
@@ -89,7 +89,7 @@ class ComplianceDAO:
             if keyword and keyword.strip():
                     keyword = keyword.strip()
                     subquery = subquery.filter(
-                        func.lower(Server.ip_address).like(f"%{keyword.lower()}%")
+                        func.lower(Instance.name).like(f"%{keyword.lower()}%")
                     )
 
             
@@ -116,13 +116,13 @@ class ComplianceDAO:
                     .all()
                 )
         else:
-            
-            query = self.db.query(ComplianceResult).join(ComplianceResult.server)
+
+            query = self.db.query(ComplianceResult).join(ComplianceResult.instance)
 
             if keyword and keyword.strip():
                 keyword = keyword.strip()
                 query = query.filter(
-                    func.lower(Server.ip_address).like(f"%{keyword.lower()}%")
+                    func.lower(Instance.name).like(f"%{keyword.lower()}%")
                 )
 
             if status and status.strip():
@@ -154,12 +154,12 @@ class ComplianceDAO:
                 ComplianceResult.id,
                 func.row_number()
                 .over(
-                    partition_by=Server.ip_address,
+                    partition_by=Instance.name,
                     order_by=desc(ComplianceResult.scan_date)
                 )
                 .label("rn")
             )
-            .join(ComplianceResult.server) 
+            .join(ComplianceResult.instance)
             .filter(
                 ComplianceResult.scan_date >= today_start,
                 ComplianceResult.scan_date <= today_end
@@ -168,7 +168,7 @@ class ComplianceDAO:
 
         
         if list_workload_id:
-            subquery = subquery.join(Server.workload).filter(
+            subquery = subquery.join(Instance.workload).filter(
                 WorkLoad.id.in_(list_workload_id)
             )
 
@@ -176,7 +176,7 @@ class ComplianceDAO:
         if keyword and keyword.strip():
             keyword = keyword.strip().lower()
             subquery = subquery.filter(
-                func.lower(Server.ip_address).like(f"%{keyword}%")
+                func.lower(Instance.name).like(f"%{keyword}%")
             )
 
         
@@ -188,7 +188,7 @@ class ComplianceDAO:
         
         query = (
             self.db.query(ComplianceResult)
-            .options(joinedload(ComplianceResult.server).joinedload(Server.workload))
+            .options(joinedload(ComplianceResult.instance).joinedload(Instance.workload))
             .join(subquery, ComplianceResult.id == subquery.c.id)
             .filter(subquery.c.rn == 1)
         )

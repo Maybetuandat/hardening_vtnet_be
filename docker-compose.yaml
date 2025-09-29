@@ -18,17 +18,17 @@ services:
     volumes:
       - mysql_data:/var/lib/mysql
 
-  # redis:
-  #   image: redis:7-alpine
-  #   container_name: redis_cache
-  #   restart: always
-  #   ports:
-  #     - "6379:6379"
-  #   volumes:
-  #     - redis_data:/data
-  #   command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
-  #   environment:
-  #     TZ: Asia/Ho_Chi_Minh
+  redis:
+    image: redis:7-alpine
+    container_name: redis_cache
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
+    environment:
+      TZ: Asia/Ho_Chi_Minh
 
   adminer:
     image: adminer:latest
@@ -39,4 +39,4 @@ services:
 
 volumes:
   mysql_data:
-  # redis_data:
+  redis_data:

@@ -4,28 +4,28 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import and_, or_, func
 from typing import Any, Dict, Optional, List, Tuple
-from models.instance import Server
-from schemas.server import ServerCreate, ServerUpdate
+from models.instance import Instance
+from schemas.instance import InstanceCreate, InstanceUpdate
 
 
-class ServerDAO:
+class InstanceDAO:
     def __init__(self, db: Session):
         self.db = db
 
-   
-    def get_servers(self, skip : int, limit: int) -> List[Server]:
-        return self.db.query(Server).offset(skip).limit(limit).all()
+
+    def get_instances(self, skip : int, limit: int) -> List[Instance]:
+        return self.db.query(Instance).offset(skip).limit(limit).all()
 
 
 
  
 
-    def get_by_id(self, server_id: int) -> Optional[Server]:
-        return self.db.query(Server).filter(Server.id == server_id).first()
+    def get_by_id(self, instance_id: int) -> Optional[Instance]:
+        return self.db.query(Instance).filter(Instance.id == instance_id).first()
 
-    def get_by_id_server_and_id_user(self, server_id: int, user_id: int) -> Optional[Server]:
-        return self.db.query(Server).filter(and_(Server.id == server_id, Server.user_id == user_id)).first()
-    def search_servers(
+    def get_by_id_instance_and_id_user(self, instance_id: int, user_id: int) -> Optional[Instance]:
+        return self.db.query(Instance).filter(and_(Instance.id == instance_id, Instance.user_id == user_id)).first()
+    def search_instances(
         self,
         keyword: Optional[str] = None,
         workload_id: Optional[int] = None,
@@ -33,33 +33,30 @@ class ServerDAO:
         skip: int = 0,
         limit: int = 10,
         user_id: Optional[int] = None
-    ) -> Tuple[List[Server], int]:
-        query = self.db.query(Server)
+    ) -> Tuple[List[Instance], int]:
+        query = self.db.query(Instance)
         
         if keyword and keyword.strip():
             query = query.filter(
-                or_(
-                    Server.ip_address.ilike(f"%{keyword.strip()}%"),
-                    Server.hostname.ilike(f"%{keyword.strip()}%")
-                )
+                Instance.name.ilike(f"%{keyword.strip()}%")
             )
         
         if user_id is not None:
-            query = query.filter(Server.user_id == user_id)
+            query = query.filter(Instance.user_id == user_id)
         if status is not None:
-            query = query.filter(Server.status == status)
+            query = query.filter(Instance.status == status)
         
         total = query.count()
-        servers = query.offset(skip).limit(limit).all()
+        instances = query.offset(skip).limit(limit).all()
         
-        return servers, total
+        return instances, total
 
-    def create(self, server: Server) -> Server:
+    def create(self, instance: Instance) -> Instance:
         try:    
-            self.db.add(server)
+            self.db.add(instance)
             self.db.commit()
-            self.db.refresh(server)
-            return server
+            self.db.refresh(instance)
+            return instance
             
         except IntegrityError as e:
             self.db.rollback()
@@ -68,19 +65,17 @@ class ServerDAO:
             self.db.rollback()
             raise e
 
-    def update(self, server: Server) -> Server:
+    def update(self, instance: Instance) -> Instance:
         try:
-            server.updated_at = datetime.now()
+            instance.updated_at = datetime.now()
             self.db.commit()
-            self.db.refresh(server)
-            return server
+            self.db.refresh(instance)
+            return instance
             
         except IntegrityError as e:
             self.db.rollback()
-            if "hostname" in str(e.orig):
-                raise ValueError("Hostname exists")
-            elif "ip_address" in str(e.orig):
-                raise ValueError("IP address exists")
+            if "name" in str(e.orig):
+                raise ValueError("Ip address exists")
             else:
                 raise ValueError("Invalid data")
         except Exception as e:
@@ -88,13 +83,14 @@ class ServerDAO:
             raise e
     
 
-    def create_batch(self, servers: List[Server]) -> List[Server]:
-        self.db.add_all(servers)   
-        return servers
-    def delete(self, server: Server) -> bool:
+    def create_batch(self, instances: List[Instance]) -> List[Instance]:
+        self.db.add_all(instances)
+        self.db.commit()
+        return instances
+
+    def delete(self, instance: Instance) -> bool:
         try:
-            self.db.delete(server)
-            self.db.delete(server)
+            self.db.delete(instance)
             self.db.commit()
             return True
             
@@ -103,11 +99,11 @@ class ServerDAO:
             raise e
 
     
-    def check_name_exists(self, name: str, exclude_id: Optional[int] = None) -> bool:
-        query = self.db.query(Server).filter(Server.name == name)
+    def check_ip_address_exists(self, name: str, exclude_id: Optional[int] = None) -> bool:
+        query = self.db.query(Instance).filter(Instance.name == name)
 
         if exclude_id:
-            query = query.filter(Server.id != exclude_id)
+            query = query.filter(Instance.id != exclude_id)
             
         return query.first() is not None
 

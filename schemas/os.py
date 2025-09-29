@@ -4,8 +4,9 @@ from pydantic import BaseModel, Field
 
 
 class OsBase(BaseModel):
-    version: str = Field(..., max_length=255, description="Operating system version")
-
+    name: str = Field(..., max_length=255, description="Operating system name")
+    display: str = Field(..., max_length=255, description="Operating system display name")
+    type : Optional[int]= Field(None, description="Operating system type")
 class OsCreate(OsBase):
     pass
 
@@ -31,3 +32,9 @@ class OsSearchParams(BaseModel):
     keyword: Optional[str] = Field(None, max_length=255, description="Operating system name to search")
     page: int = Field(1, ge=1, description="Current page")
     size: int = Field(10, ge=1, le=100, description="Number of items per page")
+
+class OsResponseFromDcim(BaseModel):
+    id : int 
+    name : str
+    display : str
+    type : int

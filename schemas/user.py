@@ -1,3 +1,4 @@
+from turtle import st
 from pydantic import BaseModel, EmailStr, Field
 from typing import Optional, List
 from datetime import datetime
@@ -5,7 +6,8 @@ from datetime import datetime
 class UserBase(BaseModel):
     username: str = Field(..., max_length=50, description="Username for login")
     email: EmailStr = Field(..., description="User email address")
-    full_name: Optional[str] = Field(None, max_length=100, description="User full name")
+    first_name: Optional[str] = Field(None, max_length=100, description="User first name")
+    last_name: Optional[str] = Field(None, max_length=100, description="User last name")
     role: str = Field(default="user", description="User role")
     is_active: bool = Field(default=True, description="User active status")
 
@@ -15,7 +17,8 @@ class UserCreate(UserBase):
 class UserUpdate(BaseModel):
     username: Optional[str] = Field(None, max_length=50, description="Username for login")
     email: Optional[EmailStr] = Field(None, description="User email address")
-    full_name: Optional[str] = Field(None, max_length=100, description="User full name")
+    first_name: Optional[str] = Field(None, max_length=100, description="User first name")
+    last_name: Optional[str] = Field(None, max_length=100, description="User last name")
     role: Optional[str] = Field(None, description="User role")
     is_active: Optional[bool] = Field(None, description="User active status")
     password: Optional[str] = Field(None, min_length=6, description="User password")
@@ -61,3 +64,10 @@ class TokenData(BaseModel):
 class ChangePasswordRequest(BaseModel):
     current_password: str = Field(..., description="Current password")
     new_password: str = Field(..., min_length=6, description="New password")
+
+class UserResponseFromDcim(BaseModel):
+    id : int
+    username: str
+    first_name : str
+    last_name : str
+    email: str

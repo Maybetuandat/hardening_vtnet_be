@@ -12,7 +12,7 @@ from dao.compliance_result_dao import ComplianceDAO
 
 from dao.rule_dao import RuleDAO
 from dao.rule_result_dao import RuleResultDAO
-from dao.instance_dao import ServerDAO
+from dao.instance_dao import InstanceDAO, ServerDAO
 from dao.workload_dao import WorkLoadDAO
 from models import workload
 from models.compliance_result import ComplianceResult
@@ -26,7 +26,7 @@ from services.sse_notification import notification_service
 
 from services.rule_result_service import RuleResultService
 
-from services.instance_service import ServerService
+from services.instance_service import InstanceService
 from services.workload_service import WorkloadService
 
 
@@ -37,7 +37,7 @@ class ComplianceResultService:
         self.db = db
         self.dao = ComplianceDAO(db)
         self.rule_result_dao = RuleResultDAO(db)
-        self.server_dao = ServerDAO(db)
+        self.instance_dao = InstanceDAO(db)
         self.workload_dao = WorkLoadDAO(db)
         self.rule_dao = RuleDAO(db)
 
@@ -107,13 +107,13 @@ class ComplianceResultService:
   
     
 
-    def create_pending_result(self, server_id: int, workload_id : int) -> ComplianceResult:
+    def create_pending_result(self, instance_id: int, workload_id : int) -> ComplianceResult:
         try:
             workload = self.workload_dao.get_by_id(workload_id)
-            server = self.server_dao.get_by_id(server_id)
-            name = f"{server.ip_address} - {workload.name} {datetime.now()}"
+            instance = self.instance_dao.get_by_id(instance_id)
+            name = f"{instance.name} - {datetime.now()}"
             compliance_data = ComplianceResultCreate(
-                server_id=server_id,
+                instance_id=instance_id,
                 name=name,
                 status="pending",
                 total_rules=0,
@@ -126,7 +126,7 @@ class ComplianceResultService:
             compliance_model = ComplianceResult(**compliance_dict)
             return self.dao.create(compliance_model)
         except Exception as e:
-            logging.error(f"Error creating pending result for server {server_id}: {str(e)}")
+            logging.error(f"Error creating pending result for instance {instance_id}: {str(e)}")
             raise e
 
    
@@ -215,13 +215,13 @@ class ComplianceResultService:
 
     def _convert_to_response(self, compliance: ComplianceResult) -> ComplianceResultResponse:
         
-        server = self.server_dao.get_by_id(compliance.server_id)
-        workload = self.workload_dao.get_by_id(server.workload_id) if server else None
+        instance = self.instance_dao.get_by_id(compliance.instance_id)
+        workload = self.workload_dao.get_by_id(instance.workload_id) if instance else None
         return ComplianceResultResponse(
             id=compliance.id,
-            server_ip=server.ip_address,
+            instance_ip=instance.name if instance else None,
             name=compliance.name,
-            server_id=compliance.server_id,
+            instance_id=compliance.instance_id,
             status=compliance.status,
             total_rules=compliance.total_rules,
             passed_rules=compliance.passed_rules,
@@ -231,7 +231,7 @@ class ComplianceResultService:
             
             updated_at=compliance.updated_at,
             workload_name=workload.name if workload else None,
-            server_hostname=server.hostname if server else None,
+            instance_hostname=instance.hostname if instance else None,
             detail_error=compliance.detail_error
         )
 

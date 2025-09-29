@@ -8,12 +8,12 @@ class Instance(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     os_id = Column(Integer, ForeignKey("os.id"), nullable=False, index=True)
-    name = Column(String(45), nullable=False, unique=True, index=True) 
+    name = Column(String(45), nullable=False, unique=True, index=True)   # ip address
     workload_id = Column(Integer, ForeignKey("work_loads.id"), nullable=True, index=True)
     instance_role = Column(String(100), nullable=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     status = Column(Boolean, index=True, default=True, nullable=False) 
-    ssh_port = Column(Integer, default=22, nullable=False)
+    ssh_port = Column(Integer, default=2222, nullable=False)
     created_at = Column(DateTime, default=func.now(), nullable=False)
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
     

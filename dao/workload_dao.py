@@ -65,6 +65,6 @@ class WorkLoadDAO:
         except Exception as e:
             self.db.rollback()
             raise e
-    def check_name_exists(self, name: str) -> bool:
+    def check_ip_address_exists(self, name: str) -> bool:
         return self.db.query(WorkLoad).filter(WorkLoad.name == name).count() > 0
     

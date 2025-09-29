@@ -2,7 +2,7 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 from sqlalchemy import func, desc
 from typing import Dict, Any, Optional
-from models.instance import Server
+from models.instance import Instance
 from models.compliance_result import ComplianceResult
 from models.rule_result import RuleResult
 import logging
@@ -12,11 +12,11 @@ class DashboardDAO:
     def __init__(self, db: Session):
         self.db = db
     
-    def get_total_active_servers(self) -> int:
+    def get_total_active_instances(self) -> int:
         try:
-            return self.db.query(Server).filter(Server.status == True).count()
+            return self.db.query(Instance).filter(Instance.status == True).count()
         except Exception as e:
-            logging.error(f"Error getting total active servers: {str(e)}")
+            logging.error(f"Error getting total active instances: {str(e)}")
             return 0
     
     def get_compliance_statistics(self) -> Dict[str, Any]:
@@ -31,12 +31,12 @@ class DashboardDAO:
                     ComplianceResult.status,
                     func.row_number()
                     .over(
-                        partition_by=Server.ip_address,
+                        partition_by=Instance.name,
                         order_by=desc(ComplianceResult.scan_date)
                     )
                     .label("rn")
                 )
-                .join(ComplianceResult.server)
+                .join(ComplianceResult.instance)
                 .filter(
                     ComplianceResult.scan_date >= today_start,
                     ComplianceResult.scan_date <= today_end
@@ -90,7 +90,7 @@ class DashboardDAO:
     
     def get_dashboard_statistics(self) -> Dict[str, Any]:
         try:
-            total_nodes = self.get_total_active_servers()
+            total_nodes = self.get_total_active_instances()
             compliance_stats = self.get_compliance_statistics()
             last_audit = self.get_last_audit_time()
             

@@ -89,7 +89,7 @@ class WorkloadService:
             self._validate_workload_create_data(workload_data)
             
             # Kiểm tra name đã tồn tại chưa
-            if self.dao.check_name_exists(workload_data.name):
+            if self.dao.check_ip_address_exists(workload_data.name):
                 raise ValueError(f"Workload với tên '{workload_data.name}' đã tồn tại")
             
             workload_dict = workload_data.dict()
@@ -118,7 +118,7 @@ class WorkloadService:
             # 1. Tạo workload
             self._validate_workload_create_data(workload_data)
             
-            if self.dao.check_name_exists(workload_data.name):
+            if self.dao.check_ip_address_exists(workload_data.name):
                 raise ValueError(f"Workload với tên '{workload_data.name}' đã tồn tại")
             
             workload_dict = workload_data.dict()
@@ -183,7 +183,7 @@ class WorkloadService:
             
             # Kiểm tra name đã tồn tại chưa (trừ chính nó)
             if workload_data.name and workload_data.name != existing_workload.name:
-                if self.dao.check_name_exists(workload_data.name):
+                if self.dao.check_ip_address_exists(workload_data.name):
                     raise ValueError(f"Workload với tên '{workload_data.name}' đã tồn tại")
             
             update_data = workload_data.dict(exclude_unset=True)
@@ -253,6 +253,6 @@ class WorkloadService:
         try:
             if not name or not name.strip():
                 return False
-            return self.dao.check_name_exists(name.strip())
+            return self.dao.check_ip_address_exists(name.strip())
         except Exception as e:
             raise Exception(f"Lỗi khi kiểm tra tên workload: {str(e)}")
