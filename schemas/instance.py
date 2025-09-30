@@ -70,6 +70,7 @@ class InstanceSearchParams(BaseModel):
     page: int = Field(1, ge=1)
     size: int = Field(10, ge=1, le=100)
     user_id: Optional[int] = None
+    instance_not_in_workload: Optional[bool] = None
 
 class InstanceResponseFromDcim(BaseModel):
     id : int 

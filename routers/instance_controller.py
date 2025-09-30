@@ -25,6 +25,7 @@ def get_instances(
     page: int = Query(1, ge=1, description="Page"),
     page_size: int = Query(10, ge=1, le=100, description="Page size"),
     instance_service: InstanceService = Depends(get_instance_service),
+    instance_not_in_workload: Optional[bool] = Query(None, description="Filter instances assigned to a workload"),
     current_user = Depends(require_user())
 ):
     
@@ -37,7 +38,8 @@ def get_instances(
                 workload_id=workload_id,
                 status=status,
                 page=page,
-                size=page_size
+                size=page_size,
+                instance_not_in_workload=instance_not_in_workload
             )
         else:
 
@@ -47,7 +49,8 @@ def get_instances(
                 status=status,
                 page=page,
                 size=page_size,
-                user_id= current_user.id
+                user_id= current_user.id,
+                instance_not_in_workload=instance_not_in_workload
             )
         return instance_service.search_instances(search_params)
     except Exception as e:

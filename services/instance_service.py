@@ -56,7 +56,8 @@ class InstanceService:
             status=search_params.status,
             skip=skip,
             limit=page_size, 
-            user_id = search_params.user_id
+            user_id = search_params.user_id,
+            instance_not_in_workload = search_params.instance_not_in_workload
         )
         
         total_pages = math.ceil(total / page_size) if total > 0 else 0

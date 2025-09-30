@@ -38,7 +38,8 @@ class InstanceDAO:
         status: Optional[bool] = None,
         skip: int = 0,
         limit: int = 10,
-        user_id: Optional[int] = None
+        user_id: Optional[int] = None,
+        instance_not_in_workload: Optional[bool] = None
     ) -> Tuple[List[Instance], int]:
         query = self.db.query(Instance)
         
@@ -48,7 +49,8 @@ class InstanceDAO:
             query = query.filter(
                 Instance.name.ilike(f"%{keyword.strip()}%")
             )
-        
+        if instance_not_in_workload is True:
+            query = query.filter(Instance.workload_id == None)
         if user_id is not None:
             query = query.filter(Instance.user_id == user_id)
         if status is not None:
