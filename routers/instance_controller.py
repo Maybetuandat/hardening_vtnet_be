@@ -1,4 +1,4 @@
-from http import server
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import Optional, List
@@ -9,7 +9,7 @@ from schemas.instance import InstanceCreate, InstanceListResponse, InstanceRespo
 from services.instance_service import InstanceService
 from utils.auth import require_admin, require_user
 
-router = APIRouter(prefix="/api/servers", tags=["Servers"])
+router = APIRouter(prefix="/api/instance", tags=["Instances"])
 
 
 def get_instance_service(db: Session = Depends(get_db)) -> InstanceService:
@@ -21,13 +21,15 @@ def get_instance_service(db: Session = Depends(get_db)) -> InstanceService:
 def get_instances(
     keyword: Optional[str] = Query(None, description="keyword"),
     workload_id: Optional[int] = Query(None, description="ID workload"),
-    status: Optional[bool] = Query(None, description="server search status"),
+    status: Optional[bool] = Query(None, description="instance search status"),
     page: int = Query(1, ge=1, description="Page"),
     page_size: int = Query(10, ge=1, le=100, description="Page size"),
     instance_service: InstanceService = Depends(get_instance_service),
     current_user = Depends(require_user())
 ):
     
+
+    print("workload_id_debug", workload_id)
     try:
         if(current_user.role == 'admin'):
             search_params = InstanceSearchParams(

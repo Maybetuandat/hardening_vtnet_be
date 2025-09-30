@@ -42,6 +42,8 @@ class InstanceDAO:
     ) -> Tuple[List[Instance], int]:
         query = self.db.query(Instance)
         
+        if workload_id is not None:
+            query = query.filter(Instance.workload_id == workload_id)
         if keyword and keyword.strip():
             query = query.filter(
                 Instance.name.ilike(f"%{keyword.strip()}%")

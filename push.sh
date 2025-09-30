@@ -1,3 +1,3 @@
     git add .
-    git commit -m "update logic before compare cache data from dcim and backend server"
+    git commit -m "update logic before fix scan server"
     git push origin main 
