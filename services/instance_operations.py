@@ -148,7 +148,7 @@ class InstanceOperations:
                 "os_id": os_record.id if os_record else None,
                 "user_id": user_record.id,
                 "status": True,
-                "ssh_port": 2222,
+                "ssh_port": 22,
                 "workload_id": None,
                 "instance_role": instance_role.get("name") if instance_role else None
             }

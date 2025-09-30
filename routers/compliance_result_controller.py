@@ -78,6 +78,7 @@ def start_compliance_scan(
     current_user = Depends(require_user())
 ):
    
+    print("Debug call scan with batch size:", scan_request.batch_size)
     try:
         # Validate batch_size
         if scan_request.batch_size > 50:

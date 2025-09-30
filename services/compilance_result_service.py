@@ -231,7 +231,7 @@ class ComplianceResultService:
             
             updated_at=compliance.updated_at,
             workload_name=workload.name if workload else None,
-            instance_hostname=instance.hostname if instance else None,
+          
             detail_error=compliance.detail_error
         )
 

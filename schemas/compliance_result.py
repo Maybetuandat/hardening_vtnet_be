@@ -8,7 +8,7 @@ from schemas.rule_result import RuleResultResponse
 
 
 class ComplianceResultBase(BaseModel):
-    server_id: int = Field(..., description="ID of the server being scanned")
+    instance_id: int = Field(..., description="ID of the instance being scanned")
     name: Optional[str] = Field(None, description="Name of the scan")
     status: str = Field(..., description="Scan status: pending, running, completed, failed")
     total_rules: int = Field(0, description="Total number of workload rules")
@@ -30,12 +30,12 @@ class ComplianceResultCreate(ComplianceResultBase):
 
 class ComplianceResultResponse(ComplianceResultBase):
     id: int
-    server_ip: Optional[str] = Field(None, description="IP address of the scanned server")
+  
     scan_date: datetime
     updated_at: datetime
-    server_ip: Optional[str] = Field(None, description="IP address of the scanned server")
+    instance_ip: Optional[str] = Field(None, description="IP address of the scanned instance")
     workload_name: Optional[str] = Field(None, description="Workload name")
-    server_hostname: Optional[str] = Field(None, description="Server hostname")
+   
     
     class Config:
         from_attributes = True

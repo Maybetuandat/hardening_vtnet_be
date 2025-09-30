@@ -223,8 +223,14 @@ class InstanceService:
             nameofmanager=instance.user.username if instance.user else None
         )
 
+    def update_status(self, instance_id: int, status: bool) -> bool:
+        try:
+            instance = self.dao.get_by_id(instance_id)
+            if not instance:
+                raise ValueError("Instance not found")
 
-  
-        
-
-  
+            instance.status = status
+            self.dao.update(instance)
+            return True
+        except Exception as e:
+            raise Exception(f"Failed to update instance status: {str(e)}")

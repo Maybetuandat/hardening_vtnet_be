@@ -183,7 +183,7 @@ class ScanService:
             compliance_result_service = ComplianceResultService(thread_session)
             workload_service = WorkloadService(thread_session)
             rule_service = RuleService(thread_session)
-            server_service = InstanceService(thread_session)
+            instance_service = InstanceService(thread_session)
 
             # tạo ra compliance result khi bắt đầu scan
             compliance_result = compliance_result_service.create_pending_result(server_data['id'], server_data['workload_id'])
@@ -202,6 +202,7 @@ class ScanService:
                 return
             # thực hiện lấy rule thuộc về workload 
             rules = rule_service.get_active_rule_by_workload(workload.id)
+            print("Debug get rules in workload", rules)
             if not rules:
                 logging.warning(f"Thread {thread_id}: Workload {workload.name} không có rule nào được kích hoạt")
                 compliance_result_service.update_status(compliance_result_id, "failed", detail_error="Không có rule nào được kích hoạt")
@@ -215,7 +216,7 @@ class ScanService:
             if error_message:
                 compliance_result_service.update_status(compliance_result_id, "failed", detail_error=error_message)
                 
-                server_service.update_status(server_data['id'], False)
+                instance_service.update_status(server_data['id'], False)
 
                 thread_session.commit()
                 
@@ -252,6 +253,7 @@ class ScanService:
         rules_to_run = {}
         playbook_tasks = []
 
+        print("Debug - Executing rules with Ansible Runner:", rules)
         logging.info(f"Thread {thread_id}: Preparing {len(rules)} rules for server {server_data['name']}")
 
         # Chuẩn bị playbook tasks

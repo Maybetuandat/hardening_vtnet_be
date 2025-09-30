@@ -29,7 +29,7 @@ def get_instances(
 ):
     
 
-    print("workload_id_debug", workload_id)
+   
     try:
         if(current_user.role == 'admin'):
             search_params = InstanceSearchParams(
