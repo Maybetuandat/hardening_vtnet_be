@@ -1,5 +1,5 @@
 from re import search
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 from venv import create
 from sqlalchemy import Boolean
 from sqlalchemy.orm import Session
@@ -23,6 +23,7 @@ class InstanceService:
     def __init__(self, db: Session):
         self.dao = InstanceDAO(db)
         self.workload_dao = WorkLoadDAO(db)
+
 
   
 
@@ -142,7 +143,72 @@ class InstanceService:
 
    
         
-
+    def assign_instances_to_workload(
+        self,
+        workload_id: int,
+        instance_ids: List[int]
+    ) -> Dict[str, Any]:
+        
+        try:
+            # Kiểm tra workload tồn tại
+            workload = self.workload_dao.get_by_id(workload_id)
+            if not workload:
+                raise ValueError(f"Workload with id {workload_id} not found")
+            
+            if not instance_ids or len(instance_ids) == 0:
+                raise ValueError("Instance IDs list cannot be empty")
+            
+            assiged_count = 0
+            for instance_id in instance_ids:
+                instance = self.dao.get_by_id(instance_id)
+                if instance:
+                    instance.workload_id = workload_id
+                    self.dao.update(instance)
+                    assigned_count += 1
+            return {
+                "workload_id": workload_id,
+                "assigned_count": assigned_count,
+                "failed_ids": []
+            }
+            
+        except ValueError as e:
+            self.db.rollback()
+            raise e
+        except Exception as e:
+            self.db.rollback()
+            raise Exception(f"Error assigning instances to workload: {str(e)}")
+    
+    
+    def remove_workload_from_instances(
+        self,
+        workload_id: int,
+        instance_ids: List[int]
+    ) -> int:
+       
+        try:
+            # Kiểm tra workload tồn tại
+            workload = self.workload_dao.get_by_id(workload_id)
+            if not workload:
+                raise ValueError(f"Workload with id {workload_id} not found")
+            
+            if not instance_ids or len(instance_ids) == 0:
+                raise ValueError("Instance IDs list cannot be empty")
+            result  = 0
+            for instance_id in instance_ids:
+                instance = self.dao.get_by_id(instance_id)
+                if instance and instance.workload_id == workload_id:
+                    instance.workload_id = None
+                    self.dao.update(instance)
+                    result += 1
+            
+            return result
+            
+        except ValueError as e:
+            self.db.rollback()
+            raise e
+        except Exception as e:
+            self.db.rollback()
+            raise Exception(f"Error removing workload from instances: {str(e)}")
     def _convert_to_response(self, instance: Instance) -> InstanceResponse:
         workload = self.workload_dao.get_by_id(instance.workload_id)
         return InstanceResponse(
