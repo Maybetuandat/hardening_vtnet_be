@@ -83,6 +83,8 @@ class FixService:
             logging.error(f"Error executing server fixes for server {request.instance_id}: {str(e)}")
             raise e
     
+
+    
     def _prepare_fix_data(self, rule_result_ids: List[int], instance_id: int) -> Dict[str, Any]:
         valid_fixes = []
         fix_details = []
