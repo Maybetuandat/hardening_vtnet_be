@@ -158,7 +158,7 @@ class InstanceService:
             if not instance_ids or len(instance_ids) == 0:
                 raise ValueError("Instance IDs list cannot be empty")
             
-            assiged_count = 0
+            assigned_count = 0
             for instance_id in instance_ids:
                 instance = self.dao.get_by_id(instance_id)
                 if instance:
@@ -172,10 +172,10 @@ class InstanceService:
             }
             
         except ValueError as e:
-            self.db.rollback()
+           
             raise e
         except Exception as e:
-            self.db.rollback()
+           
             raise Exception(f"Error assigning instances to workload: {str(e)}")
     
     
@@ -204,10 +204,10 @@ class InstanceService:
             return result
             
         except ValueError as e:
-            self.db.rollback()
+           
             raise e
         except Exception as e:
-            self.db.rollback()
+           
             raise Exception(f"Error removing workload from instances: {str(e)}")
     def _convert_to_response(self, instance: Instance) -> InstanceResponse:
         workload = self.workload_dao.get_by_id(instance.workload_id)
