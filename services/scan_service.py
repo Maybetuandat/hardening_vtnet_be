@@ -68,7 +68,7 @@ class ScanService:
             raise e
 
     def _scan_servers_by_batch(self, scan_request: ComplianceScanRequest, specific_ids: Optional[List[int]] = None, current_user: Optional[User] = None) -> ComplianceScanResponse:
-            server_dao = InstanceDAO(self.db)
+            instance_dao = InstanceDAO(self.db)
             
             print("DEBUG - Scan request batch size:", specific_ids)
             started_scans_count = 0 
@@ -78,32 +78,31 @@ class ScanService:
 
             
             while True:
-                servers_in_batch_objects = []
+                instances_in_batch_objects = []
                 if specific_ids:
                     current_batch_ids = specific_ids[skip: skip + limit]
                     if not current_batch_ids:
                         break 
                     
-                    for server_id in current_batch_ids:
-                        server = server_dao.get_by_id(server_id)
-                        if server:
-                            servers_in_batch_objects.append(server)
+                    for instance_id in current_batch_ids:
+                        instance = instance_dao.get_by_id(instance_id)
+                        if instance:
+                            instances_in_batch_objects.append(instance)
                 else:
-                    servers_in_batch_objects = server_dao.get_servers(skip=skip, limit=limit)
-                    if not servers_in_batch_objects:
-                        break 
+                    instances_in_batch_objects = instance_dao.get_instances(skip=skip, limit=limit, current_user_id=current_user.id , is_has_workload=True)
+                    if not instances_in_batch_objects:
+                        break
 
-                
-                if not servers_in_batch_objects:
+                if not instances_in_batch_objects:
                     break
 
                 
                 current_batch_data = []
-                for server in servers_in_batch_objects:
-                    server_dict = self.convert_server_model_to_dict(server, current_user)
-                    current_batch_data.append(server_dict)
-                
-                print("Debug scan server", current_batch_data)
+                for instance in instances_in_batch_objects:
+                    instance_dict = self.convert_server_model_to_dict(instance, current_user)
+                    current_batch_data.append(instance_dict)
+
+             
               
                 # cau lenh nay co tac dung tach doi tuong ra khoi session hien tai
                 self.db.expunge_all() 
@@ -111,7 +110,7 @@ class ScanService:
 
                 
                 if current_batch_data:
-                    logging.info(f"Processing batch of {len(current_batch_data)} servers (offset={skip})")
+                    logging.info(f"Processing batch of {len(current_batch_data)} instances (offset={skip})")
                     # Gọi hàm xử lý đa luồng cho batch này và đợi nó hoàn thành
                     processed_in_batch = self._process_compliance_scan_batch_threaded(current_batch_data)
                     started_scans_count += processed_in_batch
@@ -123,8 +122,8 @@ class ScanService:
 
 
             return ComplianceScanResponse(
-                message=f"Đã bắt đầu quá trình quét cho {started_scans_count} servers",
-                total_servers=started_scans_count,
+                message=f"Đã bắt đầu quá trình quét cho {started_scans_count} instance(s).",
+                total_instances=started_scans_count,
                 started_scans=[] 
             )
 

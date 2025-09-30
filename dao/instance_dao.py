@@ -14,8 +14,14 @@ class InstanceDAO:
         self.db = db
 
 
-    def get_instances(self, skip : int, limit: int) -> List[Instance]:
-        return self.db.query(Instance).offset(skip).limit(limit).all()
+    def get_instances(self, skip: int, limit: int, current_user_id: Optional[int], is_has_workload: Optional[bool]) -> List[Instance]:
+        query = self.db.query(Instance)
+        if current_user_id:
+            query = query.filter(Instance.user_id == current_user_id)
+        if is_has_workload is not None:
+            query = query.filter(Instance.workload_id != None) 
+        query = query.offset(skip).limit(limit)
+        return query.all()
 
 
 

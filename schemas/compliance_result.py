@@ -59,7 +59,7 @@ class ComplianceScanRequest(BaseModel):
 
 class ComplianceScanResponse(BaseModel):
     message: str = Field(..., description="Result message")
-    total_servers: int = Field(..., description="Total number of servers to scan")
+    total_instances: int = Field(..., description="Total number of servers to scan")
     started_scans: List[int] = Field(..., description="List of created compliance_result IDs")
 
 
