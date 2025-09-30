@@ -42,7 +42,7 @@ def execute_server_fixes(
                 detail="rule_result_ids list cannot be empty"
             )
         
-        return fix_service.execute_server_fixes(fix_request)
+        return fix_service.execute_server_fixes(fix_request, current_user)
         
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

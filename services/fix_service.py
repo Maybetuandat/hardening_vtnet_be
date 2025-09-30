@@ -13,6 +13,7 @@ from dao.instance_dao import InstanceDAO
 from dao.compliance_result_dao import ComplianceDAO
 from dao.fix_action_log_dao import FixActionLogDAO
 from models.fix_action_log import FixActionLog
+from models.user import User
 from schemas.fix_execution import ServerFixRequest, ServerFixResponse, SingleRuleFixResult
 from services.compilance_result_service import ComplianceResultService
 
@@ -32,21 +33,21 @@ class FixService:
         self.username = username
         self.ip_address = ip_address
         self.user_agent = user_agent
-        
-    def execute_server_fixes(self, request: ServerFixRequest) -> ServerFixResponse:
+
+    def execute_server_fixes(self, request: ServerFixRequest, current_user : User) -> ServerFixResponse:
         try:
-            server = self.server_dao.get_by_id(request.server_id)
-            if not server:
-                raise ValueError(f"Server with ID {request.server_id} not found")
-            
+            instance = self.instance_dao.get_by_id(request.instance_id)
+            if not instance:
+                raise ValueError(f"Instance with ID {request.instance_id} not found")
+
             # Validate and prepare fix data
-            fix_data = self._prepare_fix_data(request.rule_result_ids, request.server_id)
+            fix_data = self._prepare_fix_data(request.rule_result_ids, request.instance_id)
             
             if not fix_data["valid_fixes"]:
                 return ServerFixResponse(
                     message="No valid fixes to execute",
-                    server_id=request.server_id,
-                    server_ip=server.ip_address,
+                    instance_id=request.instance_id,
+                    instance_ip=instance.name,
                     total_fixes=len(request.rule_result_ids),
                     successful_fixes=0,
                     failed_fixes=0,
@@ -54,7 +55,7 @@ class FixService:
                     fix_details=fix_data["fix_details"]
                 )
             
-            execution_result = self._execute_grouped_fixes(server, fix_data["valid_fixes"])
+            execution_result = self._execute_grouped_fixes(instance, fix_data["valid_fixes"], current_user)
             
             fix_details = self._update_rule_results_from_execution(
                 fix_data["valid_fixes"], 
@@ -68,9 +69,9 @@ class FixService:
             skipped_fixes = sum(1 for detail in fix_details if detail["status"] == "skipped")
             
             return ServerFixResponse(
-                message=f"Server fixes completed: {successful_fixes} successful, {failed_fixes} failed, {skipped_fixes} skipped",
-                server_id=request.server_id,
-                server_ip=server.ip_address,
+                message=f"Instance fixes completed: {successful_fixes} successful, {failed_fixes} failed, {skipped_fixes} skipped",
+                instance_id=request.instance_id,
+                instance_ip=instance.name,
                 total_fixes=len(request.rule_result_ids),
                 successful_fixes=successful_fixes,
                 failed_fixes=failed_fixes,
@@ -79,10 +80,10 @@ class FixService:
             )
             
         except Exception as e:
-            logging.error(f"Error executing server fixes for server {request.server_id}: {str(e)}")
+            logging.error(f"Error executing server fixes for server {request.instance_id}: {str(e)}")
             raise e
     
-    def _prepare_fix_data(self, rule_result_ids: List[int], server_id: int) -> Dict[str, Any]:
+    def _prepare_fix_data(self, rule_result_ids: List[int], instance_id: int) -> Dict[str, Any]:
         valid_fixes = []
         fix_details = []
         
@@ -102,9 +103,9 @@ class FixService:
                 ))
                 continue
             
-            # Verify rule result belongs to the correct server
+            # Verify rule result belongs to the correct instance
             compliance_result = self.compliance_dao.get_by_id(rule_result.compliance_result_id)
-            if not compliance_result or compliance_result.server_id != server_id:
+            if not compliance_result or compliance_result.instance_id != instance_id:
                 fix_details.append(SingleRuleFixResult(
                     rule_result_id=rule_result_id,
                     rule_name="Unknown",
@@ -178,22 +179,22 @@ class FixService:
             "valid_fixes": valid_fixes,
             "fix_details": fix_details
         }
-    
-    def _execute_grouped_fixes(self, server, valid_fixes: List[Dict]) -> Dict[str, Any]:
+
+    def _execute_grouped_fixes(self, instance, valid_fixes: List[Dict], current_user: User) -> Dict[str, Any]:
         try:
             with tempfile.TemporaryDirectory() as private_data_dir:
                 # Tạo inventory với cấu hình rõ ràng hơn
                 inventory = {
                     'all': {
                         'hosts': {
-                            server.ip_address: {
-                                'ansible_user': server.ssh_user,
-                                'ansible_password': server.ssh_password,
-                                'ansible_port': server.ssh_port,
+                            instance.name: {
+                                'ansible_user': current_user.username,
+                                'ansible_password': current_user.ssh_password,
+                                'ansible_port': instance.ssh_port,
                                 'ansible_ssh_common_args': '-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=30',
                                 'ansible_become': True,
                                 'ansible_become_method': 'sudo',
-                                'ansible_become_password': server.ssh_password, 
+                                'ansible_become_password': current_user.ssh_password,
                                 'ansible_become_user': 'root',
                                 'ansible_connection': 'ssh',
                                 'ansible_ssh_timeout': 30
@@ -229,7 +230,7 @@ class FixService:
                 with open(playbook_path, 'w') as f:
                     yaml.dump(playbook, f)
                 
-                print(f"Executing {len(valid_fixes)} grouped fixes on {server.ip_address}")
+                print(f"Executing {len(valid_fixes)} grouped fixes on {instance.name}")
                 
                 runner = ansible_runner.run(
                     private_data_dir=private_data_dir,
@@ -265,7 +266,7 @@ class FixService:
                 }
                 
         except Exception as e:
-            logging.error(f"Error executing grouped fixes on {server.ip_address}: {str(e)}")
+            logging.error(f"Error executing grouped fixes on {instance.name}: {str(e)}")
             return {
                 "overall_success": False,
                 "task_results": {},

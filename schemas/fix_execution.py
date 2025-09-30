@@ -3,8 +3,8 @@ from pydantic import BaseModel, Field
 
 
 class ServerFixRequest(BaseModel):
-    server_id: int = Field(..., description="Server ID to apply fixes")
-    rule_result_ids: List[int] = Field(..., description="List of rule result IDs to fix for this server")
+    instance_id: int = Field(..., description="Instance ID to apply fixes")
+    rule_result_ids: List[int] = Field(..., description="List of rule result IDs to fix for this instance")
 
 
 class SingleRuleFixResult(BaseModel):
@@ -17,8 +17,8 @@ class SingleRuleFixResult(BaseModel):
     error_details: Optional[str] = Field(None, description="Error details if any")
 class ServerFixResponse(BaseModel):
     message: str = Field(..., description="Result message")
-    server_id: int = Field(..., description="Server ID")
-    server_ip: str = Field(..., description="Server IP address")
+    instance_id: int = Field(..., description="Instance ID")
+    instance_ip: str = Field(..., description="Instance IP address")
     total_fixes: int = Field(..., description="Total number of fixes attempted")
     successful_fixes: int = Field(..., description="Number of successful fixes")
     failed_fixes: int = Field(..., description="Number of failed fixes")
