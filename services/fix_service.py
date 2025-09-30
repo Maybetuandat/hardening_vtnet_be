@@ -4,6 +4,7 @@ import tempfile
 import time
 import yaml
 import ansible_runner
+import re
 from typing import Dict, List, Optional, Any
 
 from sqlalchemy.orm import Session
@@ -82,8 +83,6 @@ class FixService:
         except Exception as e:
             logging.error(f"Error executing server fixes for server {request.instance_id}: {str(e)}")
             raise e
-    
-
     
     def _prepare_fix_data(self, rule_result_ids: List[int], instance_id: int) -> Dict[str, Any]:
         valid_fixes = []
@@ -182,10 +181,76 @@ class FixService:
             "fix_details": fix_details
         }
 
+    def _parse_bash_script_to_tasks(self, script: str, base_task_name: str) -> List[Dict]:
+        """
+        Phân tách bash script thành các Ansible tasks riêng biệt
+        """
+        tasks = []
+        lines = script.strip().split('\n')
+        
+        command_buffer = []
+        task_counter = 1
+        
+        for line in lines:
+            line = line.strip()
+            
+            # Bỏ qua các dòng comment, shebang, và set -e
+            if not line or line.startswith('#') or line == 'set -e':
+                continue
+            
+            # Kiểm tra nếu là lệnh kết thúc (không có backslash cuối)
+            if line.endswith('\\'):
+                command_buffer.append(line[:-1].strip())
+                continue
+            else:
+                command_buffer.append(line)
+            
+            # Tạo command hoàn chỉnh
+            full_command = ' '.join(command_buffer).strip()
+            command_buffer = []
+            
+            if full_command:
+                # Tạo task name mô tả
+                task_name = self._generate_task_description(full_command, base_task_name, task_counter)
+                
+                task = {
+                    'name': task_name,
+                    'shell': full_command,
+                    'ignore_errors': False,  # Dừng nếu có lỗi
+                    'become': True,
+                    'register': f"step_{task_counter}_result"
+                }
+                tasks.append(task)
+                task_counter += 1
+        
+        return tasks
+
+    def _generate_task_description(self, command: str, base_name: str, counter: int) -> str:
+        """
+        Tạo mô tả ngắn gọn cho task dựa trên command
+        """
+        # Các patterns phổ biến
+        if 'cp ' in command and '.bak' in command:
+            return f"{base_name} - Step {counter}: Backup configuration"
+        elif 'sed -i' in command and '/d' in command:
+            return f"{base_name} - Step {counter}: Remove old parameter"
+        elif 'echo' in command and 'tee -a' in command:
+            return f"{base_name} - Step {counter}: Add new parameter"
+        elif 'sysctl -p' in command:
+            return f"{base_name} - Step {counter}: Apply sysctl changes"
+        elif 'sync' in command:
+            return f"{base_name} - Step {counter}: Sync filesystem"
+        elif 'drop_caches' in command:
+            return f"{base_name} - Step {counter}: Drop system caches"
+        else:
+            # Cắt ngắn command nếu quá dài
+            short_cmd = command[:50] + '...' if len(command) > 50 else command
+            return f"{base_name} - Step {counter}: {short_cmd}"
+
     def _execute_grouped_fixes(self, instance, valid_fixes: List[Dict], current_user: User) -> Dict[str, Any]:
         try:
             with tempfile.TemporaryDirectory() as private_data_dir:
-                # Tạo inventory với cấu hình rõ ràng hơn
+                # Tạo inventory
                 inventory = {
                     'all': {
                         'hosts': {
@@ -209,17 +274,38 @@ class FixService:
                 with open(inventory_path, 'w') as f:
                     yaml.dump(inventory, f)
                 
-                # Tạo playbook tasks
+                # Tạo playbook tasks - phân tách từng fix thành nhiều tasks
                 playbook_tasks = []
+                
                 for fix_data in valid_fixes:
-                    task = {
-                        'name': fix_data["task_name"],
-                        'shell': fix_data["fix_command"] + ' && ' + fix_data["rule"].command,
+                    fix_command = fix_data["fix_command"]
+                    base_task_name = fix_data["task_name"]
+                    
+                    # Phân tách script thành các tasks riêng biệt
+                    sub_tasks = self._parse_bash_script_to_tasks(fix_command, base_task_name)
+                    
+                    if sub_tasks:
+                        playbook_tasks.extend(sub_tasks)
+                    else:
+                        # Fallback: nếu không parse được, dùng task đơn
+                        task = {
+                            'name': base_task_name,
+                            'shell': fix_command,
+                            'ignore_errors': True,
+                            'become': True,
+                            'register': f"result_{fix_data['rule_result_id']}"
+                        }
+                        playbook_tasks.append(task)
+                    
+                    # Thêm task verification (chạy rule command để kiểm tra)
+                    verify_task = {
+                        'name': f"{base_task_name} - Verification",
+                        'shell': fix_data["rule"].command,
                         'ignore_errors': True,
                         'become': True,
-                        'register': f"result_{fix_data['rule_result_id']}"
+                        'register': f"verify_{fix_data['rule_result_id']}"
                     }
-                    playbook_tasks.append(task)
+                    playbook_tasks.append(verify_task)
                 
                 playbook = [{
                     'hosts': 'all',
@@ -230,9 +316,9 @@ class FixService:
                 
                 playbook_path = os.path.join(private_data_dir, 'grouped_fix_playbook.yml')
                 with open(playbook_path, 'w') as f:
-                    yaml.dump(playbook, f)
+                    yaml.dump(playbook, f, default_flow_style=False, allow_unicode=True)
                 
-                print(f"Executing {len(valid_fixes)} grouped fixes on {instance.name}")
+                print(f"Executing {len(valid_fixes)} fixes with {len(playbook_tasks)} total tasks on {instance.name}")
                 
                 runner = ansible_runner.run(
                     private_data_dir=private_data_dir,
@@ -258,7 +344,7 @@ class FixService:
                                 "changed": task_result.get('changed', False)
                             }
 
-                            print(f"Task '{task_name}' executed with result: {task_results[task_name]}")
+                            print(f"Task '{task_name}' executed with rc={task_results[task_name]['rc']}")
                 
                 return {
                     "overall_success": runner.status == 'successful',
@@ -292,68 +378,67 @@ class FixService:
             if not valid_fix:
                 continue
             
-            task_name = valid_fix["task_name"]
-            task_result = task_results.get(task_name)
+            # Tìm kết quả verification task
+            verify_task_name = f"{valid_fix['task_name']} - Verification"
+            verify_result = task_results.get(verify_task_name)
             
-            if not task_result:
-                # Task didn't execute or no result found
+            if not verify_result:
+                # Không tìm thấy kết quả verification
                 fix_details[i].update({
                     "status": "failed",
-                    "message": "No execution result found for this fix",
-                    "error_details": "Task may not have executed"
+                    "message": "No verification result found",
+                    "error_details": "Verification task may not have executed"
                 })
                 
-                # Log failed fix
                 self._log_fix_action(
                     valid_fix, 
                     "failed", 
                     "failed", 
-                    error_message="No execution result found for this fix"
+                    error_message="No verification result found"
                 )
                 continue
             
-            if task_result["success"]:
-                # Fix was successful - update rule result in database
+            # Kiểm tra kết quả verification
+            if verify_result["success"] and verify_result["rc"] == 0:
+                # Fix thành công - cập nhật rule result
                 rule_result = valid_fix["rule_result"]
-                old_status = rule_result.status  # Lưu trạng thái cũ
+                old_status = rule_result.status
                 
                 rule_result.status = "passed"
                 rule_result.message = "Fixed successfully"
-                rule_result.output = self._parse_output_values(task_result["stdout"])
+                rule_result.output = self._parse_output_values(verify_result["stdout"])
                 rule_result.details_error = None
                 self.rule_result_dao.update(rule_result)
                 self.compliance_result_service.calculate_score(valid_fix["compliance_result_id"])
                 
                 fix_details[i].update({
                     "status": "success",
-                    "message": "Fix executed successfully and rule result updated to passed",
-                    "execution_output": task_result["stdout"]
+                    "message": "Fix executed successfully and verified",
+                    "execution_output": verify_result["stdout"]
                 })
                 
-                # Log successful fix
                 self._log_fix_action(
                     valid_fix, 
                     old_status, 
                     "passed",
-                    execution_output=task_result["stdout"]
+                    execution_output=verify_result["stdout"]
                 )
                 
             else:
-                # Fix failed
-                error_details = task_result["stderr"] or f"Command failed with return code {task_result['rc']}"
+                # Fix thất bại hoặc verification không pass
+                error_details = verify_result["stderr"] or f"Verification failed with return code {verify_result['rc']}"
                 fix_details[i].update({
                     "status": "failed",
-                    "message": "Fix execution failed",
-                    "execution_output": task_result["stdout"],
+                    "message": "Fix execution or verification failed",
+                    "execution_output": verify_result["stdout"],
                     "error_details": error_details
                 })
                 
-                # Log failed fix
                 self._log_fix_action(
                     valid_fix, 
                     valid_fix["rule_result"].status, 
-                    valid_fix["rule_result"].status,  # Status không thay đổi vì fix thất bại
-                    execution_output=task_result["stdout"],
+                    valid_fix["rule_result"].status,
+                    execution_output=verify_result["stdout"],
                     error_message=error_details,
                     is_success=False
                 )
@@ -369,14 +454,11 @@ class FixService:
         error_message: Optional[str] = None,
         is_success: bool = True
     ):
-        
         try:
             if not self.user_id or not self.username:
                 logging.warning("Cannot create fix log: User information not available")
                 return
-            
 
-            print("Debug create fix action log with user")
             log_entry = FixActionLog(
                 user_id=self.user_id,
                 username=self.username,
@@ -393,7 +475,6 @@ class FixService:
                 user_agent=self.user_agent
             )
 
-            print("Debug create fix action log with user", log_entry)
             self.fix_log_dao.create(log_entry)
             print(f"Fix action logged: {self.username} updated rule {valid_fix['rule_result_id']} from {old_status} to {new_status}")
             
@@ -402,7 +483,6 @@ class FixService:
     
     def _parse_output_values(self, output: str) -> Dict[str, Any]:
         parsed_data = {}
-        print(f"DEBUG - Raw command output: '{output}'")
         clean_output = output.strip()
         if not clean_output:
             return parsed_data
@@ -433,6 +513,6 @@ class FixService:
             parsed_data["single_value"] = clean_output
             return parsed_data
         except Exception as e:
-            logging.warning(f"Could not parse command output. Error: {e}. Output: '{clean_output[:100]}'")
+            logging.warning(f"Could not parse command output. Error: {e}")
             parsed_data["parse_error"] = str(e)
             return parsed_data

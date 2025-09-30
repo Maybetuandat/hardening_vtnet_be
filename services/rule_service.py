@@ -4,6 +4,7 @@ from numpy import sort
 from sqlalchemy.orm import Session
 from typing import Dict, Optional, List
 from dao.rule_dao import RuleDAO
+from models import rule
 from models.rule import Rule
 from schemas.rule import RuleCheckResult, RuleCreate, RuleUpdate, RuleResponse, RuleListResponse, RuleSearchParams
 import math
@@ -93,11 +94,13 @@ class RuleService:
             if rule_id <= 0:
                 return None
                 
+            # this will be rule is created by user and waiting for admin to accept the change
             existing_rule = self.rule_dao.get_by_id(rule_id)
 
             if not existing_rule:
                 return None
 
+            # if current rule is copied from another rule
             if existing_rule.copied_from_id is not None:
                 # this model is copied from anywhere and must update 
                 rule_to_update = self.rule_dao.get_by_id(existing_rule.copied_from_id)
@@ -106,6 +109,7 @@ class RuleService:
                 rule_to_update.command = existing_rule.command
                 rule_to_update.workload_id = existing_rule.workload_id
                 rule_to_update.parameters = existing_rule.parameters
+                rule_to_update.suggested_fix = existing_rule.suggested_fix
                 rule_to_update.is_active = "active"
                 rule_to_update.role_can_request_edit = "admin"
                 rule_to_update.copied_from_id = None
@@ -147,7 +151,8 @@ class RuleService:
                     parameters=rule_data.parameters if rule_data.parameters is not None else existing_rule.parameters,
                     is_active="pending",
                     role_can_request_edit='user',
-                    copied_from_id=existing_rule.id
+                    copied_from_id=existing_rule.id,
+                    suggested_fix = rule_data.suggested_fix
                     )
                     created_rule = self.rule_dao.create(copyrule)
                     existing_rule.can_be_copied = False
