@@ -11,21 +11,20 @@ from schemas.notification import NotificationResponse
 logger = logging.getLogger(__name__)
 
 class NotificationService:
-    """Service xử lý logic cho Notification"""
+
     
     def __init__(self, db: Session):
         self.db = db
         self.notification_dao = NotificationDAO(db)
-    
-    # ===== QUERY METHODS =====
-    
+
+
     def get_user_notifications(
-        self, 
+        self,
         user_id: int,
         unread_only: bool = False,
         limit: int = 50
     ) -> List[NotificationResponse]:
-        """Lấy notifications của user"""
+      
         try:
             notifications = self.notification_dao.get_by_recipient(user_id, unread_only, limit)
             return [self._convert_to_response(n) for n in notifications]

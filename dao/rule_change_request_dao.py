@@ -137,10 +137,7 @@ class RuleChangeRequestDAO:
     
     # ===== UTILITY =====
     def has_pending_request_for_rule(self, rule_id: int) -> bool:
-        """
-        Kiểm tra xem rule này đã có pending request chưa
-        Dùng để tránh user spam nhiều request cho cùng 1 rule
-        """
+      
         try:
             count = self.db.query(RuleChangeRequest).filter(
                 and_(

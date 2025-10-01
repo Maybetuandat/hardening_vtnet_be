@@ -34,7 +34,7 @@ class RuleChangeRequestService:
         self.workload_dao = WorkLoadDAO(db)
         self.rule_dao = RuleDAO(db)
     
-    # ===== CREATE REQUEST =====
+   
     
     def create_update_request(
         self, 
@@ -42,23 +42,11 @@ class RuleChangeRequestService:
         new_rule_data: Dict[str, Any],
         current_user
     ) -> RuleChangeRequestResponse:
-        """
-        User tạo request UPDATE rule
-        
-        Flow:
-        1. Validate rule exists
-        2. Check không có pending request cho rule này
-        3. Lưu old_value (rule hiện tại) và new_value (data mới)
-        4. Tạo RuleChangeRequest
-        5. Notify tất cả admin
-        """
         try:
-            # Step 1: Get existing rule
             existing_rule = self.rule_dao.get_by_id(rule_id)
             if not existing_rule:
                 raise ValueError(f"Rule ID {rule_id} not found")
             
-            # Step 2: Check pending request
             if self.request_dao.has_pending_request_for_rule(rule_id):
                 raise ValueError("This rule already has a pending change request. Please wait for admin approval.")
             
@@ -343,11 +331,11 @@ class RuleChangeRequestService:
             logger.error(f"❌ Error applying UPDATE request: {e}")
             raise
     
-    def _notify_admins_about_new_request(self, request: RuleChangeRequest, requester_user):
+    def _notify_admins_about_new_request(self, request: RuleChangeRequest, requester_user: User):
         """Tạo notifications cho tất cả admin khi có request mới"""
         try:
             # Get all admin users
-            admin_users = self.user_dao.get_users_by_role('admin')
+            admin_users = self.user_dao.get_by_id(requester_user.id_manager)
             if not admin_users:
                 logger.warning("⚠️ No admin users found to notify")
                 return
@@ -380,9 +368,9 @@ class RuleChangeRequestService:
             
             # Create notifications for all admins
             notifications = []
-            for admin in admin_users:
-                notification = Notification(
-                    recipient_id=admin.id,
+          
+            notification = Notification(
+                    recipient_id=admin_users.id,
                     type="rule_change_request",
                     reference_id=request.id,
                     title=title,
@@ -390,7 +378,7 @@ class RuleChangeRequestService:
                     is_read=False,
                     meta_data=meta_data
                 )
-                notifications.append(notification)
+            notifications.append(notification)
             
             created_notifications = self.notification_dao.create_batch(notifications)
             

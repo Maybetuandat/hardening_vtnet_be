@@ -1,4 +1,3 @@
-# schemas/rule_change_request.py
 
 from pydantic import BaseModel, Field
 from typing import Optional, Dict, Any, Literal
