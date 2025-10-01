@@ -1,4 +1,4 @@
-# services/rule_change_request_service.py
+
 
 from typing import List, Optional, Dict, Any
 from sqlalchemy.orm import Session
@@ -20,6 +20,7 @@ from schemas.rule_change_request import (
     RuleChangeRequestResponse
 )
 from services.sse_notification import notification_service
+from utils.auth import require_user
 
 logger = logging.getLogger(__name__)
 
@@ -331,7 +332,7 @@ class RuleChangeRequestService:
             logger.error(f"❌ Error applying UPDATE request: {e}")
             raise
     
-    def _notify_admins_about_new_request(self, request: RuleChangeRequest, requester_user: User):
+    def _notify_admins_about_new_request(self, request: RuleChangeRequest, requester_user : User):
         """Tạo notifications cho tất cả admin khi có request mới"""
         try:
             # Get all admin users
@@ -368,7 +369,7 @@ class RuleChangeRequestService:
             
             # Create notifications for all admins
             notifications = []
-          
+           
             notification = Notification(
                     recipient_id=admin_users.id,
                     type="rule_change_request",
@@ -382,25 +383,107 @@ class RuleChangeRequestService:
             
             created_notifications = self.notification_dao.create_batch(notifications)
             
-            # Push via SSE to all admins
+            # ✅ GỬI CHO TỪNG ADMIN CỤ THỂ (không broadcast)
             for notif in created_notifications:
-                notification_service.notify_compliance_completed_sync({
-                    "type": "rule_change_request",
-                    "notification_id": notif.id,
-                    "title": title,
-                    "message": message,
-                    "meta_data": meta_data,
-                    "timestamp": notif.created_at.isoformat()
-                })
+                notification_service.notify_user(
+                    user_id=notif.recipient_id,  # ✅ Gửi đúng cho admin này
+                    message={
+                        "type": "rule_change_request",
+                        "notification_id": notif.id,
+                        "title": title,
+                        "message": message,
+                        "meta_data": meta_data,
+                        "timestamp": notif.created_at.isoformat()
+                    }
+                )
             
-            logger.info(f"✅ Notified {len(admin_users)} admins about new request {request.id}")
+            logger.info(f"✅ Notified {len(admin_users)} specific admins about new request {request.id}")
             
         except Exception as e:
             logger.error(f"❌ Error notifying admins: {e}")
             # Don't fail the whole operation if notification fails
-    
 
-    def delete_request(self, request_id: int, current_user : User):
+
+    def _notify_user_about_result(
+        self,
+        request: RuleChangeRequest,
+        admin_user,
+        result: str  # 'approved' or 'rejected'
+    ):
+        """Notify user về kết quả approve/reject"""
+        try:
+            requester = self.user_dao.get_by_id(request.user_id)
+            if not requester:
+                logger.warning(f"⚠️ Requester user {request.user_id} not found")
+                return
+            
+            # Get workload info
+            workload = self.workload_dao.get_by_id(request.workload_id)
+            workload_name = workload.name if workload else "Unknown Workload"
+            
+            # Get rule name
+            rule_name = "New Rule"
+            if request.rule_id:
+                rule = self.rule_dao.get_by_id(request.rule_id)
+                rule_name = rule.name if rule else f"Rule #{request.rule_id}"
+            
+            # Prepare notification content
+            if result == 'approved':
+                icon = "✅"
+                title = f"{icon} Rule Change Request Approved"
+                message = f"Admin {admin_user.username} approved your request to {request.request_type} rule '{rule_name}' in workload '{workload_name}'"
+            else:  # rejected
+                icon = "❌"
+                title = f"{icon} Rule Change Request Rejected"
+                message = f"Admin {admin_user.username} rejected your request to {request.request_type} rule '{rule_name}' in workload '{workload_name}'"
+                if request.admin_note:
+                    message += f"\nReason: {request.admin_note}"
+            
+            meta_data = {
+                "request_id": request.id,
+                "rule_id": request.rule_id,
+                "rule_name": rule_name,
+                "workload_id": request.workload_id,
+                "workload_name": workload_name,
+                "admin_id": admin_user.id,
+                "admin_username": admin_user.username,
+                "request_type": request.request_type,
+                "result": result,
+                "admin_note": request.admin_note
+            }
+            
+            # Create notification
+            notification = Notification(
+                recipient_id=requester.id,
+                type=f"rule_change_{result}",
+                reference_id=request.id,
+                title=title,
+                message=message,
+                is_read=False,
+                meta_data=meta_data
+            )
+            
+            created_notification = self.notification_dao.create(notification)
+            
+            # ✅ GỬI CHO USER CỤ THỂ (không broadcast)
+            notification_service.notify_user(
+                user_id=requester.id,  # ✅ Gửi đúng cho user này
+                message={
+                    "type": f"rule_change_{result}",
+                    "notification_id": created_notification.id,
+                    "title": title,
+                    "message": message,
+                    "meta_data": meta_data,
+                    "timestamp": created_notification.created_at.isoformat()
+                }
+            )
+            
+            logger.info(f"✅ Notified user {requester.username} about {result} request {request.id}")
+            
+        except Exception as e:
+            logger.error(f"❌ Error notifying user about result: {e}")
+
+    def delete_request(self, request_id: int, current_user: User):
         """Xoá request (nếu cần)"""
         try:
             request = self.request_dao.get_by_id(request_id, user_id=current_user.id)

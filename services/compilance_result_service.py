@@ -180,22 +180,43 @@ class ComplianceResultService:
             logging.error(f"Error completing compliance result {compliance_id}: {str(e)}")
             return False
 
-    
-    def _notify_completion_async(self, compliance_result_response : ComplianceResultResponse):
+    def _notify_completion_async(self, compliance_result_response: ComplianceResultResponse):
+        """
+        Gửi notification khi compliance scan hoàn thành
         
-
-
+        ✅ CẬP NHẬT: Gửi notification cho USER SỞ HỮU instance đó, không broadcast
+        """
         try:
-            compliance_result_response.score = round(compliance_result_response.score, 2)   
+            compliance_result_response.score = round(compliance_result_response.score, 2)
+            
+            # Lấy instance để biết user_id
+            instance = self.instance_dao.get_by_id(compliance_result_response.instance_id)
+            if not instance:
+                logging.warning(f"⚠️ Instance {compliance_result_response.instance_id} not found, cannot notify")
+                return
+            
+            # Lấy user_id từ instance
+            user_id = instance.user_id
+            if not user_id:
+                logging.warning(f"⚠️ Instance {compliance_result_response.instance_id} has no owner, cannot notify")
+                return
+            
             message = {
                 "type": compliance_result_response.status,
                 "data": compliance_result_response.dict(),
                 "timestamp": compliance_result_response.updated_at.isoformat()
             }
-            notification_service.notify_compliance_completed_sync(message)
+            
+            # ✅ GỬI CHO USER CỤ THỂ (không broadcast)
+            notification_service.notify_user(
+                user_id=user_id,  # ✅ Gửi đúng cho owner của instance
+                message=message
+            )
+            
+            logging.info(f"✅ Notified user {user_id} about compliance scan {compliance_result_response.status} for instance {instance.name}")
 
         except Exception as e:
-            logging.error(f"Error sending completion notification: {str(e)}")
+            logging.error(f"❌ Error sending completion notification: {str(e)}")
     def delete_compliance_result(self, compliance_id: int) -> bool:
         
         try:

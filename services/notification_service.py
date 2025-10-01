@@ -6,31 +6,54 @@ import logging
 
 from dao.notification_dao import NotificationDAO
 from models.notification import Notification
-from schemas.notification import NotificationResponse
+from schemas.notification import NotificationResponse, NotificationListResponse, UnreadCountResponse
 
 logger = logging.getLogger(__name__)
 
 class NotificationService:
-
+    """Service xử lý logic cho Notification"""
     
     def __init__(self, db: Session):
         self.db = db
         self.notification_dao = NotificationDAO(db)
-
-
-    def get_user_notifications(
-        self,
+    
+    # ===== QUERY METHODS =====
+    
+    def get_notifications(
+        self, 
         user_id: int,
         unread_only: bool = False,
         limit: int = 50
-    ) -> List[NotificationResponse]:
-      
+    ) -> NotificationListResponse:
+        """
+        Lấy notifications của user với đầy đủ thông tin
+        
+        Returns NotificationListResponse với:
+        - notifications: List[NotificationResponse]
+        - total: int
+        - unread_count: int
+        """
         try:
+            # Get notifications
             notifications = self.notification_dao.get_by_recipient(user_id, unread_only, limit)
-            return [self._convert_to_response(n) for n in notifications]
+            notification_responses = [self._convert_to_response(n) for n in notifications]
+            
+            # Get unread count
+            unread_count = self.notification_dao.get_unread_count(user_id)
+            
+            return NotificationListResponse(
+                notifications=notification_responses,
+                total=len(notification_responses),
+                unread_count=unread_count
+            )
         except Exception as e:
-            logger.error(f"❌ Error getting user notifications: {e}")
-            return []
+            logger.error(f"❌ Error getting notifications: {e}")
+            # Return empty response on error
+            return NotificationListResponse(
+                notifications=[],
+                total=0,
+                unread_count=0
+            )
     
     def get_notification_by_id(self, notification_id: int) -> Optional[NotificationResponse]:
         """Lấy chi tiết 1 notification"""
@@ -53,7 +76,7 @@ class NotificationService:
     
     # ===== UPDATE METHODS =====
     
-    def mark_as_read(self, notification_id: int, user_id: int) -> Optional[NotificationResponse]:
+    def mark_as_read(self, notification_id: int, user_id: int) -> bool:
         """
         Đánh dấu notification là đã đọc
         Validate user_id để đảm bảo chỉ recipient mới mark được
@@ -69,10 +92,7 @@ class NotificationService:
                 raise ValueError("You don't have permission to mark this notification as read")
             
             updated_notification = self.notification_dao.mark_as_read(notification_id)
-            
-            if updated_notification:
-                return self._convert_to_response(updated_notification)
-            return None
+            return updated_notification is not None
             
         except ValueError as e:
             logger.error(f"❌ Validation error: {e}")
