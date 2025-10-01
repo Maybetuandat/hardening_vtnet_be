@@ -20,12 +20,20 @@ def get_dashboard_statistics(
 ):
     """
     Lấy thống kê cho dashboard:
+    - Admin: Lấy tất cả thống kê của toàn bộ hệ thống
+    - User: Chỉ lấy thống kê của các instance thuộc về user đó
+    
+    Bao gồm:
     - Total nodes: số lượng server đang hoạt động
     - Compliance rate: tỷ lệ tuân thủ trung bình
     - Critical issues: tổng số lỗi critical
     - Last audit: thời gian scan gần nhất
+    - Passed servers: số lượng server đạt chuẩn
+    - Failed servers: số lượng server không đạt chuẩn
+    - Workload stats: thống kê theo từng workload
     """
     try:
-        return dashboard_service.get_dashboard_statistics(current_user.id)
+        # Truyền current_user object thay vì current_user.id
+        return dashboard_service.get_dashboard_statistics(current_user)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Lỗi khi lấy thống kê dashboard: {str(e)}")
