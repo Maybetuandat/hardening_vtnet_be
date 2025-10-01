@@ -24,7 +24,8 @@ from routers import (
     rule_result_controller, 
     schedule_controller,
     user_controller, 
-    workload_controller
+    workload_controller,
+    rule_change_request_controller
 )
 from services.scheduler_singleton import SchedulerSingleton
 
@@ -121,7 +122,7 @@ app.include_router(auth_controller.router)
 app.include_router(user_controller.router)
 app.include_router(fix_controller.router) 
 app.include_router(dcim_controller.router)
-
+app.include_router(rule_change_request_controller.router)
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host=HOST, port=PORT, reload=RELOAD)
