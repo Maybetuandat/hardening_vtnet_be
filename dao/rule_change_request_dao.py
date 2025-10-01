@@ -1,5 +1,3 @@
-# dao/rule_change_request_dao.py
-
 from typing import List, Optional
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import and_, or_
@@ -9,42 +7,26 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-class RuleChangeRequestDAO:
-    """DAO for RuleChangeRequest operations"""
-    
+class RuleChangeRequestDAO:  
     def __init__(self, db: Session):
         self.db = db
-    
-    # ===== CREATE =====
     def create(self, request: RuleChangeRequest) -> RuleChangeRequest:
-        """Tạo mới RuleChangeRequest"""
         try:
             self.db.add(request)
             self.db.commit()
             self.db.refresh(request)
-            logger.info(f"✅ Created RuleChangeRequest ID: {request.id}")
             return request
         except Exception as e:
             self.db.rollback()
-            logger.error(f"❌ Error creating RuleChangeRequest: {e}")
+            logger.error(f" Error creating RuleChangeRequest: {e}")
             raise
     
-    # ===== READ =====
-    def get_by_id(self, request_id: int) -> Optional[RuleChangeRequest]:
-        """Lấy RuleChangeRequest theo ID, kèm relationships"""
-        try:
-            return self.db.query(RuleChangeRequest)\
-                .options(
-                    joinedload(RuleChangeRequest.workload),
-                    joinedload(RuleChangeRequest.rule),
-                    joinedload(RuleChangeRequest.requester),
-                    joinedload(RuleChangeRequest.admin)
-                )\
-                .filter(RuleChangeRequest.id == request_id)\
-                .first()
-        except Exception as e:
-            logger.error(f"❌ Error getting RuleChangeRequest by ID {request_id}: {e}")
-            return None
+  
+    def get_by_id(self, request_id: int, user_id: Optional[int] = None) -> Optional[RuleChangeRequest]:
+        query = self.db.query(RuleChangeRequest)
+        if user_id:
+            query = query.filter(RuleChangeRequest.user_id == user_id)
+        return query.filter(RuleChangeRequest.id == request_id).first()
     
     def get_all_pending(self, limit: int = 100) -> List[RuleChangeRequest]:
         """Lấy tất cả pending requests"""

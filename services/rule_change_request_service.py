@@ -13,6 +13,7 @@ from dao.rule_dao import RuleDAO
 from models.rule_change_request import RuleChangeRequest
 from models.notification import Notification
 from models.rule import Rule
+from models.user import User
 from schemas.rule_change_request import (
     RuleChangeRequestCreate,
     RuleChangeRequestUpdate,
@@ -410,9 +411,27 @@ class RuleChangeRequestService:
             logger.error(f"❌ Error notifying admins: {e}")
             # Don't fail the whole operation if notification fails
     
+
+    def delete_request(self, request_id: int, current_user : User):
+        """Xoá request (nếu cần)"""
+        try:
+            request = self.request_dao.get_by_id(request_id, user_id=current_user.id)
+            if not request:
+                raise ValueError(f"Request ID {request_id} not found")
+            
+            self.request_dao.delete(request)
+            logger.info(f"✅ Deleted request ID {request_id}")
+            
+        except ValueError as e:
+            logger.error(f"❌ Validation error: {e}")
+            raise
+        except Exception as e:
+            logger.error(f"❌ Error deleting request: {e}")
+            raise Exception(f"Failed to delete request: {str(e)}")
+
     def _notify_user_about_result(
-        self, 
-        request: RuleChangeRequest, 
+        self,
+        request: RuleChangeRequest,
         admin_user,
         result: str  # 'approved' or 'rejected'
     ):

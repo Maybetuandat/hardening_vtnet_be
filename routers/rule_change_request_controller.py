@@ -1,5 +1,3 @@
-
-
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import Optional
@@ -25,7 +23,6 @@ async def create_update_request(
     current_user=Depends(require_user()),
     db: Session = Depends(get_db)
 ):
-    """User tạo request UPDATE rule"""
     try:
         service = RuleChangeRequestService(db)
         return service.create_update_request(
@@ -44,7 +41,6 @@ async def create_new_rule_request(
     current_user=Depends(require_user()),
     db: Session = Depends(get_db)
 ):
-    """User tạo request CREATE rule mới"""
     try:
         service = RuleChangeRequestService(db)
         new_rule_data = {
@@ -70,7 +66,6 @@ async def get_my_requests(
     current_user=Depends(require_user()),
     db: Session = Depends(get_db)
 ):
-    """User xem lịch sử requests của mình"""
     try:
         service = RuleChangeRequestService(db)
         requests = service.get_user_requests(current_user.id)
@@ -78,14 +73,12 @@ async def get_my_requests(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# ===== ADMIN ENDPOINTS =====
 
 @router.get("/pending", response_model=RuleChangeRequestListResponse)
 async def get_pending_requests(
     current_user=Depends(require_admin()),
     db: Session = Depends(get_db)
 ):
-    """Admin lấy tất cả pending requests"""
     try:
         service = RuleChangeRequestService(db)
         requests = service.get_all_pending_requests()
@@ -99,14 +92,12 @@ async def get_request_detail(
     current_user=Depends(require_user()),
     db: Session = Depends(get_db)
 ):
-    """Lấy chi tiết 1 request"""
     try:
         service = RuleChangeRequestService(db)
         request = service.get_request_by_id(request_id)
         if not request:
             raise HTTPException(status_code=404, detail="Request not found")
         
-        # Check permission: admin or owner
         if current_user.role != 'admin' and request.user_id != current_user.id:
             raise HTTPException(status_code=403, detail="Access denied")
         
@@ -123,7 +114,6 @@ async def approve_request(
     current_user=Depends(require_admin()),
     db: Session = Depends(get_db)
 ):
-    """Admin approve request"""
     try:
         service = RuleChangeRequestService(db)
         return service.approve_request(
@@ -143,7 +133,6 @@ async def reject_request(
     current_user=Depends(require_admin()),
     db: Session = Depends(get_db)
 ):
-    """Admin reject request"""
     try:
         service = RuleChangeRequestService(db)
         return service.reject_request(
@@ -163,10 +152,25 @@ async def get_workload_requests(
     current_user=Depends(require_user()),
     db: Session = Depends(get_db)
 ):
-    """Lấy requests theo workload"""
+    
     try:
         service = RuleChangeRequestService(db)
         requests = service.get_workload_requests(workload_id, status)
         return RuleChangeRequestListResponse(requests=requests, total=len(requests))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+@router.delete("/{request_id}", response_model=SuccessResponse)
+async def delete_request(
+    request_id: int,
+    current_user=Depends(require_user()),
+    db: Session = Depends(get_db)
+):
+    
+    try:
+        service = RuleChangeRequestService(db)
+        service.delete_request(request_id, current_user)
+        return SuccessResponse(message="Request deleted successfully")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
