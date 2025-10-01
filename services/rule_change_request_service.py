@@ -366,7 +366,7 @@ class RuleChangeRequestService:
             title = f"🔄 New Rule {action.title()} Request"
             message = f"{requester_user.username} requests to {action} rule '{rule_name}' in workload '{workload_name}'"
             
-            metadata = {
+            meta_data = {
                 "request_id": request.id,
                 "rule_id": request.rule_id,
                 "rule_name": rule_name,
@@ -387,7 +387,7 @@ class RuleChangeRequestService:
                     title=title,
                     message=message,
                     is_read=False,
-                    metadata=metadata
+                    meta_data=meta_data
                 )
                 notifications.append(notification)
             
@@ -400,7 +400,7 @@ class RuleChangeRequestService:
                     "notification_id": notif.id,
                     "title": title,
                     "message": message,
-                    "metadata": metadata,
+                    "meta_data": meta_data,
                     "timestamp": notif.created_at.isoformat()
                 })
             
@@ -445,7 +445,7 @@ class RuleChangeRequestService:
                 if request.admin_note:
                     message += f"\nReason: {request.admin_note}"
             
-            metadata = {
+            meta_data = {
                 "request_id": request.id,
                 "rule_id": request.rule_id,
                 "rule_name": rule_name,
@@ -466,7 +466,7 @@ class RuleChangeRequestService:
                 title=title,
                 message=message,
                 is_read=False,
-                metadata=metadata
+                meta_data=meta_data
             )
             
             created_notification = self.notification_dao.create(notification)
@@ -477,7 +477,7 @@ class RuleChangeRequestService:
                 "notification_id": created_notification.id,
                 "title": title,
                 "message": message,
-                "metadata": metadata,
+                "meta_data": meta_data,
                 "timestamp": created_notification.created_at.isoformat()
             })
             

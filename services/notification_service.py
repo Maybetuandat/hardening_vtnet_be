@@ -130,7 +130,7 @@ class NotificationService:
             title=notification.title,
             message=notification.message,
             is_read=notification.is_read,
-            metadata=notification.metadata,
+            meta_data=notification.meta_data,
             created_at=notification.created_at,
             read_at=notification.read_at
         )

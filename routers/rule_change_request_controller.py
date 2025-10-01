@@ -1,10 +1,11 @@
-# routers/rule_change_request_controller.py
+
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import Optional
 
-from database import get_db
+
+from config.config_database import get_db
 from utils.auth import require_user, require_admin
 from schemas.rule_change_request import (
     RuleChangeRequestCreate,
@@ -17,8 +18,6 @@ from schemas.common import SuccessResponse
 from services.rule_change_request_service import RuleChangeRequestService
 
 router = APIRouter(prefix="/api/rule-change-requests", tags=["Rule Change Requests"])
-
-# ===== USER ENDPOINTS =====
 
 @router.post("/update", response_model=RuleChangeRequestResponse)
 async def create_update_request(

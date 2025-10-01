@@ -11,7 +11,7 @@ class Rule(Base):
     name = Column(String(100), nullable=False, index=True)
     description = Column(Text, nullable=True)
     
-    workload_id = Column(Integer, ForeignKey("work_loads.id"), nullable=False)
+    workload_id = Column(Integer, ForeignKey("workloads.id"), nullable=False)
 
     command=Column(Text, nullable=False)
 

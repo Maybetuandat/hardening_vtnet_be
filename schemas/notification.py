@@ -12,7 +12,7 @@ class NotificationResponse(BaseModel):
     title: str
     message: Optional[str]
     is_read: bool
-    metadata: Optional[Dict[str, Any]]
+    meta_data: Optional[Dict[str, Any]]
     created_at: datetime
     read_at: Optional[datetime]
     
