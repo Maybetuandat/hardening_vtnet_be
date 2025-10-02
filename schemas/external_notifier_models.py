@@ -1,11 +1,3 @@
-# utils/external_notifier_models.py
-
-"""
-Data Models for External Notifications
-
-Defines message structures and enums.
-"""
-
 from enum import Enum
 from dataclasses import dataclass, field
 from typing import Dict, Any, List

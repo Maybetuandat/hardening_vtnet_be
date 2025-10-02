@@ -1,21 +1,14 @@
-# utils/external_notifier_worker.py
-
-"""
-Background Worker for External Notifications
-
-Manages message buffering and periodic sending to external chat system.
-Uses threading for non-blocking operation.
-"""
-
 import logging
 import threading
 import time
 from typing import Optional
 from queue import Queue, Empty
 
-from utils.external_notifier_config import ExternalNotifierConfig, get_external_notifier_config
-from utils.external_notifier_models import ExternalChatMessage, MessageBatch
-from utils.external_notifier_client import ExternalNotifierClient
+from client.external_notifier_client import ExternalNotifierClient
+from config.external_notifier_config import ExternalNotifierConfig, get_external_notifier_config
+from schemas.external_notifier_models import ExternalChatMessage, MessagePriority
+
+
 
 logger = logging.getLogger(__name__)
 
@@ -81,9 +74,7 @@ class ExternalNotifierWorker:
         
         Only starts if config is valid (enabled + all required fields set)
         """
-        if not self.config.is_valid():
-            logger.warning("⚠️ External notifier config invalid. Worker not started.")
-            return
+       
         
         with self._lock:
             if self.is_running:
@@ -140,24 +131,12 @@ class ExternalNotifierWorker:
         priority: str = "normal",
         metadata: Optional[dict] = None
     ) -> bool:
-        """
-        Add message to buffer for sending
-        """
-        # THÊM LOG ĐỂ DEBUG
-        logger.info(f"🔍 Attempting to send message: topic={topic}, title={title}")
-        logger.info(f"🔍 Config valid: {self.config.is_valid()}")
-        logger.info(f"🔍 Config enabled: {self.config.enabled}")
+     
+     
         
-        if not self.config.is_valid():
-            logger.warning(f"⚠️ External notifier disabled or misconfigured")
-            logger.warning(f"   - enabled: {self.config.enabled}")
-            logger.warning(f"   - api_url: {self.config.api_url}")
-            logger.warning(f"   - channel_id: {self.config.channel_id}")
-            logger.warning(f"   - has_token: {bool(self.config.auth_token)}")
-            return False
-        
+      
         try:
-            from utils.external_notifier_models import MessagePriority
+           
             
             chat_message = ExternalChatMessage(
                 topic=topic,

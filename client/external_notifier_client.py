@@ -5,8 +5,9 @@ import json
 from typing import List, Tuple
 import httpx
 
-from utils.external_notifier_config import ExternalNotifierConfig
-from utils.external_notifier_models import ExternalChatMessage
+from config.external_notifier_config import ExternalNotifierConfig
+from schemas.external_notifier_models import ExternalChatMessage
+
 
 logger = logging.getLogger(__name__)
 

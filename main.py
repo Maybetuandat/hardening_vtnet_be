@@ -76,27 +76,14 @@ async def startup_event():
             settings = get_notifier_settings()
          
             
-            if settings.is_valid():
-                worker = ExternalNotifierWorker.get_instance()
-                worker.start()
-                print("✅ External notifier worker started successfully")
-                print(f"   - API URL: {settings.external_notifier_api_url}")
-                print(f"   - Channel ID: {settings.external_notifier_channel_id}")
-                print(f"   - Buffer Interval: {settings.external_notifier_buffer_interval}s")
-            else:
-                print("⚠️ External notifier disabled or misconfigured")
-                if settings.external_notifier_enabled:
-                    print("   ❌ External notifier is ENABLED but configuration is INVALID!")
-                    print(f"   - Has API URL: {bool(settings.external_notifier_api_url)}")
-                    print(f"   - Has Auth Token: {bool(settings.external_notifier_auth_token)}")
-                    print(f"   - Has Channel ID: {bool(settings.external_notifier_channel_id)}")
-                    print("   Please check your .env file for:")
-                    print("     EXTERNAL_NOTIFIER_ENABLED=true")
-                    print("     EXTERNAL_NOTIFIER_API_URL=https://netchat.viettel.vn/api/v4/posts")
-                    print("     EXTERNAL_NOTIFIER_AUTH_TOKEN=<your_token>")
-                    print("     EXTERNAL_NOTIFIER_CHANNEL_ID=<your_channel_id>")
-                else:
-                    print("   ℹ️ External notifier is disabled (EXTERNAL_NOTIFIER_ENABLED=false)")
+            
+            worker = ExternalNotifierWorker.get_instance()
+            worker.start()
+            print("✅ External notifier worker started successfully")
+            print(f"   - API URL: {settings.external_notifier_api_url}")
+            print(f"   - Channel ID: {settings.external_notifier_channel_id}")
+            print(f"   - Buffer Interval: {settings.external_notifier_buffer_interval}s")
+            
                     
         except Exception as notifier_error:
             print(f"❌ Error starting external notifier: {notifier_error}")

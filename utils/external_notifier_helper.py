@@ -220,34 +220,3 @@ def notify_compliance_completed(
     )
 
 
-def get_notifier_stats() -> dict:
-    """
-    Get statistics from notifier worker
-    
-    Returns:
-        dict: Stats including sent/failed counts, buffer size
-        
-    Example:
-        >>> stats = get_notifier_stats()
-        >>> print(stats)
-        {
-            'total_sent': 42,
-            'total_failed': 2,
-            'total_buffered': 44,
-            'is_running': True,
-            'buffer_size': 0
-        }
-    """
-    try:
-        worker = ExternalNotifierWorker.get_instance()
-        return worker.get_stats()
-    except Exception as e:
-        logger.error(f"❌ Error getting stats: {e}")
-        return {
-            'total_sent': 0,
-            'total_failed': 0,
-            'total_buffered': 0,
-            'is_running': False,
-            'buffer_size': 0,
-            'error': str(e)
-        }
