@@ -1,5 +1,3 @@
-# hardening_backend/schemas/scan_message.py
-# scan_service/schemas/scan_message.py (copy y hệt)
 
 from datetime import datetime
 from typing import List, Optional, Dict, Any
@@ -7,13 +5,13 @@ from pydantic import BaseModel, Field
 
 
 class RuleInfo(BaseModel):
-    """Thông tin rule đầy đủ để thực thi scan"""
+
     id: int
     name: str
     command: str
     parameters: Optional[Dict[str, Any]] = None
-    suggested_fix: Optional[str] = None
-    description: Optional[str] = None
+    
+    
 
 
 class InstanceCredentials(BaseModel):

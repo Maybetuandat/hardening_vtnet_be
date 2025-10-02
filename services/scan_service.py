@@ -33,18 +33,17 @@ class ScanService:
         try:
             scan_request_id = str(uuid.uuid4())
             
-            logger.info(f"🚀 Starting compliance scan - Request ID: {scan_request_id}")
-            logger.info(f"👤 Requested by user: {current_user.username} (ID: {current_user.id})")
+         
             
             if scan_request.server_ids:
-                logger.info(f"📋 Scanning specific servers: {scan_request.server_ids}")
+                
                 return self._publish_specific_servers_to_queue(
                     scan_request.server_ids,
                     scan_request_id,
                     current_user
                 )
             else:
-                logger.info("📋 Scanning ALL active servers with workload")
+                
                 return self._publish_all_servers_to_queue(
                     scan_request_id,
                     current_user
@@ -60,13 +59,13 @@ class ScanService:
         scan_request_id: str,
         current_user: User
     ) -> ComplianceScanResponse:
-        """Publish các servers cụ thể vào Redis queue"""
         try:
             # Sử dụng DAO để get instances với eager loading
             instances = self.instance_dao.get_instances_with_relationships_by_ids(
                 instance_ids=server_ids,
                 status=True,
-                has_workload=True
+                has_workload=True,
+                  current_user=current_user
             )
             
             if not instances:
@@ -204,9 +203,7 @@ class ScanService:
                 id=rule.id,
                 name=rule.name,
                 command=rule.command,
-                parameters=rule.parameters,
-                suggested_fix=rule.suggested_fix,
-                description=rule.description
+                parameters=rule.parameters
             )
             for rule in instance.workload.rules
             if rule.is_active == "active"

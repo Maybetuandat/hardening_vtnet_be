@@ -6,6 +6,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy import and_, or_, func
 from typing import Any, Dict, Optional, List, Tuple
 from models.instance import Instance
+from models.user import User
 from models.workload import WorkLoad
 from schemas.instance import InstanceCreate, InstanceUpdate
 from sqlalchemy.orm import joinedload
@@ -168,8 +169,9 @@ class InstanceDAO:
     def get_instances_with_relationships_by_ids(
         self,
         instance_ids: List[int],
+        current_user: User,
         status: Optional[bool] = None,
-        has_workload: Optional[bool] = None
+        has_workload: Optional[bool] = None,
     ) -> List[Instance]:
         """
         Lấy instances theo IDs với eager loading các relationships
@@ -194,7 +196,9 @@ class InstanceDAO:
             # Apply additional filters
             if status is not None:
                 query = query.filter(Instance.status == status)
-            
+            if current_user and not current_user.is_admin:
+                query = query.filter(Instance.user_id == current_user.id)
+
             if has_workload:
                 query = query.filter(Instance.workload_id.isnot(None))
             
