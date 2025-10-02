@@ -142,19 +142,18 @@ class ExternalNotifierWorker:
     ) -> bool:
         """
         Add message to buffer for sending
-        
-        Args:
-            topic: Message category (e.g., 'rule_change')
-            title: Message title
-            message: Message content
-            priority: Priority level (low/normal/high/urgent)
-            metadata: Additional data
-            
-        Returns:
-            bool: True if buffered successfully
         """
+        # THÊM LOG ĐỂ DEBUG
+        logger.info(f"🔍 Attempting to send message: topic={topic}, title={title}")
+        logger.info(f"🔍 Config valid: {self.config.is_valid()}")
+        logger.info(f"🔍 Config enabled: {self.config.enabled}")
+        
         if not self.config.is_valid():
-            logger.debug("⚠️ External notifier disabled or misconfigured")
+            logger.warning(f"⚠️ External notifier disabled or misconfigured")
+            logger.warning(f"   - enabled: {self.config.enabled}")
+            logger.warning(f"   - api_url: {self.config.api_url}")
+            logger.warning(f"   - channel_id: {self.config.channel_id}")
+            logger.warning(f"   - has_token: {bool(self.config.auth_token)}")
             return False
         
         try:
@@ -171,11 +170,11 @@ class ExternalNotifierWorker:
             self.buffer.put(chat_message, block=False)
             self.stats['total_buffered'] += 1
             
-            logger.debug(f"📥 Message buffered: {chat_message}")
+            logger.info(f"✅ Message buffered successfully: {chat_message}")
             return True
             
         except Exception as e:
-            logger.error(f"❌ Error buffering message: {e}")
+            logger.error(f"❌ Error buffering message: {e}", exc_info=True)
             return False
     
     def _run_worker(self):

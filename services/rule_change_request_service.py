@@ -21,6 +21,7 @@ from schemas.rule_change_request import (
 )
 from services.sse_notification import notification_service
 from utils.auth import require_user
+from utils.external_notifier_helper import notify_rule_change_request, notify_rule_change_result
 
 logger = logging.getLogger(__name__)
 
