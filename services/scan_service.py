@@ -1,17 +1,13 @@
-# hardening_backend/services/scan_service.py
-
 import logging
 from typing import List
 from datetime import datetime
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session
 import uuid
 
 from dao.instance_dao import InstanceDAO
 from dao.user_dao import UserDAO
 from models.user import User
 from models.instance import Instance
-from models.workload import WorkLoad
-from models.os import Os
 from schemas.compliance_result import ComplianceScanRequest, ComplianceScanResponse
 from schemas.scan_message import ScanInstanceMessage, RuleInfo, InstanceCredentials
 from utils.redis_manager import get_pubsub_manager
@@ -21,7 +17,6 @@ logger = logging.getLogger(__name__)
 
 
 class ScanService:
-    """Service xử lý scan - đẩy instances vào Redis queue"""
     
     def __init__(self, db: Session):
         self.db = db
@@ -34,9 +29,7 @@ class ScanService:
         scan_request: ComplianceScanRequest, 
         current_user: User
     ) -> ComplianceScanResponse:
-        """
-        Bắt đầu compliance scan bằng cách đẩy instances vào Redis queue
-        """
+       
         try:
             scan_request_id = str(uuid.uuid4())
             
@@ -69,17 +62,12 @@ class ScanService:
     ) -> ComplianceScanResponse:
         """Publish các servers cụ thể vào Redis queue"""
         try:
-            # Query với eager loading
-            instances = self.db.query(Instance)\
-                .filter(Instance.id.in_(server_ids))\
-                .filter(Instance.status == True)\
-                .filter(Instance.workload_id.isnot(None))\
-                .options(
-                    joinedload(Instance.user),
-                    joinedload(Instance.workload).joinedload(WorkLoad.rules),
-                    joinedload(Instance.os)
-                )\
-                .all()
+            # Sử dụng DAO để get instances với eager loading
+            instances = self.instance_dao.get_instances_with_relationships_by_ids(
+                instance_ids=server_ids,
+                status=True,
+                has_workload=True
+            )
             
             if not instances:
                 logger.warning(f"⚠️ No valid instances found for IDs: {server_ids}")
@@ -142,16 +130,11 @@ class ScanService:
     ) -> ComplianceScanResponse:
         """Publish TẤT CẢ servers có workload vào Redis queue"""
         try:
-            # Query TẤT CẢ instances
-            instances = self.db.query(Instance)\
-                .filter(Instance.workload_id.isnot(None))\
-                .filter(Instance.status == True)\
-                .options(
-                    joinedload(Instance.user),
-                    joinedload(Instance.workload).joinedload(WorkLoad.rules),
-                    joinedload(Instance.os)
-                )\
-                .all()
+            # Sử dụng DAO để get all instances với eager loading
+            instances = self.instance_dao.get_instances_with_relationships(
+                status=True,
+                has_workload=True
+            )
             
             if not instances:
                 logger.warning("⚠️ No instances with workload found")
@@ -231,9 +214,8 @@ class ScanService:
         
         # LẤY CREDENTIALS TỪ USER
         credentials = InstanceCredentials(
-            username=instance.user.ssh_user if hasattr(instance.user, 'ssh_user') else None,
-            password=instance.user.ssh_password if hasattr(instance.user, 'ssh_password') else None,
-            private_key=instance.user.ssh_private_key if hasattr(instance.user, 'ssh_private_key') else None
+            username=instance.user.username if hasattr(instance.user, 'username') else None,
+            password=instance.user.ssh_password if hasattr(instance.user, 'ssh_password') else None
         )
         
         return ScanInstanceMessage(

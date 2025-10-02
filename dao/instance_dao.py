@@ -6,8 +6,9 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy import and_, or_, func
 from typing import Any, Dict, Optional, List, Tuple
 from models.instance import Instance
+from models.workload import WorkLoad
 from schemas.instance import InstanceCreate, InstanceUpdate
-
+from sqlalchemy.orm import joinedload
 
 class InstanceDAO:
     def __init__(self, db: Session):
@@ -122,16 +123,83 @@ class InstanceDAO:
             query = query.filter(Instance.id != exclude_id)
             
         return query.first() is not None
+    def get_instances_with_relationships(
+        self,
+        status: Optional[bool] = None,
+        has_workload: Optional[bool] = None,
+        user_id: Optional[int] = None
+    ) -> List[Instance]:
+        """
+        Lấy instances với eager loading các relationships
+        
+        Args:
+            status: Filter theo status (True/False)
+            has_workload: Filter instances có workload hay không
+            user_id: Filter theo user_id
+            
+        Returns:
+            List of Instance objects với relationships đã được load
+        """
+        try:
+            query = self.db.query(Instance)\
+                .options(
+                    joinedload(Instance.user),
+                    joinedload(Instance.workload).joinedload(WorkLoad.rules),
+                    joinedload(Instance.os)
+                )
+            
+            # Apply filters
+            if status is not None:
+                query = query.filter(Instance.status == status)
+            
+            if has_workload:
+                query = query.filter(Instance.workload_id.isnot(None))
+            
+            if user_id is not None:
+                query = query.filter(Instance.user_id == user_id)
+            
+            return query.all()
+            
+        except Exception as e:
+            logger.error(f"Error getting instances with relationships: {str(e)}")
+            return []
 
-    
-    
 
-
-    
-
-
-   
-
-   
-
-    
+    def get_instances_with_relationships_by_ids(
+        self,
+        instance_ids: List[int],
+        status: Optional[bool] = None,
+        has_workload: Optional[bool] = None
+    ) -> List[Instance]:
+        """
+        Lấy instances theo IDs với eager loading các relationships
+        
+        Args:
+            instance_ids: List các instance IDs cần lấy
+            status: Filter theo status (True/False)
+            has_workload: Filter instances có workload hay không
+            
+        Returns:
+            List of Instance objects với relationships đã được load
+        """
+        try:
+            query = self.db.query(Instance)\
+                .filter(Instance.id.in_(instance_ids))\
+                .options(
+                    joinedload(Instance.user),
+                    joinedload(Instance.workload).joinedload(WorkLoad.rules),
+                    joinedload(Instance.os)
+                )
+            
+            # Apply additional filters
+            if status is not None:
+                query = query.filter(Instance.status == status)
+            
+            if has_workload:
+                query = query.filter(Instance.workload_id.isnot(None))
+            
+            return query.all()
+            
+        except Exception as e:
+            logger.error(f"Error getting instances by IDs with relationships: {str(e)}")
+            return []

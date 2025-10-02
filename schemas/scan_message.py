@@ -20,7 +20,7 @@ class InstanceCredentials(BaseModel):
     """Thông tin credentials để SSH"""
     username: Optional[str] = None
     password: Optional[str] = None
-    private_key: Optional[str] = None
+    
 
 
 class ScanInstanceMessage(BaseModel):
