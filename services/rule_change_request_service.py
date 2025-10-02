@@ -143,26 +143,14 @@ class RuleChangeRequestService:
             logger.error(f"❌ Error creating new rule request: {e}")
             raise Exception(f"Failed to create new rule request: {str(e)}")
     
-    # ===== ADMIN APPROVE/REJECT =====
-    
+   
     def approve_request(
         self,
         request_id: int,
         admin_user,
         admin_note: Optional[str] = None
     ) -> RuleChangeRequestResponse:
-        """
-        Admin approve request
-        
-        Flow:
-        1. Get request
-        2. Validate status = pending
-        3. Apply changes:
-           - CREATE: Tạo rule mới
-           - UPDATE: Update rule hiện tại
-        4. Update request status = approved
-        5. Notify user về kết quả
-        """
+       
         try:
             # Step 1: Get request
             request = self.request_dao.get_by_id(request_id)
@@ -332,45 +320,46 @@ class RuleChangeRequestService:
             logger.error(f"❌ Error applying UPDATE request: {e}")
             raise
     
-    def _notify_admins_about_new_request(self, request: RuleChangeRequest, requester_user : User):
-        """Tạo notifications cho tất cả admin khi có request mới"""
-        try:
-            # Get all admin users
-            admin_users = self.user_dao.get_by_id(requester_user.id_manager)
-            if not admin_users:
-                logger.warning("⚠️ No admin users found to notify")
-                return
-            
-            # Get workload info
-            workload = self.workload_dao.get_by_id(request.workload_id)
-            workload_name = workload.name if workload else "Unknown Workload"
-            
-            # Get rule name (if update)
-            rule_name = "New Rule"
-            if request.rule_id:
-                rule = self.rule_dao.get_by_id(request.rule_id)
-                rule_name = rule.name if rule else f"Rule #{request.rule_id}"
-            
-            # Prepare notification content
-            action = "create" if request.request_type == 'create' else "update"
-            title = f"🔄 New Rule {action.title()} Request"
-            message = f"{requester_user.username} requests to {action} rule '{rule_name}' in workload '{workload_name}'"
-            
-            meta_data = {
-                "request_id": request.id,
-                "rule_id": request.rule_id,
-                "rule_name": rule_name,
-                "workload_id": request.workload_id,
-                "workload_name": workload_name,
-                "requester_id": requester_user.id,
-                "requester_username": requester_user.username,
-                "request_type": request.request_type
-            }
-            
-            # Create notifications for all admins
-            notifications = []
-           
-            notification = Notification(
+    def _notify_admins_about_new_request(
+            self, 
+            request: RuleChangeRequest, 
+            requester_user: User
+        ):
+            """Notify admins + send external notification"""
+            try:
+                admin_users = self.user_dao.get_by_id(requester_user.id_manager)
+                if not admin_users:
+                    logger.warning("⚠️ No admin users found")
+                    return
+                
+                workload = self.workload_dao.get_by_id(request.workload_id)
+                workload_name = workload.name if workload else "Unknown"
+                
+                rule_name = "New Rule"
+                if request.rule_id:
+                    rule = self.rule_dao.get_by_id(request.rule_id)
+                    rule_name = rule.name if rule else f"Rule #{request.rule_id}"
+                
+                action = "create" if request.request_type == 'create' else "update"
+                title = f"🔄 New Rule {action.title()} Request"
+                message = (
+                    f"{requester_user.username} requests to {action} "
+                    f"rule '{rule_name}' in workload '{workload_name}'"
+                )
+                
+                meta_data = {
+                    "request_id": request.id,
+                    "rule_id": request.rule_id,
+                    "rule_name": rule_name,
+                    "workload_id": request.workload_id,
+                    "workload_name": workload_name,
+                    "requester_id": requester_user.id,
+                    "requester_username": requester_user.username,
+                    "request_type": request.request_type
+                }
+                
+                # Internal notification
+                notification = Notification(
                     recipient_id=admin_users.id,
                     type="rule_change_request",
                     reference_id=request.id,
@@ -379,110 +368,121 @@ class RuleChangeRequestService:
                     is_read=False,
                     meta_data=meta_data
                 )
-            notifications.append(notification)
-            
-            created_notifications = self.notification_dao.create_batch(notifications)
-            
-            # ✅ GỬI CHO TỪNG ADMIN CỤ THỂ (không broadcast)
-            for notif in created_notifications:
-                notification_service.notify_user(
-                    user_id=notif.recipient_id,  # ✅ Gửi đúng cho admin này
-                    message={
-                        "type": "rule_change_request",
-                        "notification_id": notif.id,
-                        "title": title,
-                        "message": message,
-                        "meta_data": meta_data,
-                        "timestamp": notif.created_at.isoformat()
-                    }
+                
+                created_notifications = self.notification_dao.create_batch([notification])
+                
+                for notif in created_notifications:
+                    notification_service.notify_user(
+                        user_id=notif.recipient_id,
+                        message={
+                            "type": "rule_change_request",
+                            "notification_id": notif.id,
+                            "title": title,
+                            "message": message,
+                            "meta_data": meta_data,
+                            "timestamp": notif.created_at.isoformat()
+                        }
+                    )
+                
+                # ✅ EXTERNAL NOTIFICATION
+                notify_rule_change_request(
+                    requester_username=requester_user.username,
+                    action=action,
+                    rule_name=rule_name,
+                    workload_name=workload_name,
+                    request_id=request.id,
+                    priority="normal"
                 )
-            
-            logger.info(f"✅ Notified {len(admin_users)} specific admins about new request {request.id}")
-            
-        except Exception as e:
-            logger.error(f"❌ Error notifying admins: {e}")
-            # Don't fail the whole operation if notification fails
-
-
+                
+                logger.info(f"✅ Notified admins about request {request.id}")
+                
+            except Exception as e:
+                logger.error(f"❌ Error notifying: {e}")
+    
     def _notify_user_about_result(
         self,
         request: RuleChangeRequest,
         admin_user,
-        result: str  # 'approved' or 'rejected'
+        result: str
     ):
-        """Notify user về kết quả approve/reject"""
+        """Notify user + send external notification"""
         try:
             requester = self.user_dao.get_by_id(request.user_id)
             if not requester:
-                logger.warning(f"⚠️ Requester user {request.user_id} not found")
                 return
             
-            # Get workload info
             workload = self.workload_dao.get_by_id(request.workload_id)
-            workload_name = workload.name if workload else "Unknown Workload"
+            workload_name = workload.name if workload else "Unknown"
             
-            # Get rule name
             rule_name = "New Rule"
             if request.rule_id:
                 rule = self.rule_dao.get_by_id(request.rule_id)
                 rule_name = rule.name if rule else f"Rule #{request.rule_id}"
             
-            # Prepare notification content
             if result == 'approved':
                 icon = "✅"
                 title = f"{icon} Rule Change Request Approved"
-                message = f"Admin {admin_user.username} approved your request to {request.request_type} rule '{rule_name}' in workload '{workload_name}'"
-            else:  # rejected
+                msg = (
+                    f"Admin {admin_user.username} approved your request "
+                    f"to {request.request_type} rule '{rule_name}'"
+                )
+            else:
                 icon = "❌"
                 title = f"{icon} Rule Change Request Rejected"
-                message = f"Admin {admin_user.username} rejected your request to {request.request_type} rule '{rule_name}' in workload '{workload_name}'"
+                msg = (
+                    f"Admin {admin_user.username} rejected your request "
+                    f"to {request.request_type} rule '{rule_name}'"
+                )
                 if request.admin_note:
-                    message += f"\nReason: {request.admin_note}"
+                    msg += f"\nReason: {request.admin_note}"
             
             meta_data = {
                 "request_id": request.id,
-                "rule_id": request.rule_id,
-                "rule_name": rule_name,
-                "workload_id": request.workload_id,
-                "workload_name": workload_name,
-                "admin_id": admin_user.id,
-                "admin_username": admin_user.username,
-                "request_type": request.request_type,
                 "result": result,
-                "admin_note": request.admin_note
+                "admin_username": admin_user.username
             }
             
-            # Create notification
+            # Internal notification
             notification = Notification(
                 recipient_id=requester.id,
                 type=f"rule_change_{result}",
                 reference_id=request.id,
                 title=title,
-                message=message,
+                message=msg,
                 is_read=False,
                 meta_data=meta_data
             )
             
-            created_notification = self.notification_dao.create(notification)
+            created = self.notification_dao.create(notification)
             
-            # ✅ GỬI CHO USER CỤ THỂ (không broadcast)
             notification_service.notify_user(
-                user_id=requester.id,  # ✅ Gửi đúng cho user này
+                user_id=requester.id,
                 message={
                     "type": f"rule_change_{result}",
-                    "notification_id": created_notification.id,
+                    "notification_id": created.id,
                     "title": title,
-                    "message": message,
+                    "message": msg,
                     "meta_data": meta_data,
-                    "timestamp": created_notification.created_at.isoformat()
+                    "timestamp": created.created_at.isoformat()
                 }
             )
             
-            logger.info(f"✅ Notified user {requester.username} about {result} request {request.id}")
+            # ✅ EXTERNAL NOTIFICATION
+            notify_rule_change_result(
+                admin_username=admin_user.username,
+                result=result,
+                requester_username=requester.username,
+                action=request.request_type,
+                rule_name=rule_name,
+                workload_name=workload_name,
+                admin_note=request.admin_note,
+                priority="normal"
+            )
+            
+            logger.info(f"✅ Notified user about {result}")
             
         except Exception as e:
-            logger.error(f"❌ Error notifying user about result: {e}")
-
+            logger.error(f"❌ Error notifying user: {e}")
     def delete_request(self, request_id: int, current_user: User):
         """Xoá request (nếu cần)"""
         try:
