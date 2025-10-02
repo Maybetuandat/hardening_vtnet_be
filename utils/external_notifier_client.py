@@ -1,11 +1,9 @@
-
+# utils/external_notifier_client.py
 
 import logging
 import json
 from typing import List, Tuple
-import requests
-from requests.adapters import HTTPAdapter
-from urllib3.util.retry import Retry
+import httpx
 
 from utils.external_notifier_config import ExternalNotifierConfig
 from utils.external_notifier_models import ExternalChatMessage
@@ -17,16 +15,7 @@ class ExternalNotifierClient:
     """
     HTTP client for sending messages to external chat system
     
-    Features:
-    - Automatic retry with exponential backoff
-    - Connection pooling
-    - Timeout handling
-    - Batch sending support
-    
-    Usage:
-        client = ExternalNotifierClient(config)
-        success, failed = client.send_batch(messages)
-        client.close()
+    Uses httpx with HTTP/2 support and curl User-Agent to bypass server restrictions
     """
     
     def __init__(self, config: ExternalNotifierConfig):
@@ -38,33 +27,21 @@ class ExternalNotifierClient:
         """
         self.config = config
         
-        # Create session with retry strategy
-        self.session = requests.Session()
+        # Create httpx client with HTTP/2 support
+        self.client = httpx.Client(http2=True, timeout=10.0)
         
-        # Configure retry strategy
-        retry_strategy = Retry(
-            total=3,  # Total number of retries
-            backoff_factor=1,  # Wait 1, 2, 4 seconds between retries
-            status_forcelist=[429, 500, 502, 503, 504],  # Retry on these status codes
-            allowed_methods=["POST"]  # Only retry POST requests
-        )
-        
-        adapter = HTTPAdapter(
-            max_retries=retry_strategy,
-            pool_connections=10,
-            pool_maxsize=20
-        )
-        
-        self.session.mount("http://", adapter)
-        self.session.mount("https://", adapter)
-        
-        # Set default headers
-        self.session.headers.update({
+        # Set default headers with curl User-Agent to bypass blocking
+        self.client.headers.update({
             "Authorization": f"Bearer {self.config.auth_token}",
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
+            "User-Agent": "curl/7.81.0",  # Fake curl User-Agent
+            "Accept": "*/*"
         })
         
         logger.info("✅ External notifier client initialized")
+        logger.info(f"   Using HTTP/2 with curl User-Agent")
+        logger.info(f"   API URL: {self.config.api_url}")
+        logger.info(f"   Channel ID: {self.config.channel_id}")
     
     def send_single(self, message: ExternalChatMessage) -> bool:
         """
@@ -77,39 +54,34 @@ class ExternalNotifierClient:
             bool: True if sent successfully
         """
         try:
-            # Format message similar to Go implementation
             formatted_message = self._format_message(message)
             
-            # Prepare payload matching Go's structure
             payload = {
-                "channelid": self.config.channel_id,
+                "channel_id": self.config.channel_id,
                 "message": formatted_message
             }
             
-            # Send POST request
-            response = self.session.post(
+            logger.info(f"📤 Sending: {message.topic} - {message.title}")
+            
+            response = self.client.post(
                 url=self.config.api_url,
-                json=payload,
-                timeout=10  # 10 second timeout
+                json=payload
             )
             
-            # Check response
             if response.status_code in [200, 201, 204]:
-                logger.debug(f"✅ Message sent: {message.topic} - {message.title}")
+                logger.info(f"✅ Message sent successfully (HTTP/{response.http_version})")
                 return True
             else:
-                logger.warning(
-                    f"⚠️ Failed to send message. "
-                    f"Status: {response.status_code}, "
-                    f"Response: {response.text[:200]}"
-                )
+                logger.error(f"❌ Failed to send message")
+                logger.error(f"   Status: {response.status_code}")
+                logger.error(f"   Response: {response.text[:200]}")
                 return False
                 
-        except requests.exceptions.Timeout:
+        except httpx.TimeoutException:
             logger.error(f"⏱️ Timeout sending message: {message.topic} - {message.title}")
             return False
             
-        except requests.exceptions.ConnectionError as e:
+        except httpx.ConnectError as e:
             logger.error(f"🔌 Connection error: {e}")
             return False
             
@@ -156,8 +128,6 @@ class ExternalNotifierClient:
         """
         Format message for external chat system
         
-        Matches Go format: [TOPIC] TITLE: MESSAGE
-        
         Args:
             message: Message object
             
@@ -179,7 +149,6 @@ class ExternalNotifierClient:
         
         # Add metadata if present and relevant
         if message.metadata:
-            # Only add specific metadata that's useful in chat
             useful_metadata = []
             
             if "request_id" in message.metadata:
@@ -194,9 +163,9 @@ class ExternalNotifierClient:
         return formatted
     
     def close(self):
-        """Close HTTP session"""
-        if self.session:
-            self.session.close()
+        """Close HTTP client"""
+        if self.client:
+            self.client.close()
             logger.info("🔒 External notifier client closed")
     
     def __del__(self):
