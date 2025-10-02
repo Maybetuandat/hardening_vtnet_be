@@ -1,10 +1,3 @@
-# utils/external_notifier_config.py
-
-"""
-Configuration wrapper for External Notifier
-
-Acts as a bridge between NotifierSettings and the Worker
-"""
 
 import logging
 from dataclasses import dataclass
