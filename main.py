@@ -1,3 +1,5 @@
+
+
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -77,12 +79,16 @@ async def startup_event():
             print(f"❌ Error starting external notifier: {notifier_error}")
             import traceback; traceback.print_exc()
 
-        # Start Scan Response Listener
+        # Start Scan Response Listener - PHẦN MỚI
         try:
-            from listeners.scan_response_listener import ScanResponseListener
-            listener = ScanResponseListener.get_instance()
-            listener.start()
-            print("✅ Scan response listener started successfully")
+            from utils.scan_listener_manager import ScanListenerManager
+            
+            listener_manager = ScanListenerManager.get_instance()
+            listener_manager.start()
+            
+            print("✅ Scan Response Listener started successfully")
+            print(f"   - Listening on Redis channel: scan_response")
+            print(f"   - Ready to receive scan results from worker")
         except Exception as scan_listener_error:
             print(f"❌ Error starting scan response listener: {scan_listener_error}")
             import traceback; traceback.print_exc()
@@ -96,6 +102,10 @@ async def startup_event():
         except FileNotFoundError:
             print("⚠️ Ansible is not installed")
 
+        print("\n" + "="*80)
+        print("🚀 Hardening Backend Service is ready!")
+        print("="*80 + "\n")
+
     except Exception as e:
         print(f"❌ Error initializing application: {e}")
         import traceback; traceback.print_exc()
@@ -105,6 +115,10 @@ async def startup_event():
 @app.on_event("shutdown")
 async def shutdown_event():
     """Cleanup khi tắt app"""
+    print("\n" + "="*80)
+    print("🛑 Shutting down Hardening Backend Service...")
+    print("="*80)
+    
     # Stop Scheduler
     try:
         SchedulerSingleton.stop_scheduler()
@@ -130,15 +144,29 @@ async def shutdown_event():
     except Exception as e:
         print(f"⚠️ Error stopping external notifier: {e}")
 
-    # Stop Scan Response Listener
+    # Stop Scan Response Listener - PHẦN MỚI
     try:
-        from listeners.scan_response_listener import ScanResponseListener
-        listener = ScanResponseListener.get_instance()
-        if listener.is_running:
-            listener.stop()
-            print("✅ Scan response listener stopped successfully")
+        from utils.scan_listener_manager import ScanListenerManager
+        
+        listener_manager = ScanListenerManager.get_instance()
+        if listener_manager.is_running:
+            # Log stats trước khi stop
+            stats = listener_manager.get_stats()
+            print(f"📊 Scan Listener stats:")
+            print(f"   - Total responses received: {stats['total_responses_received']}")
+            print(f"   - Successful saves: {stats['successful_saves']}")
+            print(f"   - Failed saves: {stats['failed_saves']}")
+            
+            listener_manager.stop()
+            print("✅ Scan Response Listener stopped successfully")
+        else:
+            print("ℹ️ Scan Response Listener was not running")
     except Exception as e:
         print(f"⚠️ Error stopping scan response listener: {e}")
+
+    print("="*80)
+    print("✅ Shutdown complete")
+    print("="*80 + "\n")
 
 
 # ===================== MIDDLEWARE =====================
