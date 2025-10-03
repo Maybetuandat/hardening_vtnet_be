@@ -10,6 +10,7 @@ from models.user import User
 from models.instance import Instance
 from schemas.compliance_result import ComplianceScanRequest, ComplianceScanResponse
 from schemas.scan_message import ScanInstanceMessage, RuleInfo, InstanceCredentials
+from services.listen_scan_service import ScanResponseListener
 from utils.redis_manager import get_pubsub_manager
 
 
@@ -23,6 +24,7 @@ class ScanService:
         self.instance_dao = InstanceDAO(db)
         self.user_dao = UserDAO(db)
         self.pubsub_manager = get_pubsub_manager()
+        self.scan_result_listener = ScanResponseListener(db)
     
     def start_compliance_scan(
         self, 
@@ -143,7 +145,7 @@ class ScanService:
                     started_scans=[]
                 )
             
-            logger.info(f"📊 Found {len(instances)} instances with workload")
+            print(f"📊 Found {len(instances)} instances with workload")
             
             published_ids = []
             skipped_count = 0

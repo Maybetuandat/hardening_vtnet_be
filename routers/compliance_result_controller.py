@@ -9,7 +9,7 @@ from schemas.compliance_result import (
     ComplianceScanResponse, ComplianceSearchParams
 )
 from services.compilance_result_service import ComplianceResultService
-from services.scan_service import ScanService
+from services.request_scan_service import ScanService
 from utils.auth import require_admin, require_user
 
 

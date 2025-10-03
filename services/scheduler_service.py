@@ -9,8 +9,8 @@ from sqlalchemy.orm import Session
 from dao.setting_dao import SettingsDAO
 from schemas.compliance_result import ComplianceScanRequest
 from schemas.setting import ScanScheduleRequest, ScanScheduleResponse
-from services import scan_service
-from services.scan_service import ScanService
+from services import request_scan_service
+from services.request_scan_service import ScanService
 
 
 

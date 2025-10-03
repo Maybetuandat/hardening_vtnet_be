@@ -28,9 +28,9 @@ class RedisPubSubManager:
         # Create separate PubSub instance for subscriber
         self.pubsub = self.redis_client.pubsub()
         
-        logger.info(f"✅ Connected to Redis at {self.settings.REDIS_HOST}:{self.settings.REDIS_PORT}")
+        print(f"✅ Connected to Redis at {self.settings.REDIS_HOST}:{self.settings.REDIS_PORT}")
     
-    # ==================== PUBLISHER ====================
+   
     
     def publish_scan_request(self, data: Dict[str, Any]) -> int:
         """
@@ -57,8 +57,8 @@ class RedisPubSubManager:
                 message_json
             )
             
-            logger.info(f"📤 Published SCAN request to {num_subscribers} subscribers")
-            logger.debug(f"Message: {message_json}")
+            print(f"📤 Published SCAN request to {num_subscribers} subscribers")
+            print(f"Debug Message: {message_json}")
             
             return num_subscribers
             
@@ -66,37 +66,7 @@ class RedisPubSubManager:
             logger.error(f"❌ Error publishing scan request: {e}")
             raise
     
-    def publish_scan_response(self, data: Dict[str, Any]) -> int:
-        """
-        Publish scan response message
-        
-        Args:
-            data: Scan response data (dict)
-            
-        Returns:
-            Number of subscribers that received the message
-        """
-        try:
-            message = {
-                "timestamp": datetime.now().isoformat(),
-                "type": "scan_response",
-                "data": data
-            }
-            
-            message_json = json.dumps(message)
-            
-            num_subscribers = self.redis_client.publish(
-                self.settings.REDIS_CHANNEL_SCAN_RESPONSE,
-                message_json
-            )
-            
-            logger.info(f"📤 Published SCAN response to {num_subscribers} subscribers")
-            
-            return num_subscribers
-            
-        except Exception as e:
-            logger.error(f"❌ Error publishing scan response: {e}")
-            raise
+    
     
     def publish_fix_request(self, data: Dict[str, Any]) -> int:
         """Publish fix request message"""
@@ -121,7 +91,7 @@ class RedisPubSubManager:
         except Exception as e:
             logger.error(f"❌ Error publishing fix request: {e}")
             raise
-    
+
     def publish_fix_response(self, data: Dict[str, Any]) -> int:
         """Publish fix response message"""
         try:
@@ -130,22 +100,22 @@ class RedisPubSubManager:
                 "type": "fix_response",
                 "data": data
             }
-            
+
             message_json = json.dumps(message)
-            
+
             num_subscribers = self.redis_client.publish(
                 self.settings.REDIS_CHANNEL_FIX_RESPONSE,
                 message_json
             )
-            
-            logger.info(f"📤 Published FIX response to {num_subscribers} subscribers")
-            
+
+            print(f"📤 Published FIX response to {num_subscribers} subscribers")
+
             return num_subscribers
-            
+
         except Exception as e:
-            logger.error(f"❌ Error publishing fix response: {e}")
+            print(f"❌ Error publishing fix response: {e}")
             raise
-    
+
     # ==================== SUBSCRIBER ====================
     
     def subscribe_scan_requests(self):

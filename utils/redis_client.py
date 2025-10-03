@@ -1,3 +1,4 @@
+# redis nay su dung cho cache, khong phai pubsub
 import redis
 from typing import Optional, Any
 import json
