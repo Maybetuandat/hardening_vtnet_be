@@ -31,21 +31,15 @@ class ScanService:
         scan_request: ComplianceScanRequest, 
         current_user: User
     ) -> ComplianceScanResponse:
-       
         try:
             scan_request_id = str(uuid.uuid4())
-            
-         
-            
             if scan_request.server_ids:
-                
                 return self._publish_specific_servers_to_queue(
                     scan_request.server_ids,
                     scan_request_id,
                     current_user
                 )
             else:
-                
                 return self._publish_all_servers_to_queue(
                     scan_request_id,
                     current_user
@@ -129,11 +123,8 @@ class ScanService:
         scan_request_id: str,
         current_user: User
     ) -> ComplianceScanResponse:
-        """Publish TẤT CẢ servers có workload vào Redis queue"""
         try:
-            # Sử dụng DAO để get all instances với eager loading
             instances = self.instance_dao.get_instances_with_relationships(
-                status=True,
                 has_workload=True
             )
             
@@ -144,9 +135,9 @@ class ScanService:
                     total_instances=0,
                     started_scans=[]
                 )
-            
-            print(f"📊 Found {len(instances)} instances with workload")
-            
+
+            logger.info(f"📊 Found {len(instances)} instances with workload")
+
             published_ids = []
             skipped_count = 0
             
@@ -194,12 +185,6 @@ class ScanService:
             raise
     
     def _create_scan_message(self, instance: Instance, scan_request_id: str) -> ScanInstanceMessage:
-        """
-        Tạo message object HOÀN CHỈNH
-        CREDENTIALS LẤY TỪ USER (instance.user)
-        """
-        
-        # Extract rules info - chỉ lấy rules active
         rules_info = [
             RuleInfo(
                 id=rule.id,
@@ -211,47 +196,44 @@ class ScanService:
             if rule.is_active == "active"
         ]
         
-        # LẤY CREDENTIALS TỪ USER
+    
         credentials = InstanceCredentials(
             username=instance.user.username if hasattr(instance.user, 'username') else None,
             password=instance.user.ssh_password if hasattr(instance.user, 'ssh_password') else None
         )
         
         return ScanInstanceMessage(
-            # Instance info
+         
             instance_id=instance.id,
             instance_name=instance.name,
             ssh_port=instance.ssh_port,
             instance_role=instance.instance_role,
             
-            # Workload info
+          
             workload_id=instance.workload.id,
             workload_name=instance.workload.name,
             workload_description=instance.workload.description,
             
-            # OS info
+         
             os_id=instance.os.id,
             os_name=instance.os.name,
             os_type=instance.os.type,
             os_display=instance.os.display,
             
-            # User info
+          
             user_id=instance.user_id,
             
-            # Rules
+           
             rules=rules_info,
             
-            # CREDENTIALS TỪ USER
+         
             credentials=credentials,
             
-            # Metadata
+          
             scan_request_id=scan_request_id
         )
     
     def _convert_to_json_serializable(self, data):
-        """
-        Convert tất cả datetime objects sang ISO format string để JSON serializable
-        """
         if isinstance(data, dict):
             return {key: self._convert_to_json_serializable(value) for key, value in data.items()}
         elif isinstance(data, list):

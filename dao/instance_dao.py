@@ -126,7 +126,7 @@ class InstanceDAO:
         return query.first() is not None
     def get_instances_with_relationships(
         self,
-        status: Optional[bool] = None,
+       
         has_workload: Optional[bool] = None,
         user_id: Optional[int] = None
     ) -> List[Instance]:
@@ -149,10 +149,7 @@ class InstanceDAO:
                     joinedload(Instance.os)
                 )
             
-            # Apply filters
-            if status is not None:
-                query = query.filter(Instance.status == status)
-            
+           
             if has_workload:
                 query = query.filter(Instance.workload_id.isnot(None))
             

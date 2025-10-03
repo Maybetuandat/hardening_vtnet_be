@@ -1,9 +1,7 @@
-
-
 import logging
 from typing import Optional
 from sqlalchemy.orm import Session
-
+from datetime import datetime
 from dao.compliance_result_dao import ComplianceDAO
 from dao.rule_result_dao import RuleResultDAO
 from models.compliance_result import ComplianceResult
@@ -63,7 +61,7 @@ class ScanResponseListener:
     def _save_compliance_result(self, response: ScanResponseMessage) -> Optional[ComplianceResult]:
         """Lưu compliance result - CHỈ DÙNG CÁC FIELD CÓ TRONG MODEL"""
         try:
-            from datetime import datetime
+           
             
             # Tính score
             score = 0
