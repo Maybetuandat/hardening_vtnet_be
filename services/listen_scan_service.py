@@ -5,6 +5,7 @@ from datetime import datetime
 from dao.compliance_result_dao import ComplianceDAO
 from dao.rule_result_dao import RuleResultDAO
 from dao.instance_dao import InstanceDAO
+from models import instance
 from models.compliance_result import ComplianceResult
 from models.instance import Instance
 from models.rule_result import RuleResult
@@ -91,6 +92,14 @@ class ScanResponseListener:
                 detail_error=response.detail_error
             )
             
+            
+            instance = self.instance_dao.get_by_id(response.instance_id)
+
+            status_scan = True if response.status == "completed" else False 
+            if instance:
+                if instance.status != status_scan:
+                    instance.status = status_scan
+                    self.instance_dao.update(instance)
             # Lưu vào database
             created = self.compliance_dao.create(compliance_result)
             

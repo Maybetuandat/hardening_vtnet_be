@@ -14,7 +14,7 @@ from services.listen_scan_service import ScanResponseListener
 from utils.redis_manager import get_pubsub_manager
 
 
-logger = logging.getLogger(__name__)
+
 
 
 class ScanService:
@@ -46,7 +46,7 @@ class ScanService:
                 )
                 
         except Exception as e:
-            logger.error(f"❌ Error starting compliance scan: {str(e)}")
+            
             raise e
     
     def _publish_specific_servers_to_queue(
@@ -59,13 +59,13 @@ class ScanService:
             # Sử dụng DAO để get instances với eager loading
             instances = self.instance_dao.get_instances_with_relationships_by_ids(
                 instance_ids=server_ids,
-                status=True,
                 has_workload=True,
-                  current_user=current_user
+                current_user=current_user
             )
-            
+
+            print("Debug server_ids:", server_ids)
             if not instances:
-                logger.warning(f"⚠️ No valid instances found for IDs: {server_ids}")
+                print("Debug: No valid instances found for the provided server IDs.")
                 return ComplianceScanResponse(
                     message="Không tìm thấy instances hợp lệ để scan",
                     total_instances=0,
@@ -79,12 +79,12 @@ class ScanService:
                 try:
                     # Kiểm tra workload và rules
                     if not instance.workload:
-                        logger.warning(f"⚠️ Instance {instance.name} has no workload, skipping")
+                        
                         skipped_count += 1
                         continue
                     
                     if not instance.workload.rules:
-                        logger.warning(f"⚠️ Instance {instance.name} workload has no rules, skipping")
+                        
                         skipped_count += 1
                         continue
                     
@@ -96,17 +96,17 @@ class ScanService:
                     self.pubsub_manager.publish_scan_request(message_dict)
                     
                     published_ids.append(instance.id)
-                    logger.info(f"✅ Published instance {instance.name} (ID: {instance.id}) to queue")
+                    
                     
                 except Exception as e:
-                    logger.error(f"❌ Error publishing instance {instance.id}: {e}")
+                    
                     skipped_count += 1
             
             message = f"Đã đẩy {len(published_ids)} instances vào scan queue"
             if skipped_count > 0:
                 message += f" ({skipped_count} instances bị bỏ qua)"
             
-            logger.info(f"📊 Scan completed: {len(published_ids)} published, {skipped_count} skipped")
+            
             
             return ComplianceScanResponse(
                 message=message,
@@ -115,7 +115,7 @@ class ScanService:
             )
             
         except Exception as e:
-            logger.error(f"❌ Error in _publish_specific_servers_to_queue: {e}")
+            
             raise
     
     def _publish_all_servers_to_queue(
@@ -129,14 +129,14 @@ class ScanService:
             )
             
             if not instances:
-                logger.warning("⚠️ No instances with workload found")
+                
                 return ComplianceScanResponse(
                     message="Không có instances nào có workload để scan",
                     total_instances=0,
                     started_scans=[]
                 )
 
-            logger.info(f"📊 Found {len(instances)} instances with workload")
+            
 
             published_ids = []
             skipped_count = 0
@@ -145,12 +145,12 @@ class ScanService:
                 try:
                     # Kiểm tra workload và rules
                     if not instance.workload:
-                        logger.warning(f"⚠️ Instance {instance.name} has no workload, skipping")
+                        
                         skipped_count += 1
                         continue
                     
                     if not instance.workload.rules:
-                        logger.warning(f"⚠️ Instance {instance.name} workload has no rules, skipping")
+                        
                         skipped_count += 1
                         continue
                     
@@ -162,17 +162,17 @@ class ScanService:
                     self.pubsub_manager.publish_scan_request(message_dict)
                     
                     published_ids.append(instance.id)
-                    logger.info(f"✅ Published instance {instance.name} (ID: {instance.id}) to queue")
-                    
+
+
                 except Exception as e:
-                    logger.error(f"❌ Error publishing instance {instance.id}: {e}")
+                    
                     skipped_count += 1
             
             message = f"Đã đẩy {len(published_ids)} instances vào scan queue"
             if skipped_count > 0:
                 message += f" ({skipped_count} instances bị bỏ qua)"
             
-            logger.info(f"📊 Scan completed: {len(published_ids)} published, {skipped_count} skipped")
+            
             
             return ComplianceScanResponse(
                 message=message,
@@ -181,7 +181,7 @@ class ScanService:
             )
             
         except Exception as e:
-            logger.error(f"❌ Error in _publish_all_servers_to_queue: {e}")
+            
             raise
     
     def _create_scan_message(self, instance: Instance, scan_request_id: str) -> ScanInstanceMessage:

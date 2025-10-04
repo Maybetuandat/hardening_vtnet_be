@@ -1,6 +1,6 @@
 from datetime import datetime
 import logging
-from fastapi import logger
+
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import and_, or_, func
@@ -31,7 +31,7 @@ class InstanceDAO:
         try:
             return self.db.query(Instance).all()
         except Exception as e:
-            logger.error(f"Error getting all instances: {str(e)}")
+            print(f"Error getting all instances: {str(e)}")
             return []
 
     def get_by_id(self, instance_id: int) -> Optional[Instance]:
@@ -157,9 +157,8 @@ class InstanceDAO:
                 query = query.filter(Instance.user_id == user_id)
             
             return query.all()
-            
         except Exception as e:
-            logger.error(f"Error getting instances with relationships: {str(e)}")
+            print(f"Error getting instances with relationships: {str(e)}")
             return []
 
 
@@ -167,7 +166,7 @@ class InstanceDAO:
         self,
         instance_ids: List[int],
         current_user: User,
-        status: Optional[bool] = None,
+        
         has_workload: Optional[bool] = None,
     ) -> List[Instance]:
         """
@@ -191,16 +190,14 @@ class InstanceDAO:
                 )
             
             # Apply additional filters
-            if status is not None:
-                query = query.filter(Instance.status == status)
-            if current_user and not current_user.is_admin:
+          
+            if current_user and not current_user.role == 'admin':
                 query = query.filter(Instance.user_id == current_user.id)
 
             if has_workload:
                 query = query.filter(Instance.workload_id.isnot(None))
-            
+            print("Debug dao current_user:", current_user)
             return query.all()
-            
         except Exception as e:
-            logger.error(f"Error getting instances by IDs with relationships: {str(e)}")
+            print(f"Error getting instances by IDs with relationships: {str(e)}")
             return []

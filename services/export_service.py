@@ -35,6 +35,7 @@ class ExportService:
                 status=search_params.status if search_params else None
             )
 
+            print(f"Found {len(results)} compliance results for export.")
             # Tạo file Excel trong memory
             output = io.BytesIO()
             
@@ -60,12 +61,12 @@ class ExportService:
         for result in results:
             server_ip = "N/A"
             workload_name = "N/A"
-            
-            if result.server:
-                server_ip = result.server.name or "N/A"
-                
-                if result.server.workload:
-                    workload_name = result.server.workload.name or "N/A"
+
+            if result.instance:
+                server_ip = result.instance.name or "N/A"
+
+                if result.instance.workload:
+                    workload_name = result.instance.workload.name or "N/A"
 
             excel_data.append({
                 "ID": result.id,
@@ -164,23 +165,24 @@ class ExportService:
         # Lặp qua từng compliance result để lấy failed rules
         for compliance in compliance_results:
             # Lấy tất cả failed rules của compliance này
-            failed_rules = self.rule_result_dao.get_by_compliance_id(
+            total, failed_rules = self.rule_result_dao.get_by_compliance_id(
                 compliance_id=compliance.id,
                 skip=0,
                 limit=1000,  # Lấy nhiều để đảm bảo có đầy đủ data
                 status="failed"  # Chỉ lấy rules failed
             )
             
+            print(f"Compliance ID {compliance.id} has {len(failed_rules)} failed rules.")
             # Thông tin server và workload
             server_ip = "N/A"
             workload_name = "N/A"
             
-            if compliance.server:
-                server_ip = compliance.server.name or "N/A"
-                
-                if compliance.server.workload:
-                    workload_name = compliance.server.workload.name or "N/A"
-            
+            if compliance.instance:
+                server_ip = compliance.instance.name or "N/A"
+
+                if compliance.instance.workload:
+                    workload_name = compliance.instance.workload.name or "N/A"
+
             # Thêm từng failed rule vào data
             for rule_result in failed_rules:
                 rule = self.rule_dao.get_by_id(rule_result.rule_id)
@@ -188,7 +190,7 @@ class ExportService:
                 failed_rules_data.append({
                     "Compliance ID": compliance.id,
                     "Server IP": server_ip,
-                    "Status": compliance.status if compliance.status else "N/A",
+                    "Status": rule_result.status if rule_result.status else "N/A",
                     "Workload Name": workload_name,
                     "Rule Name": rule.name if rule else "N/A",
                     "Output": rule_result.output or "",
