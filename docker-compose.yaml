@@ -36,7 +36,19 @@ services:
     restart: always
     ports:
       - "8080:8080"
+  redisinsight:
+    image: redislabs/redisinsight:latest
+    container_name: redisinsight
+    restart: always
+    ports:
+      - "5540:5540"
+    environment:
+      - TZ=Asia/Ho_Chi_Minh
+      - RITRUSTEDORIGINS=http://localhost:8001
+    volumes:
+      - redisinsight_data:/db
 
 volumes:
   mysql_data:
   redis_data:
+  redisinsight_data:

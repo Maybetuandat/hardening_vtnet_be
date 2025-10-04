@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from config.config_database import get_db
 from schemas.instance import  InstanceListResponseFromDcim
 from services.dcim_service import DCIMService
+from utils.auth import require_user
 
 router = APIRouter(prefix="/api/dcim", tags=["DCIM"])
 
@@ -18,13 +19,14 @@ def get_instances(
     
     
     
-    dcim_service: DCIMService = Depends(get_dcim_service)
+    dcim_service: DCIMService = Depends(get_dcim_service),
+    current_user = Depends(require_user())
 ):
  
     try:
         
         
-        result = dcim_service.cache_data_from_backend_and_dcim()
+        result = dcim_service.cache_data_from_backend_and_dcim(current_user)
         
         if result is None:
             raise HTTPException(

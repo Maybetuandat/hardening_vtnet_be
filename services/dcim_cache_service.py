@@ -5,6 +5,8 @@ Service for caching DCIM data with pagination support
 import logging
 from typing import Any, Dict, List, Optional
 
+from models.user import User
+
 logger = logging.getLogger(__name__)
 
 
@@ -17,7 +19,8 @@ class DCIMCacheService:
     def cache_all_instances_incrementally(
         self,
         page_size: int = 100,
-        cache_ttl: Optional[int] = None
+        cache_ttl: Optional[int] = None,
+        current_user: Optional[User] = None
     ) -> Dict[str, Any]:
         """
         Cache all instances from DCIM API incrementally with pagination
@@ -40,7 +43,8 @@ class DCIMCacheService:
             endpoint = "/api/v1/instances/"
             params = {
                 "page": page,
-                "page_size": page_size
+                "page_size": page_size, 
+                "user_name": current_user.username if current_user.role == 'user' else None
             }
             
             while True:

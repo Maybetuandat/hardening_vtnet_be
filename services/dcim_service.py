@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from client.dcim_client import dcim_client
 from config.setting_redis import get_redis_settings
 
+from models.user import User
 from services.backend_cache_service import BackendCacheService
 from services.dcim_sync_service import DCIMSyncService
 from services.dcim_cache_service import DCIMCacheService
@@ -29,19 +30,21 @@ class DCIMService:
     def cache_all_instances_incrementally(
         self,
         page_size: int = 100,
-        cache_ttl: Optional[int] = None
+        cache_ttl: Optional[int] = None,
+        current_user: Optional[User] = None
     ) -> Dict[str, Any]:
         """Cache all instances from DCIM incrementally"""
         return self.cache_service.cache_all_instances_incrementally(
             page_size=page_size,
-            cache_ttl=cache_ttl
+            cache_ttl=cache_ttl, 
+            current_user=current_user
         )
     
     def get_cached_instances(self) -> Optional[List[Dict]]:
         """Get instances from cache"""
         return self.cache_service.get_cached_instances()
 
-    def cache_data_from_backend_and_dcim(self):
+    def cache_data_from_backend_and_dcim(self, current_user: User):
         """
         Main sync logic between DCIM and Backend
         Handles both initial bulk import and normal sync
@@ -52,7 +55,7 @@ class DCIMService:
             # STEP 1: Cache DCIM data
             result = self.cache_all_instances_incrementally(
                 page_size=100,
-                cache_ttl=redis_settings.CACHE_TTL_DCIM_INSTANCES
+                cache_ttl=redis_settings.CACHE_TTL_DCIM_INSTANCES, current_user=current_user
             )
             
             if not result.get("success", False):
