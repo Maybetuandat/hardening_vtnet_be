@@ -64,27 +64,17 @@ async def create_new_rule_request(
 @router.get("/my-requests", response_model=RuleChangeRequestListResponse)
 async def get_my_requests(
     current_user=Depends(require_user()),
+    status: Optional[str] = Query(None),
     db: Session = Depends(get_db)
 ):
     try:
         service = RuleChangeRequestService(db)
-        requests = service.get_user_requests(current_user.id)
+        requests = service.get_user_requests(current_user, status)
         return RuleChangeRequestListResponse(requests=requests, total=len(requests))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/pending", response_model=RuleChangeRequestListResponse)
-async def get_pending_requests(
-    current_user=Depends(require_admin()),
-    db: Session = Depends(get_db)
-):
-    try:
-        service = RuleChangeRequestService(db)
-        requests = service.get_all_pending_requests()
-        return RuleChangeRequestListResponse(requests=requests, total=len(requests))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/{request_id}", response_model=RuleChangeRequestResponse)
 async def get_request_detail(

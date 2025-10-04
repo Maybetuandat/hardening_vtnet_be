@@ -5,6 +5,8 @@ from models.rule_change_request import RuleChangeRequest
 from datetime import datetime
 import logging
 
+from models.user import User
+
 logger = logging.getLogger(__name__)
 
 class RuleChangeRequestDAO:  
@@ -44,27 +46,39 @@ class RuleChangeRequestDAO:
         except Exception as e:
             logger.error(f"❌ Error getting pending requests: {e}")
             return []
-    
-    def get_by_user(self, user_id: int, limit: int = 50) -> List[RuleChangeRequest]:
+
+    def get_by_user(self, current_user: User, status: Optional[str] = None, limit: int = 10) -> List[RuleChangeRequest]:
         """Lấy tất cả requests của 1 user"""
         try:
-            return self.db.query(RuleChangeRequest)\
-                .options(
-                    joinedload(RuleChangeRequest.workload),
-                    joinedload(RuleChangeRequest.rule),
-                    joinedload(RuleChangeRequest.admin)
-                )\
-                .filter(RuleChangeRequest.user_id == user_id)\
-                .order_by(RuleChangeRequest.created_at.desc())\
-                .limit(limit)\
-                .all()
+            if current_user.role == 'user':
+                query = self.db.query(RuleChangeRequest)\
+                    .options(
+                        joinedload(RuleChangeRequest.workload),
+                        joinedload(RuleChangeRequest.rule),
+                        joinedload(RuleChangeRequest.admin)
+                    )\
+                    .filter(RuleChangeRequest.user_id == current_user.id)
+            else:  # admin
+                 query = self.db.query(RuleChangeRequest)\
+                    .options(
+                        joinedload(RuleChangeRequest.workload),
+                        joinedload(RuleChangeRequest.rule),
+                        joinedload(RuleChangeRequest.admin)
+                    )\
+                    .filter(RuleChangeRequest.admin_id == current_user.id)
+            
+            if status:
+                print("Debug in dao:", status)
+                query = query.filter(RuleChangeRequest.status == status)
+
+            return query.order_by(RuleChangeRequest.created_at.desc()).limit(limit).all()
         except Exception as e:
-            logger.error(f"❌ Error getting requests by user {user_id}: {e}")
+            logger.error(f"❌ Error getting requests by user {current_user.id}: {e}")
             return []
-    
+
     def get_by_workload(
-        self, 
-        workload_id: int, 
+        self,
+        workload_id: int,
         status: Optional[str] = None,
         limit: int = 50
     ) -> List[RuleChangeRequest]:
@@ -120,21 +134,20 @@ class RuleChangeRequestDAO:
             raise
     
     # ===== DELETE =====
-    def delete(self, request_id: int) -> bool:
+    def delete(self, request: RuleChangeRequest) -> bool:
         """Xóa RuleChangeRequest"""
         try:
-            request = self.get_by_id(request_id)
             if request:
                 self.db.delete(request)
                 self.db.commit()
-                logger.info(f"✅ Deleted RuleChangeRequest ID: {request_id}")
+                logger.info(f"✅ Deleted RuleChangeRequest ID: {request.id}")
                 return True
             return False
         except Exception as e:
             self.db.rollback()
-            logger.error(f"❌ Error deleting RuleChangeRequest {request_id}: {e}")
+            logger.error(f"❌ Error deleting RuleChangeRequest {request.id}: {e}")
             return False
-    
+
     # ===== UTILITY =====
     def has_pending_request_for_rule(self, rule_id: int) -> bool:
       

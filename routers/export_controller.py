@@ -25,16 +25,14 @@ async def export_compliance_to_excel(
     export_service: ExportService = Depends(get_export_service),
     current_user = Depends(require_user())
 ):
-    """
-    Xuất báo cáo compliance results trong ngày hiện tại ra file Excel
-    """
+  
     try:
         
         search_params = None
         if keyword or list_workload_id or status:
             search_params = ComplianceSearchParams(
                 list_workload_id=list_workload_id,
-                keyword=keyword,  # keyword chi tim kiem theo nhom node 
+                keyword=keyword,  
                 status=status,
                 page=1,
                 page_size=100

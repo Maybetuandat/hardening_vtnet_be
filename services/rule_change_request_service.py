@@ -42,7 +42,7 @@ class RuleChangeRequestService:
         self, 
         rule_id: int,
         new_rule_data: Dict[str, Any],
-        current_user
+        current_user: User
     ) -> RuleChangeRequestResponse:
         try:
             existing_rule = self.rule_dao.get_by_id(rule_id)
@@ -67,6 +67,7 @@ class RuleChangeRequestService:
                 request_type='update',
                 old_value=old_value,
                 new_value=new_value,
+                admin_id=current_user.id_manager,
                 status='pending'
             )
             
@@ -90,7 +91,7 @@ class RuleChangeRequestService:
         self,
         workload_id: int,
         new_rule_data: Dict[str, Any],
-        current_user
+        current_user: User
     ) -> RuleChangeRequestResponse:
         """
         User tạo request CREATE rule mới
@@ -120,14 +121,17 @@ class RuleChangeRequestService:
             # Step 3: Create RuleChangeRequest
             request = RuleChangeRequest(
                 workload_id=workload_id,
-                rule_id=None,  # No rule_id for CREATE
+                rule_id=None, 
                 user_id=current_user.id,
                 request_type='create',
-                old_value=None,  # No old value for CREATE
+                admin_id=current_user.id_manager,
+                old_value=None, 
                 new_value=new_value,
                 status='pending'
             )
             
+            
+            print("Debug request:", request.admin_id)
             created_request = self.request_dao.create(request)
             
             # Step 4: Notify admins
@@ -253,9 +257,9 @@ class RuleChangeRequestService:
         requests = self.request_dao.get_all_pending()
         return [self._convert_to_response(r) for r in requests]
     
-    def get_user_requests(self, user_id: int) -> List[RuleChangeRequestResponse]:
+    def get_user_requests(self, current_user: User, status: Optional[str] = None) -> List[RuleChangeRequestResponse]:
         """User xem lịch sử requests của mình"""
-        requests = self.request_dao.get_by_user(user_id)
+        requests = self.request_dao.get_by_user(current_user, status)
         return [self._convert_to_response(r) for r in requests]
     
     def get_workload_requests(
@@ -485,14 +489,14 @@ class RuleChangeRequestService:
         except Exception as e:
             logger.error(f"❌ Error notifying user: {e}")
     def delete_request(self, request_id: int, current_user: User):
-        """Xoá request (nếu cần)"""
         try:
             request = self.request_dao.get_by_id(request_id, user_id=current_user.id)
             if not request:
                 raise ValueError(f"Request ID {request_id} not found")
             
+            
             self.request_dao.delete(request)
-            logger.info(f"✅ Deleted request ID {request_id}")
+            logger.info(f"✅ Deleted request ID {request.id}")
             
         except ValueError as e:
             logger.error(f"❌ Validation error: {e}")

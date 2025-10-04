@@ -60,21 +60,19 @@ class ExportService:
         for result in results:
             server_ip = "N/A"
             workload_name = "N/A"
-            server_hostname = "N/A"
             
             if result.server:
-                server_ip = result.server.ip_address or "N/A"
-                server_hostname = result.server.hostname or "N/A"
+                server_ip = result.server.name or "N/A"
+                
                 if result.server.workload:
                     workload_name = result.server.workload.name or "N/A"
 
             excel_data.append({
                 "ID": result.id,
                 "Server IP": server_ip,
-                "Server Hostname": server_hostname,
                 "Workload Name": workload_name,
-                "Compliane Name": result.name,
-                "Status": result.status,
+                "Compliance Name": result.name,
+                "Status": result.status if result.status else "N/A",
                 "Total Rules": result.total_rules,
                 "Passed Rules": result.passed_rules,
                 "Failed Rules": result.failed_rules,
@@ -84,21 +82,38 @@ class ExportService:
                 "Detail Error": result.detail_error or ""
             })
 
-        
+        # Tạo DataFrame
         df = pd.DataFrame(excel_data)
-
         
+        # Xử lý trường hợp không có dữ liệu
+        if df.empty:
+            df = pd.DataFrame([{
+                "ID": "",
+                "Server IP": "",
+                "Workload Name": "",
+                "Compliance Name": "",
+                "Status": "",
+                "Total Rules": "",
+                "Passed Rules": "",
+                "Failed Rules": "",
+                "Score": "",
+                "Scan Date": "",
+                "Updated At": "",
+                "Detail Error": ""
+            }])
+        
+        # Ghi vào Excel
         df.to_excel(writer, sheet_name='Compliance Overview', index=False)
         
-        
+        # Format sheet
         self._format_compliance_overview_sheet(writer, df)
 
     def _format_compliance_overview_sheet(self, writer, df):
-        
+        """Format sheet tổng quan compliance"""
         workbook = writer.book
         worksheet = writer.sheets['Compliance Overview']
         
-            # Tạo format cho header
+        # Tạo format cho header
         header_format = workbook.add_format({
             'bold': True,
             'text_wrap': True,
@@ -107,7 +122,7 @@ class ExportService:
             'border': 1
         })
         
-        
+        # Format cho các trạng thái
         status_formats = {
             'completed': workbook.add_format({'bg_color': '#C6EFCE', 'font_color': '#006100'}),
             'failed': workbook.add_format({'bg_color': '#FFC7CE', 'font_color': '#9C0006'}),
@@ -120,18 +135,23 @@ class ExportService:
             worksheet.write(0, col_num, value, header_format)
         
         # Format status column với màu sắc
-        status_col_index = df.columns.get_loc('Status')
-        for row_num in range(1, len(df) + 1):
-            status_value = df.iloc[row_num - 1]['Status']
-            if status_value in status_formats:
-                worksheet.write(row_num, status_col_index, status_value, status_formats[status_value])
+        if 'Status' in df.columns and not df.empty:
+            status_col_index = df.columns.get_loc('Status')
+            for row_num in range(1, len(df) + 1):
+                if row_num - 1 < len(df):
+                    status_value = df.iloc[row_num - 1]['Status']
+                    if status_value in status_formats:
+                        worksheet.write(row_num, status_col_index, status_value, status_formats[status_value])
         
         # Auto-adjust column widths
         for i, col in enumerate(df.columns):
-            column_len = max(
-                df[col].astype(str).map(len).max(),
-                len(str(col))
-            )
+            if not df.empty:
+                column_len = max(
+                    df[col].astype(str).map(len).max(),
+                    len(str(col))
+                )
+            else:
+                column_len = len(str(col))
             worksheet.set_column(i, i, min(column_len + 2, 40))
         
         # Freeze panes
@@ -153,12 +173,11 @@ class ExportService:
             
             # Thông tin server và workload
             server_ip = "N/A"
-            server_hostname = "N/A"
             workload_name = "N/A"
             
             if compliance.server:
-                server_ip = compliance.server.ip_address or "N/A"
-                server_hostname = compliance.server.hostname or "N/A"
+                server_ip = compliance.server.name or "N/A"
+                
                 if compliance.server.workload:
                     workload_name = compliance.server.workload.name or "N/A"
             
@@ -168,13 +187,12 @@ class ExportService:
 
                 failed_rules_data.append({
                     "Compliance ID": compliance.id,
-                    
                     "Server IP": server_ip,
-                    "Server Hostname": server_hostname,
+                    "Status": compliance.status if compliance.status else "N/A",
                     "Workload Name": workload_name,
                     "Rule Name": rule.name if rule else "N/A",
                     "Output": rule_result.output or "",
-                    "Parameters Rule": rule.parameters if rule else {},
+                    "Parameters Rule": str(rule.parameters) if rule and rule.parameters else "",
                     "Error Message": rule_result.message or "",
                     "Error Details": rule_result.details_error or "",
                     "Scan Date": compliance.scan_date.strftime("%Y-%m-%d %H:%M:%S") if compliance.scan_date else "",
@@ -184,21 +202,20 @@ class ExportService:
         # Tạo DataFrame cho failed rules
         failed_rules_df = pd.DataFrame(failed_rules_data)
         
-        # Nếu không có failed rules nào, tạo một row thông báo
+        # Nếu không có failed rules nào, tạo một row rỗng
         if failed_rules_df.empty:
             failed_rules_df = pd.DataFrame([{
-                 "Compliance ID": "",
-                    
-                    "Server IP": "",
-                    "Server Hostname": "",
-                    "Workload Name": "",
-                    "Rule Name": "",
-                    "Output": "",
-                    "Parameters Rule":  {},
-                    "Error Message":  "",
-                    "Error Details":  "",
-                    "Scan Date": "",
-                    "Rule Updated At":  ""
+                "Compliance ID": "",
+                "Server IP": "",
+                "Status": "",
+                "Workload Name": "",
+                "Rule Name": "",
+                "Output": "",
+                "Parameters Rule": "",
+                "Error Message": "",
+                "Error Details": "",
+                "Scan Date": "",
+                "Rule Updated At": ""
             }])
         
         # Ghi dữ liệu vào sheet
@@ -222,42 +239,26 @@ class ExportService:
             'border': 1
         })
         
-        # Format cho compliance status
-        compliance_status_formats = {
+        # Format cho các trạng thái compliance
+        status_formats = {
             'completed': workbook.add_format({'bg_color': '#C6EFCE', 'font_color': '#006100'}),
             'failed': workbook.add_format({'bg_color': '#FFC7CE', 'font_color': '#9C0006'}),
             'pending': workbook.add_format({'bg_color': '#FFEB9C', 'font_color': '#9C5700'}),
             'running': workbook.add_format({'bg_color': '#B4C7E7', 'font_color': '#1F4E79'})
         }
         
-        # Format cho rule status
-        rule_status_format = workbook.add_format({
-            'bg_color': '#FFC7CE',
-            'font_color': '#9C0006',
-            'bold': True
-        })
-        
         # Format header row
         for col_num, value in enumerate(df.columns.values):
             worksheet.write(0, col_num, value, header_format)
         
-        # Format các cột đặc biệt
-        if 'Compliance Status' in df.columns:
-            compliance_status_col_index = df.columns.get_loc('Compliance Status')
+        # Format Status column với màu sắc
+        if 'Status' in df.columns and not df.empty:
+            status_col_index = df.columns.get_loc('Status')
             for row_num in range(1, len(df) + 1):
                 if row_num - 1 < len(df):
-                    status_value = df.iloc[row_num - 1]['Compliance Status']
-                    if status_value in compliance_status_formats:
-                        worksheet.write(row_num, compliance_status_col_index, status_value, 
-                                      compliance_status_formats[status_value])
-        
-        if 'Rule Status' in df.columns:
-            rule_status_col_index = df.columns.get_loc('Rule Status')
-            for row_num in range(1, len(df) + 1):
-                if row_num - 1 < len(df):
-                    rule_status_value = df.iloc[row_num - 1]['Rule Status']
-                    if rule_status_value == 'failed':
-                        worksheet.write(row_num, rule_status_col_index, rule_status_value, rule_status_format)
+                    status_value = df.iloc[row_num - 1]['Status']
+                    if status_value in status_formats:
+                        worksheet.write(row_num, status_col_index, status_value, status_formats[status_value])
         
         # Auto-adjust column widths
         for i, col in enumerate(df.columns):
@@ -266,13 +267,16 @@ class ExportService:
                     df[col].astype(str).map(len).max() if len(df) > 0 else 0,
                     len(str(col))
                 )
-                worksheet.set_column(i, i, min(column_len + 2, 50))  # Tăng max width cho error details
+            else:
+                column_len = len(str(col))
+            worksheet.set_column(i, i, min(column_len + 2, 50))  # Tăng max width cho error details
         
         # Freeze panes
         worksheet.freeze_panes(1, 0)
         
         # Thêm filter cho tất cả các cột
-        worksheet.autofilter(0, 0, len(df), len(df.columns) - 1)
+        if not df.empty:
+            worksheet.autofilter(0, 0, len(df), len(df.columns) - 1)
 
     def get_export_filename(self) -> str:
         """Tạo tên file Excel với ngày hiện tại"""
