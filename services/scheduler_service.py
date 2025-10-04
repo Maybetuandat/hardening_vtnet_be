@@ -7,6 +7,7 @@ from apscheduler.triggers.cron import CronTrigger
 from sqlalchemy.orm import Session
 
 from dao.setting_dao import SettingsDAO
+from models.user import User
 from schemas.compliance_result import ComplianceScanRequest
 from schemas.setting import ScanScheduleRequest, ScanScheduleResponse
 from services import request_scan_service
@@ -40,14 +41,14 @@ class SchedulerService:
             self.scheduler.shutdown()
             logging.info(" APScheduler stopped")
 
-    def update_scan_schedule(self, request: ScanScheduleRequest) -> ScanScheduleResponse:
-        
+    def update_scan_schedule(self, request: ScanScheduleRequest, current_user: Optional[User] = None) -> ScanScheduleResponse:
+
         try:
             
             self.settings_dao.set_scan_schedule(request.scan_time, request.is_enabled)
             
             
-            self._reschedule_scan_job(request.scan_time, request.is_enabled)
+            self._reschedule_scan_job(request.scan_time, request.is_enabled, current_user)
             
             
             next_run = self._calculate_next_run_time(request.scan_time) if request.is_enabled else None
@@ -93,41 +94,35 @@ class SchedulerService:
         except Exception as e:
             logging.error(f"Error loading scan schedule from DB: {str(e)}")
 
-    def _reschedule_scan_job(self, scan_time: str, is_enabled: bool):
-        # Remove existing job nếu có
+    def _reschedule_scan_job(self, scan_time: str, is_enabled: bool, current_user: Optional[User] = None):
         if self.scheduler.get_job(self.scan_job_id):
             self.scheduler.remove_job(self.scan_job_id)
-            logging.info(f" Removed existing scan job")
+            logging.info(f"🗑 Removed existing scan job")
 
         if is_enabled:
-            # Parse time
             hour, minute = map(int, scan_time.split(':'))
             
-            # Add new job
             self.scheduler.add_job(
                 func=self._execute_hardening_scan,
                 trigger=CronTrigger(hour=hour, minute=minute),
+                args=[current_user], 
                 id=self.scan_job_id,
                 name=f"Daily Hardening Scan at {scan_time}",
                 replace_existing=True,
-                misfire_grace_time=300 
+                misfire_grace_time=300
             )
             
-            logging.info(f" Scheduled daily hardening scan at {scan_time}")
-        else:
-            logging.info("Scan schedule disabled - no job added")
+            logging.info(f"⏰ Scheduled daily hardening scan at {scan_time}")
 
-    def _execute_hardening_scan(self):
-        
+    def _execute_hardening_scan(self, current_user: Optional[User] = None):
+
         try:
             logging.info(" Starting scheduled hardening scan...")
             
             scan_request = ComplianceScanRequest(batch_size=10)
-            
-            self.scan_service.start_compliance_scan(scan_request)
-            
-           
-                
+
+            self.scan_service.start_compliance_scan(scan_request, current_user=current_user)
+
                 
             self._save_last_run_time()
                 

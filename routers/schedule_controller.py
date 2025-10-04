@@ -42,7 +42,7 @@ def update_scan_schedule(
         print(f"🔄 Updating scan schedule: {request.scan_time}, enabled: {request.is_enabled}")
         
         # Update DB + Reschedule APScheduler job  
-        result = scheduler_service.update_scan_schedule(request)
+        result = scheduler_service.update_scan_schedule(request, current_user)
         
         # Debug: Verify job was rescheduled
         scan_job = scheduler_service.scheduler.get_job(scheduler_service.scan_job_id)

@@ -1,5 +1,5 @@
 import logging
-from typing import List
+from typing import List, Optional
 from datetime import datetime
 from sqlalchemy.orm import Session
 import uuid
@@ -29,7 +29,7 @@ class ScanService:
     def start_compliance_scan(
         self, 
         scan_request: ComplianceScanRequest, 
-        current_user: User
+        current_user: Optional[User] = None
     ) -> ComplianceScanResponse:
         try:
             scan_request_id = str(uuid.uuid4())
