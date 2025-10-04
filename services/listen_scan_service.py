@@ -4,9 +4,13 @@ from sqlalchemy.orm import Session
 from datetime import datetime
 from dao.compliance_result_dao import ComplianceDAO
 from dao.rule_result_dao import RuleResultDAO
+from dao.instance_dao import InstanceDAO
 from models.compliance_result import ComplianceResult
+from models.instance import Instance
 from models.rule_result import RuleResult
 from schemas.scan_message import ScanResponseMessage
+from schemas.compliance_result import ComplianceResultResponse
+from services.sse_notification import sse_notification_service
 from utils.external_notifier_helper import send_external_notification
 
 logger = logging.getLogger(__name__)
@@ -19,6 +23,7 @@ class ScanResponseListener:
         self.db = db
         self.compliance_dao = ComplianceDAO(db)
         self.rule_result_dao = RuleResultDAO(db)
+        self.instance_dao = InstanceDAO(db)
     
     def process_scan_response(self, response: ScanResponseMessage) -> bool:
         """
@@ -47,9 +52,12 @@ class ScanResponseListener:
                 self._save_rule_results(compliance_result.id, response.rule_results)
                 logger.info(f"✅ Saved {len(response.rule_results)} rule results")
             
-            # 3. Gửi thông báo nếu scan failed hoặc có nhiều rules failed
+            # 3. Gửi thông báo external (Slack/Email) nếu có vấn đề
             if response.status == "failed" or response.rules_failed > 0:
                 self._send_scan_notification(response, compliance_result)
+            
+            # 4. Gửi thông báo SSE đến frontend cho user
+            self._notify_user_via_sse(response, compliance_result)
             
             logger.info(f"💾 Successfully processed scan response for {response.instance_name}")
             return True
@@ -61,8 +69,6 @@ class ScanResponseListener:
     def _save_compliance_result(self, response: ScanResponseMessage) -> Optional[ComplianceResult]:
         """Lưu compliance result - CHỈ DÙNG CÁC FIELD CÓ TRONG MODEL"""
         try:
-           
-            
             # Tính score
             score = 0
             if response.total_rules > 0:
@@ -103,8 +109,6 @@ class ScanResponseListener:
             rule_result_objects = []
             
             for result_data in rule_results_data:
-                from datetime import datetime
-                
                 rule_result = RuleResult(
                     compliance_result_id=compliance_result_id,
                     rule_id=result_data.rule_id,
@@ -128,7 +132,7 @@ class ScanResponseListener:
             raise
     
     def _send_scan_notification(self, response: ScanResponseMessage, compliance_result: ComplianceResult):
-        """Gửi thông báo khi scan có vấn đề"""
+        """Gửi thông báo external (Slack/Email) khi scan có vấn đề"""
         try:
             if response.status == "failed":
                 title = f"🔴 Scan Failed: {response.instance_name}"
@@ -163,7 +167,70 @@ Scan Request ID: {response.scan_request_id}
                 }
             )
             
-            logger.info(f"📤 Sent notification for {response.instance_name}")
+            logger.info(f"📤 Sent external notification for {response.instance_name}")
             
         except Exception as e:
             logger.error(f"❌ Error sending scan notification: {e}", exc_info=True)
+    
+    def _notify_user_via_sse(self, response: ScanResponseMessage, compliance_result: ComplianceResult):
+        """
+        Gửi notification SSE đến frontend cho user sở hữu instance
+        
+        Được gọi sau khi scan hoàn tất để cập nhật UI real-time
+        """
+        try:
+            # Lấy instance để biết user_id
+            instance = self.instance_dao.get_by_id(response.instance_id)
+            if not instance:
+                logger.warning(f"⚠️ Instance {response.instance_id} not found, cannot notify via SSE")
+                return
+            
+            # Lấy user_id từ instance
+            user_id = instance.user_id
+            if not user_id:
+                logger.warning(f"⚠️ Instance {response.instance_id} has no owner, cannot notify via SSE")
+                return
+            
+            # Tạo response object để gửi đến frontend
+            compliance_response = self._convert_to_response(compliance_result, instance)
+            
+            # Tạo message theo format SSE
+            message = {
+                "type": compliance_result.status,  # "completed", "failed", etc.
+                "data": compliance_response.dict(),
+                "timestamp": compliance_result.updated_at.isoformat() if compliance_result.updated_at else datetime.now().isoformat()
+            }
+            
+            # Gửi cho user cụ thể qua SSE
+            sse_notification_service.notify_user(
+                user_id=user_id,
+                message=message
+            )
+            
+            logger.info(f"✅ Sent SSE notification to user {user_id} for compliance scan '{compliance_result.status}' on instance {instance.name}")
+            
+        except Exception as e:
+            logger.error(f"❌ Error sending SSE notification: {e}", exc_info=True)
+    
+    def _convert_to_response(self, compliance_result: ComplianceResult, instance: Instance) -> ComplianceResultResponse:
+        """Convert ComplianceResult model sang ComplianceResultResponse schema"""
+        # Lấy workload name nếu có
+        workload_name = None
+        if instance and hasattr(instance, 'workload') and instance.workload:
+            workload_name = instance.workload.name
+        
+        return ComplianceResultResponse(
+            id=compliance_result.id,
+            name=compliance_result.name,
+            instance_id=compliance_result.instance_id,
+            instance_ip=instance.name if instance else "Unknown",
+            status=compliance_result.status,
+            total_rules=compliance_result.total_rules,
+            passed_rules=compliance_result.passed_rules,
+            failed_rules=compliance_result.failed_rules,
+            score=round(compliance_result.score, 2),
+            detail_error=compliance_result.detail_error,
+            scan_date=compliance_result.scan_date if compliance_result.scan_date else datetime.now(),
+            updated_at=compliance_result.updated_at if compliance_result.updated_at else datetime.now(),
+            workload_name=workload_name
+        )
