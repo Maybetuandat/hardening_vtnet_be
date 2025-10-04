@@ -19,7 +19,7 @@ from schemas.rule_change_request import (
     RuleChangeRequestUpdate,
     RuleChangeRequestResponse
 )
-from services.sse_notification import notification_service
+from services.sse_notification import sse_notification_service
 from utils.auth import require_user
 from utils.external_notifier_helper import notify_rule_change_request, notify_rule_change_result
 
@@ -377,7 +377,7 @@ class RuleChangeRequestService:
                 created_notifications = self.notification_dao.create_batch([notification])
                 
                 for notif in created_notifications:
-                    notification_service.notify_user(
+                    sse_notification_service.notify_user(
                         user_id=notif.recipient_id,
                         message={
                             "type": "rule_change_request",
@@ -460,7 +460,7 @@ class RuleChangeRequestService:
             
             created = self.notification_dao.create(notification)
             
-            notification_service.notify_user(
+            sse_notification_service.notify_user(
                 user_id=requester.id,
                 message={
                     "type": f"rule_change_{result}",
@@ -567,7 +567,7 @@ class RuleChangeRequestService:
             created_notification = self.notification_dao.create(notification)
             
             # Push via SSE
-            notification_service.notify_compliance_completed_sync({
+            sse_notification_service.notify_compliance_completed_sync({
                 "type": f"rule_change_{result}",
                 "notification_id": created_notification.id,
                 "title": title,

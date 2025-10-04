@@ -121,4 +121,4 @@ class SSENotificationService:
             
             logger.info(f"Broadcast sent to {total_sent} connections")
 
-notification_service = SSENotificationService()
+sse_notification_service = SSENotificationService()

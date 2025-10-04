@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Query
 from fastapi.responses import StreamingResponse
 from config.config_database import get_db
 from schemas.common import SuccessResponse
-from services.sse_notification import notification_service
+from services.sse_notification import sse_notification_service
 from utils.auth import require_user
 from schemas.notification import (
     NotificationResponse,
@@ -41,7 +41,7 @@ async def compliance_notifications_stream(
         
         try:
             # Add client với user_id
-            await notification_service.add_client(current_user.id, client_queue)
+            await sse_notification_service.add_client(current_user.id, client_queue)
             
             # Send connection confirmation
             yield f"data: {json.dumps({'type': 'connected', 'message': 'SSE connected successfully', 'user_id': current_user.id})}\n\n"
@@ -52,7 +52,7 @@ async def compliance_notifications_stream(
                 
                 try:
                     # Process queued notifications
-                    await notification_service.process_queued_notifications()
+                    await sse_notification_service.process_queued_notifications()
                     
                     # Wait for message with timeout
                     message = await asyncio.wait_for(client_queue.get(), timeout=5.0)
@@ -71,7 +71,7 @@ async def compliance_notifications_stream(
         except Exception as e:
             logger.error(f"SSE connection error: {e}")
         finally:
-            await notification_service.remove_client(current_user.id, client_queue)
+            await sse_notification_service.remove_client(current_user.id, client_queue)
     
     return StreamingResponse(
         event_stream(),

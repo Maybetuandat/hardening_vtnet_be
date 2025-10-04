@@ -22,7 +22,7 @@ from schemas.compliance_result import (
      ComplianceResultListResponse,
     ComplianceSearchParams, RuleResultResponse
 )
-from services.sse_notification import notification_service
+from services.sse_notification import sse_notification_service
 
 from services.rule_result_service import RuleResultService
 
@@ -208,7 +208,7 @@ class ComplianceResultService:
             }
             
             # ✅ GỬI CHO USER CỤ THỂ (không broadcast)
-            notification_service.notify_user(
+            sse_notification_service.notify_user(
                 user_id=user_id,  # ✅ Gửi đúng cho owner của instance
                 message=message
             )
