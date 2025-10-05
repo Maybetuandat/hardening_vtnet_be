@@ -1,4 +1,5 @@
 from datetime import datetime
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from typing import Optional, List, Tuple
 
@@ -22,9 +23,15 @@ class RuleDAO:
         except Exception as e:
             self.db.rollback()
             raise e
-    
+    def count_rules_in_workload(self, workload_id: int) -> int:
+        try:
+            return self.db.query(func.count(Rule.id)).filter(Rule.workload_id == workload_id).scalar()
+        except Exception as e:
+            print(f"Error counting rules in workload {workload_id}: {str(e)}")
+            return 0
+
     def search_rules(
-            self, 
+            self,
             keyword: Optional[str] = None,
             workload_id: Optional[int] = None,
             skip : int = 0,

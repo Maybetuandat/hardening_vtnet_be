@@ -1,5 +1,6 @@
 from sqlalchemy.orm import Session
 from typing import Optional, List
+from dao.instance_dao import InstanceDAO
 from dao.os_dao import OsDao
 from dao.rule_dao import RuleDAO
 from dao.workload_dao import WorkLoadDAO
@@ -25,6 +26,7 @@ class WorkloadService:
         self.db = db
         self.rule_dao = RuleDAO(db)
         self.os_dao = OsDao(db)
+        self.instance_dao = InstanceDAO(db)
     
     def get_all_workloads(self, page: int = 1, page_size: int = 10) -> WorkLoadListResponse:
         if page < 1:
@@ -218,6 +220,8 @@ class WorkloadService:
         
 
         os_model = self.os_dao.get_by_id(workload.os_id)
+        count_instances = self.instance_dao.count_instances_in_workload(workload.id)
+        count_rules = self.rule_dao.count_rules_in_workload(workload.id)
         return WorkLoadResponse(
             id=workload.id,
             name=workload.name,
@@ -225,8 +229,9 @@ class WorkloadService:
             created_at=workload.created_at,
             updated_at=workload.updated_at,
             os_name=os_model.name if os_model else None,
-            os_id=workload.os_id
-            
+            os_id=workload.os_id,
+            count_instances=count_instances,
+            count_rules=count_rules
         )
     
     def _validate_workload_create_data(self, workload_data: WorkLoadCreate) -> None:

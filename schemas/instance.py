@@ -46,7 +46,7 @@ class InstanceResponse(BaseModel):
     id: int
     name: str
     ssh_port: int
-
+    os_version: Optional[str] = None
     workload_id: Optional[int]  
     workload_name: Optional[str] = None  
     created_at: datetime
@@ -71,6 +71,7 @@ class InstanceSearchParams(BaseModel):
     size: int = Field(10, ge=1, le=100)
     user_id: Optional[int] = None
     instance_not_in_workload: Optional[bool] = None
+    os_id: Optional[int] = None
 
 class InstanceResponseFromDcim(BaseModel):
     id : int 

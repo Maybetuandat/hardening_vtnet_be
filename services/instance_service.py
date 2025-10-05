@@ -57,7 +57,8 @@ class InstanceService:
             skip=skip,
             limit=page_size, 
             user_id = search_params.user_id,
-            instance_not_in_workload = search_params.instance_not_in_workload
+            instance_not_in_workload = search_params.instance_not_in_workload, 
+            os_id = search_params.os_id
         )
         
         total_pages = math.ceil(total / page_size) if total > 0 else 0
@@ -221,7 +222,8 @@ class InstanceService:
             workload_id=instance.workload_id,
             created_at=instance.created_at,
             updated_at=instance.updated_at,
-            nameofmanager=instance.user.username if instance.user else None
+            nameofmanager=instance.user.username if instance.user else None,
+            os_version=instance.os.display if instance.os else None
         )
 
     def update_status(self, instance_id: int, status: bool) -> bool:
@@ -235,3 +237,8 @@ class InstanceService:
             return True
         except Exception as e:
             raise Exception(f"Failed to update instance status: {str(e)}")
+    def count_instances_in_workload(self, workload_id: int) -> int:
+        try:
+            return self.dao.count_instances_in_workload(workload_id)
+        except Exception as e:
+            raise Exception(f"Failed to count instances in workload: {str(e)}")

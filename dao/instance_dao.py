@@ -47,6 +47,7 @@ class InstanceDAO:
         skip: int = 0,
         limit: int = 10,
         user_id: Optional[int] = None,
+        os_id: Optional[int] = None,
         instance_not_in_workload: Optional[bool] = None
     ) -> Tuple[List[Instance], int]:
         query = self.db.query(Instance)
@@ -57,6 +58,8 @@ class InstanceDAO:
             query = query.filter(
                 Instance.name.ilike(f"%{keyword.strip()}%")
             )
+        if os_id is not None:
+            query = query.filter(Instance.os_id == os_id)
         if instance_not_in_workload is True:
             query = query.filter(Instance.workload_id == None)
         if user_id is not None:
@@ -201,3 +204,9 @@ class InstanceDAO:
         except Exception as e:
             print(f"Error getting instances by IDs with relationships: {str(e)}")
             return []
+    def count_instances_in_workload(self, workload_id: int) -> int:
+        try:
+            return self.db.query(func.count(Instance.id)).filter(Instance.workload_id == workload_id).scalar()
+        except Exception as e:
+            print(f"Error counting instances in workload {workload_id}: {str(e)}")
+            return 0

@@ -68,3 +68,4 @@ class WorkLoadDAO:
     def check_ip_address_exists(self, name: str) -> bool:
         return self.db.query(WorkLoad).filter(WorkLoad.name == name).count() > 0
     
+    
