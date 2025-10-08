@@ -15,6 +15,7 @@ from routers import (
     dcim_controller,
     export_controller,
     fix_controller,
+    fix_request_controller,
     instance_controller,
     notification_controller,
     os_controller,
@@ -194,6 +195,7 @@ app.include_router(user_controller.router)
 app.include_router(fix_controller.router)
 app.include_router(dcim_controller.router)
 app.include_router(rule_change_request_controller.router)
+app.include_router(fix_request_controller.router)
 
 # ===================== RUN =====================
 HOST = os.getenv("SERVER_HOST", "127.0.0.1")

@@ -181,50 +181,7 @@ class FixService:
             "fix_details": fix_details
         }
 
-    def _parse_bash_script_to_tasks(self, script: str, base_task_name: str) -> List[Dict]:
-        """
-        Phân tách bash script thành các Ansible tasks riêng biệt
-        """
-        tasks = []
-        lines = script.strip().split('\n')
-        
-        command_buffer = []
-        task_counter = 1
-        
-        for line in lines:
-            line = line.strip()
-            
-            # Bỏ qua các dòng comment, shebang, và set -e
-            if not line or line.startswith('#') or line == 'set -e':
-                continue
-            
-            # Kiểm tra nếu là lệnh kết thúc (không có backslash cuối)
-            if line.endswith('\\'):
-                command_buffer.append(line[:-1].strip())
-                continue
-            else:
-                command_buffer.append(line)
-            
-            # Tạo command hoàn chỉnh
-            full_command = ' '.join(command_buffer).strip()
-            command_buffer = []
-            
-            if full_command:
-                # Tạo task name mô tả
-                task_name = self._generate_task_description(full_command, base_task_name, task_counter)
-                
-                task = {
-                    'name': task_name,
-                    'shell': full_command,
-                    'ignore_errors': False,  # Dừng nếu có lỗi
-                    'become': True,
-                    'register': f"step_{task_counter}_result"
-                }
-                tasks.append(task)
-                task_counter += 1
-        
-        return tasks
-
+   
     def _generate_task_description(self, command: str, base_name: str, counter: int) -> str:
         """
         Tạo mô tả ngắn gọn cho task dựa trên command
@@ -281,21 +238,17 @@ class FixService:
                     fix_command = fix_data["fix_command"]
                     base_task_name = fix_data["task_name"]
                     
-                    # Phân tách script thành các tasks riêng biệt
-                    sub_tasks = self._parse_bash_script_to_tasks(fix_command, base_task_name)
+                   
                     
-                    if sub_tasks:
-                        playbook_tasks.extend(sub_tasks)
-                    else:
-                        # Fallback: nếu không parse được, dùng task đơn
-                        task = {
+                  
+                    task = {
                             'name': base_task_name,
                             'shell': fix_command,
                             'ignore_errors': True,
                             'become': True,
                             'register': f"result_{fix_data['rule_result_id']}"
                         }
-                        playbook_tasks.append(task)
+                    playbook_tasks.append(task)
                     
                     # Thêm task verification (chạy rule command để kiểm tra)
                     verify_task = {
