@@ -7,11 +7,13 @@ import logging
 from dao.fix_request_dao import FixRequestDAO
 from models.fix_request import FixRequest
 from models.user import User
+from schemas.fix_execution import ServerFixResponse
 from schemas.fix_request import (
     FixRequestCreate,
     FixRequestResponse,
     FixRequestApprove
 )
+from services.fix_service import FixService
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +24,7 @@ class FixRequestService:
     def __init__(self, db: Session):
         self.db = db
         self.fix_request_dao = FixRequestDAO(db)
+        self.fix_service = FixService(db)
     
     def create_fix_request(
         self,
@@ -88,10 +91,7 @@ class FixRequestService:
             updated_request = self.fix_request_dao.update(fix_request)
             logger.info(f"✅ Admin {admin_user.username} approved fix request ID {request_id}")
             
-            # TODO: Thực thi fix (gọi service khác hoặc celery task)
-            # self._execute_fix(updated_request)
-            
-            # TODO: Gửi notification cho user tạo request
+            ServerFixResponse = self.fix_service.fix_request_from_admin(request_id)
             
             return self._convert_to_response(updated_request)
             

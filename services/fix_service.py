@@ -8,14 +8,17 @@ import re
 from typing import Dict, List, Optional, Any
 
 from sqlalchemy.orm import Session
+from dao.fix_request_dao import FixRequestDAO
 from dao.rule_dao import RuleDAO
 from dao.rule_result_dao import RuleResultDAO
 from dao.instance_dao import InstanceDAO
 from dao.compliance_result_dao import ComplianceDAO
 from dao.fix_action_log_dao import FixActionLogDAO
+from dao.user_dao import UserDAO
 from models.fix_action_log import FixActionLog
 from models.user import User
 from schemas.fix_execution import ServerFixRequest, ServerFixResponse, SingleRuleFixResult
+from schemas.fix_request import FixRequestResponse
 from services.compilance_result_service import ComplianceResultService
 
 class FixService:
@@ -28,22 +31,40 @@ class FixService:
         self.fix_log_dao = FixActionLogDAO(db)
         self.ansible_timeout = 30
         self.compliance_result_service = ComplianceResultService(db)
+        self.fix_request_dao = FixRequestDAO(db)
+        self.user_dao = UserDAO(db)
+        
         
         # User context for logging
         self.user_id = user_id
         self.username = username
         self.ip_address = ip_address
         self.user_agent = user_agent
+    
+    def fix_request_from_admin(self, request_id: int) -> ServerFixResponse:
+        fix_request = self.fix_request_dao.get_by_id(request_id)
+        request = ServerFixRequest(
+            instance_id=fix_request.instance_id,
+            rule_result_ids=[fix_request.rule_result_id]
+        )
+        
+        user = self.user_dao.get_by_username(fix_request.created_by)
+        self.user_id = user.id
+        self.username = user.username
+        return self.execute_server_fixes(request, user)
+        
 
-    def execute_server_fixes(self, request: ServerFixRequest, current_user : User) -> ServerFixResponse:
+    def execute_server_fixes(self, request: ServerFixRequest, current_user: User) -> ServerFixResponse:
         try:
             instance = self.instance_dao.get_by_id(request.instance_id)
             if not instance:
                 raise ValueError(f"Instance with ID {request.instance_id} not found")
 
+            print("Debug user", current_user.username, current_user.id)
             # Validate and prepare fix data
             fix_data = self._prepare_fix_data(request.rule_result_ids, request.instance_id)
             
+            print("is calling")
             if not fix_data["valid_fixes"]:
                 return ServerFixResponse(
                     message="No valid fixes to execute",
@@ -157,6 +178,8 @@ class FixService:
                 ))
                 continue
             
+
+            print("Debug suggested fix", rule.suggested_fix)
             valid_fixes.append({
                 "rule_result_id": rule_result_id,
                 "compliance_result_id": compliance_result.id if compliance_result else None,
@@ -237,17 +260,16 @@ class FixService:
                 for fix_data in valid_fixes:
                     fix_command = fix_data["fix_command"]
                     base_task_name = fix_data["task_name"]
-                    
-                   
-                    
-                  
+
+                    print("Debug fix command", fix_command)
+
                     task = {
-                            'name': base_task_name,
-                            'shell': fix_command,
-                            'ignore_errors': True,
-                            'become': True,
-                            'register': f"result_{fix_data['rule_result_id']}"
-                        }
+                        'name': base_task_name,
+                        'shell': fix_command,
+                        'ignore_errors': True,
+                        'become': True,
+                        'register': f"result_{fix_data['rule_result_id']}"
+                    }
                     playbook_tasks.append(task)
                     
                     # Thêm task verification (chạy rule command để kiểm tra)
@@ -283,6 +305,7 @@ class FixService:
                 
                 task_results = {}
                 
+                print("Debug runner events", runner.events)
                 for event in runner.events:
                     if event['event'] in ('runner_on_ok', 'runner_on_failed'):
                         task_name = event['event_data'].get('task')
@@ -296,7 +319,7 @@ class FixService:
                                 "failed": task_result.get('failed', False),
                                 "changed": task_result.get('changed', False)
                             }
-
+                            print("Debug task name")
                             print(f"Task '{task_name}' executed with rc={task_results[task_name]['rc']}")
                 
                 return {
@@ -424,8 +447,8 @@ class FixService:
                 execution_output=execution_output,
                 error_message=error_message,
                 is_success=is_success,
-                ip_address=self.ip_address,
-                user_agent=self.user_agent
+                ip_address=self.ip_address if self.ip_address else "unknown",
+                user_agent=self.user_agent if self.user_agent else "unknown"
             )
 
             self.fix_log_dao.create(log_entry)
