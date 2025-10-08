@@ -26,6 +26,7 @@ class WorkLoadResponse(WorkLoadBase):
     id: int
     created_at: datetime
     count_instances: int
+    os_id: int
     updated_at: datetime
     count_rules: int
     os_name: Optional[str] = Field(None, description="Operating system name")

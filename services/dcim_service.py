@@ -53,6 +53,7 @@ class DCIMService:
             print("🔄 Starting DCIM sync...")
             
             # STEP 1: Cache DCIM data
+            
             result = self.cache_all_instances_incrementally(
                 page_size=100,
                 cache_ttl=redis_settings.CACHE_TTL_DCIM_INSTANCES, current_user=current_user

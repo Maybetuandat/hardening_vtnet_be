@@ -231,7 +231,7 @@ class WorkloadService:
             os_name=os_model.name if os_model else None,
             os_id=workload.os_id,
             count_instances=count_instances,
-            count_rules=count_rules
+            count_rules=count_rules,
         )
     
     def _validate_workload_create_data(self, workload_data: WorkLoadCreate) -> None:
